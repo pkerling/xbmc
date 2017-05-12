@@ -6,7 +6,7 @@
 
 This is my fork of Kodi where I will be coding on my Google Summer of Code project of adding (back) Wayland support.
 
-Feel free to participate in discussions either directly here on GitHub (issues/pull requests) or the [Kodi community forum thread](http://forum.kodi.tv/showthread.php?tid=309254&pid=2552143#pid2552143) and report bugs or features that you would like to see integrated.
+Feel free to participate in discussions either directly here on GitHub (issues/pull requests) or the [Kodi community forum thread](http://forum.kodi.tv/showthread.php?tid=309254) and report bugs or features that you would like to see integrated.
 
 There will be more instructions on compiling etc. once basic Wayland output support works.
 
