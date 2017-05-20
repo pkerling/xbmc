@@ -1,55 +1,25 @@
-[![Build Status](https://travis-ci.org/xbmc/xbmc.svg?branch=master)](https://travis-ci.org/xbmc/xbmc)
-[![Documentation](https://codedocs.xyz/xbmc/xbmc.svg)](https://codedocs.xyz/xbmc/xbmc/)
-
 ![Kodi logo](https://raw.githubusercontent.com/xbmc/xbmc-forum/master/xbmc/images/logo-sbs-black.png)
-# Kodi Home Theater Software
 
-**Welcome to Kodi!**
+![Google Summer of Code logo](https://developers.google.com/open-source/gsoc/resources/downloads/GSoC-logo-horizontal-200.png)
 
-Kodi is an award-winning free and open source (GPL) software media player and
-entertainment hub for digital media. Kodi is available for multiple platforms.
-Created in 2003 by a group of like minded programmers, Kodi is a non-profit
-project run and developed by volunteers located around the world.
-More than 450 software developers have contributed to Kodi to date, and 100-plus
-translators have worked to expand its reach, making it available in more
-than 65 languages.
+# Kodi fork for Google Summer of Code 2017 project: Wayland Support
 
-While Kodi functions very well as a standard media player application for your
-computer, it has been designed to be the perfect companion for your HTPC.
-Supporting an almost endless range of remote controls, and combined with its
-beautiful interface and powerful skinning engine, Kodi feels very natural to
-use from the couch and is the ideal solution for your home theater.
+This is my fork of Kodi where I will be coding on my Google Summer of Code project of adding (back) Wayland support.
 
-Currently Kodi can be used to play almost all popular audio and video formats
-around. It was designed for network playback, so you can stream your multimedia
-from anywhere in the house or directly from the internet using practically any
-protocol available.
+Feel free to participate in discussions either directly here on GitHub (issues/pull requests) or the [Kodi community forum thread](http://forum.kodi.tv/showthread.php?tid=309254) and report bugs or features that you would like to see integrated.
 
-Use your media as-is: Kodi can play CDs and DVDs directly
-from the disk or image file, almost all popular archive formats from your hard
-drive, and even files inside ZIP and RAR archives. It will even scan all of
-your media and automatically create a personalized library complete with box
-covers, descriptions, and fanart. There are playlist and slideshow functions, a
-weather forecast feature and many audio visualizations. Once installed, your
-computer will become a fully functional multimedia jukebox.
-
-
-## Installation
-
-See [docs/README.xxx](https://github.com/xbmc/xbmc/tree/master/docs) for specific platform build information.
-
-## Quick Kodi development links
-
-* [Contributing](https://github.com/xbmc/xbmc/blob/master/CONTRIBUTING.md)
-* [Submitting a patch](http://kodi.wiki/view/HOW-TO_submit_a_patch)
-* [Code guidelines](https://codedocs.xyz/xbmc/xbmc/code_guidelines.html)
-* [Kodi development](http://kodi.wiki/view/Development)
+There will be more instructions on compiling etc. once basic Wayland output support works.
 
 ## Useful links
+
+* [Original proposal and discussion thread in Kodi community forums](http://forum.kodi.tv/showthread.php?tid=309254&pid=2552143#pid2552143)
+* [Project page at Google Summer of Code homepage](https://summerofcode.withgoogle.com/projects/#4913542374359040)
 
 * [Kodi wiki](http://kodi.wiki/)
 * [Kodi bug tracker](http://trac.kodi.tv)
 * [Kodi community forums](http://forum.kodi.tv/)
 * [Kodi website](http://kodi.tv)
 
-**Enjoy Kodi and help us improve it today. :)**
+## Legal
+
+Portions of this page are reproduced from work created and [shared by Google](https://developers.google.com/readme/policies/) and used according to terms described in the [Creative Commons Attribution-Noncommercial-No Derivative Works 3.0 Unported License](http://creativecommons.org/licenses/by-nc-nd/3.0/).
