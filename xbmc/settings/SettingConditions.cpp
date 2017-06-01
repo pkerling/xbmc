@@ -48,7 +48,6 @@
 #if defined(TARGET_DARWIN_OSX)
 #include "platform/darwin/DarwinUtils.h"
 #endif// defined(TARGET_DARWIN_OSX)
-#include "ServiceBroker.h"
 
 bool AddonHasSettings(const std::string &condition, const std::string &value, const CSetting *setting, void *data)
 {
@@ -318,9 +317,6 @@ void CSettingConditions::Initialize()
 #endif
 #ifdef HAS_ZEROCONF
   m_simpleConditions.insert("has_zeroconf");
-#endif
-#ifdef HAVE_LIBOPENMAX
-  m_simpleConditions.insert("have_libopenmax");
 #endif
 #ifdef HAS_OMXPLAYER
   m_simpleConditions.insert("has_omxplayer");

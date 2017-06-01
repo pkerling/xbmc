@@ -26,10 +26,10 @@
 
 /*
  *------------------------------------------------------------------------------
- * This header is only be used for Kodi itself and internally (not for add-on
- * development) to identify the several types.
+ * Some parts on headers are only be used for Kodi itself and internally (not
+ * for add-on development).
  *
- * With this reason is also no doxygen part with "///" here used.
+ * For this reason also no doxygen part with "///" defined there.
  * -----------------------------------------------------------------------------
  */
 
@@ -41,20 +41,39 @@
  * overview.
  */
 
-
-#define ADDON_GLOBAL_VERSION_MAIN                     "1.0.0"
-#define ADDON_GLOBAL_VERSION_MAIN_MIN                 "1.0.0"
+#define ADDON_GLOBAL_VERSION_MAIN                     "1.0.7"
+#define ADDON_GLOBAL_VERSION_MAIN_MIN                 "1.0.2"
 #define ADDON_GLOBAL_VERSION_MAIN_XML_ID              "kodi.binary.global.main"
-#define ADDON_GLOBAL_VERSION_MAIN_DEPENDS             "xbmc_addon_dll.h" \
+#define ADDON_GLOBAL_VERSION_MAIN_DEPENDS             "AddonBase.h" \
+                                                      "xbmc_addon_dll.h" \
                                                       "xbmc_addon_types.h" \
-                                                      "kodi_audioengine_types.h" \
-                                                      "libKODI_audioengine.h" \
-                                                      "libXBMC_addon.h"
+                                                      "libXBMC_addon.h" \
+                                                      "addon-instance/"
+
+#define ADDON_GLOBAL_VERSION_GENERAL                  "1.0.0"
+#define ADDON_GLOBAL_VERSION_GENERAL_MIN              "1.0.0"
+#define ADDON_GLOBAL_VERSION_GENERAL_XML_ID           "kodi.binary.global.general"
+#define ADDON_GLOBAL_VERSION_GENERAL_DEPENDS          "General.h"
 
 #define ADDON_GLOBAL_VERSION_GUI                      "5.11.0"
 #define ADDON_GLOBAL_VERSION_GUI_MIN                  "5.10.0"
 #define ADDON_GLOBAL_VERSION_GUI_XML_ID               "kodi.binary.global.gui"
 #define ADDON_GLOBAL_VERSION_GUI_DEPENDS              "libKODI_guilib.h"
+
+#define ADDON_GLOBAL_VERSION_AUDIOENGINE              "1.0.0"
+#define ADDON_GLOBAL_VERSION_AUDIOENGINE_MIN          "1.0.0"
+#define ADDON_GLOBAL_VERSION_AUDIOENGINE_XML_ID       "kodi.binary.global.audioengine"
+#define ADDON_GLOBAL_VERSION_AUDIOENGINE_DEPENDS      "AudioEngine.h"
+
+#define ADDON_GLOBAL_VERSION_FILESYSTEM               "1.0.0"
+#define ADDON_GLOBAL_VERSION_FILESYSTEM_MIN           "1.0.0"
+#define ADDON_GLOBAL_VERSION_FILESYSTEM_XML_ID        "kodi.binary.global.filesystem"
+#define ADDON_GLOBAL_VERSION_FILESYSTEM_DEPENDS       "Filesystem.h"
+
+#define ADDON_GLOBAL_VERSION_NETWORK                  "1.0.0"
+#define ADDON_GLOBAL_VERSION_NETWORK_MIN              "1.0.0"
+#define ADDON_GLOBAL_VERSION_NETWORK_XML_ID           "kodi.binary.global.network"
+#define ADDON_GLOBAL_VERSION_NETWORK_DEPENDS          "Network.h"
 
 #define ADDON_INSTANCE_VERSION_ADSP                   "0.1.10"
 #define ADDON_INSTANCE_VERSION_ADSP_MIN               "0.1.10"
@@ -63,27 +82,27 @@
                                                       "kodi_adsp_types.h" \
                                                       "libKODI_adsp.h"
 
-#define ADDON_INSTANCE_VERSION_AUDIODECODER           "1.0.0"
-#define ADDON_INSTANCE_VERSION_AUDIODECODER_MIN       "1.0.0"
+#define ADDON_INSTANCE_VERSION_AUDIODECODER           "1.0.1"
+#define ADDON_INSTANCE_VERSION_AUDIODECODER_MIN       "1.0.1"
 #define ADDON_INSTANCE_VERSION_AUDIODECODER_XML_ID    "kodi.binary.instance.audiodecoder"
 #define ADDON_INSTANCE_VERSION_AUDIODECODER_DEPENDS   "kodi_audiodec_dll.h" \
                                                       "kodi_audiodec_types.h"
 
-#define ADDON_INSTANCE_VERSION_AUDIOENCODER           "1.0.0"
-#define ADDON_INSTANCE_VERSION_AUDIOENCODER_MIN       "1.0.0"
+#define ADDON_INSTANCE_VERSION_AUDIOENCODER           "1.0.1"
+#define ADDON_INSTANCE_VERSION_AUDIOENCODER_MIN       "1.0.1"
 #define ADDON_INSTANCE_VERSION_AUDIOENCODER_XML_ID    "kodi.binary.instance.audioencoder"
 #define ADDON_INSTANCE_VERSION_AUDIOENCODER_DEPENDS   "xbmc_audioenc_dll.h" \
                                                       "xbmc_audioenc_types.h"
 
-#define ADDON_INSTANCE_VERSION_GAME                   "1.0.31"
-#define ADDON_INSTANCE_VERSION_GAME_MIN               "1.0.31"
+#define ADDON_INSTANCE_VERSION_GAME                   "1.0.32"
+#define ADDON_INSTANCE_VERSION_GAME_MIN               "1.0.32"
 #define ADDON_INSTANCE_VERSION_GAME_XML_ID            "kodi.binary.instance.game"
 #define ADDON_INSTANCE_VERSION_GAME_DEPENDS           "kodi_game_dll.h" \
                                                       "kodi_game_types.h" \
                                                       "libKODI_game.h"
 
-#define ADDON_INSTANCE_VERSION_IMAGEDECODER           "1.0.0"
-#define ADDON_INSTANCE_VERSION_IMAGEDECODER_MIN       "1.0.0"
+#define ADDON_INSTANCE_VERSION_IMAGEDECODER           "1.0.1"
+#define ADDON_INSTANCE_VERSION_IMAGEDECODER_MIN       "1.0.1"
 #define ADDON_INSTANCE_VERSION_IMAGEDECODER_XML_ID    "kodi.binary.instance.imagedecoder"
 #define ADDON_INSTANCE_VERSION_IMAGEDECODER_DEPENDS   "kodi_imagedec_dll.h" \
                                                       "kodi_imagedec_types.h"
@@ -111,37 +130,42 @@
                                                       "xbmc_epg_types.h" \
                                                       "libXBMC_pvr.h"
 
-#define ADDON_INSTANCE_VERSION_SCREENSAVER            "1.0.0"
-#define ADDON_INSTANCE_VERSION_SCREENSAVER_MIN        "1.0.0"
+#define ADDON_INSTANCE_VERSION_SCREENSAVER            "2.0.0"
+#define ADDON_INSTANCE_VERSION_SCREENSAVER_MIN        "2.0.0"
 #define ADDON_INSTANCE_VERSION_SCREENSAVER_XML_ID     "kodi.binary.instance.screensaver"
-#define ADDON_INSTANCE_VERSION_SCREENSAVER_DEPENDS    "xbmc_scr_dll.h" \
-                                                      "xbmc_scr_types.h"
+#define ADDON_INSTANCE_VERSION_SCREENSAVER_DEPENDS    "addon-instance/Screensaver.h"
 
-#define ADDON_INSTANCE_VERSION_VFS                    "1.0.0"
-#define ADDON_INSTANCE_VERSION_VFS_MIN                "1.0.0"
+#define ADDON_INSTANCE_VERSION_VFS                    "1.0.1"
+#define ADDON_INSTANCE_VERSION_VFS_MIN                "1.0.1"
 #define ADDON_INSTANCE_VERSION_VFS_XML_ID             "kodi.binary.instance.vfs"
 #define ADDON_INSTANCE_VERSION_VFS_DEPENDS            "kodi_vfs_dll.h" \
                                                       "kodi_vfs_types.h" \
                                                       "kodi_vfs_utils.hpp"
 
-#define ADDON_INSTANCE_VERSION_VISUALIZATION          "1.0.0"
-#define ADDON_INSTANCE_VERSION_VISUALIZATION_MIN      "1.0.0"
+#define ADDON_INSTANCE_VERSION_VISUALIZATION          "1.0.1"
+#define ADDON_INSTANCE_VERSION_VISUALIZATION_MIN      "1.0.1"
 #define ADDON_INSTANCE_VERSION_VISUALIZATION_XML_ID   "kodi.binary.instance.visualization"
 #define ADDON_INSTANCE_VERSION_VISUALIZATION_DEPENDS  "xbmc_vis_dll.h" \
                                                       "xbmc_vis_types.h"
 
 ///
-/// The currently used types for Kodi add-ons
+/// The currently available instance types for Kodi add-ons
 ///
+/// \internal
 /// @note For add of new types take a new number on end. To change
 /// existing numbers can be make problems on already compiled add-ons.
+/// \endinternal
 ///
 typedef enum ADDON_TYPE
 {
   /* addon global parts */
   ADDON_GLOBAL_MAIN = 0,
   ADDON_GLOBAL_GUI = 1,
-  ADDON_GLOBAL_MAX = 1, // Last used global id, used in loops to check versions. Need to change if new global type becomes added.
+  ADDON_GLOBAL_AUDIOENGINE = 2,
+  ADDON_GLOBAL_GENERAL = 3,
+  ADDON_GLOBAL_NETWORK = 4,
+  ADDON_GLOBAL_FILESYSTEM = 5,
+  ADDON_GLOBAL_MAX = 5, // Last used global id, used in loops to check versions. Need to change if new global type becomes added.
 
   /* addon type instances */
   ADDON_INSTANCE_ADSP = 101,
@@ -181,9 +205,25 @@ inline const char* GetTypeVersion(int type)
     /* addon global parts */
     case ADDON_GLOBAL_MAIN:
       return ADDON_GLOBAL_VERSION_MAIN;
+#if !defined(BUILD_KODI_ADDON) || defined(ADDON_GLOBAL_VERSION_GENERAL_USED)
+    case ADDON_GLOBAL_GENERAL:
+      return ADDON_GLOBAL_VERSION_GENERAL;
+#endif
 #if !defined(BUILD_KODI_ADDON) || defined(ADDON_GLOBAL_VERSION_GUI_USED)
     case ADDON_GLOBAL_GUI:
       return ADDON_GLOBAL_VERSION_GUI;
+#endif
+#if !defined(BUILD_KODI_ADDON) || defined(ADDON_GLOBAL_VERSION_AUDIOENGINE_USED)
+    case ADDON_GLOBAL_AUDIOENGINE:
+      return ADDON_GLOBAL_VERSION_AUDIOENGINE;
+#endif
+#if !defined(BUILD_KODI_ADDON) || defined(ADDON_GLOBAL_VERSION_FILESYSTEM_USED)
+    case ADDON_GLOBAL_FILESYSTEM:
+      return ADDON_GLOBAL_VERSION_FILESYSTEM;
+#endif
+#if !defined(BUILD_KODI_ADDON) || defined(ADDON_GLOBAL_VERSION_NETWORK_USED)
+    case ADDON_GLOBAL_NETWORK:
+      return ADDON_GLOBAL_VERSION_NETWORK;
 #endif
 
     /* addon type instances */
@@ -252,6 +292,14 @@ inline const char* GetTypeMinVersion(int type)
       return ADDON_GLOBAL_VERSION_MAIN_MIN;
     case ADDON_GLOBAL_GUI:
       return ADDON_GLOBAL_VERSION_GUI_MIN;
+    case ADDON_GLOBAL_GENERAL:
+      return ADDON_GLOBAL_VERSION_GENERAL_MIN;
+    case ADDON_GLOBAL_AUDIOENGINE:
+      return ADDON_GLOBAL_VERSION_AUDIOENGINE_MIN;
+    case ADDON_GLOBAL_FILESYSTEM:
+      return ADDON_GLOBAL_VERSION_FILESYSTEM_MIN;
+    case ADDON_GLOBAL_NETWORK:
+      return ADDON_GLOBAL_VERSION_NETWORK_MIN;
 
     /* addon type instances */
     case ADDON_INSTANCE_ADSP:
@@ -284,7 +332,7 @@ inline const char* GetTypeMinVersion(int type)
 /// Function used internally on add-on and in Kodi itself to get name
 /// about given type.
 ///
-/// @param[in] instanceType The with 'enum ADDON_TYPE' type to ask
+/// @param[in] type The with 'enum ADDON_TYPE' defined type to ask
 /// @return Name of the asked instance type
 ///
 inline const char* GetTypeName(int type)
@@ -296,6 +344,14 @@ inline const char* GetTypeName(int type)
       return "Addon";
     case ADDON_GLOBAL_GUI:
       return "GUI";
+    case ADDON_GLOBAL_GENERAL:
+      return "General";
+    case ADDON_GLOBAL_AUDIOENGINE:
+      return "AudioEngine";
+    case ADDON_GLOBAL_FILESYSTEM:
+      return "Filesystem";
+    case ADDON_GLOBAL_NETWORK:
+      return "Network";
 
     /* addon type instances */
     case ADDON_INSTANCE_ADSP:
@@ -326,7 +382,7 @@ inline const char* GetTypeName(int type)
 /// Function used internally on add-on and in Kodi itself to get id number
 /// about given type name.
 ///
-/// @param[in] instanceType The with name type to ask
+/// @param[in] name The type name string to ask
 /// @return Id number of the asked instance type
 ///
 /// @warning String must be lower case here!
@@ -337,8 +393,16 @@ inline int GetTypeId(const char* name)
   {
     if (strcmp(name, "addon") == 0)
       return ADDON_GLOBAL_MAIN;
+    else if (strcmp(name, "general") == 0)
+      return ADDON_GLOBAL_GENERAL;
     else if (strcmp(name, "gui") == 0)
       return ADDON_GLOBAL_GUI;
+    else if (strcmp(name, "audioengine") == 0)
+      return ADDON_GLOBAL_AUDIOENGINE;
+    else if (strcmp(name, "filesystem") == 0)
+      return ADDON_GLOBAL_FILESYSTEM;
+    else if (strcmp(name, "network") == 0)
+      return ADDON_GLOBAL_NETWORK;
     else if (strcmp(name, "adsp") == 0)
       return ADDON_INSTANCE_ADSP;
     else if (strcmp(name, "audiodecoder") == 0)

@@ -51,7 +51,7 @@ configure_file(${CMAKE_SOURCE_DIR}/tools/Linux/kodi.desktop.in
 install(TARGETS ${APP_NAME_LC}
         DESTINATION ${libdir}/${APP_NAME_LC}
         COMPONENT kodi-bin)
-if(ENABLE_X11 AND XRANDR_FOUND)
+if(X_FOUND AND XRANDR_FOUND)
   install(TARGETS ${APP_NAME_LC}-xrandr
           DESTINATION ${libdir}/${APP_NAME_LC}
           COMPONENT kodi-bin)
@@ -154,6 +154,7 @@ install(FILES ${CMAKE_SOURCE_DIR}/xbmc/cores/VideoPlayer/DVDDemuxers/DVDDemuxPac
               ${CMAKE_SOURCE_DIR}/xbmc/cores/VideoPlayer/DVDDemuxers/DemuxCrypto.h
               ${CMAKE_SOURCE_DIR}/xbmc/cores/AudioEngine/Utils/AEChannelData.h
               ${CMAKE_SOURCE_DIR}/xbmc/filesystem/IFileTypes.h
+              ${CMAKE_SOURCE_DIR}/xbmc/input/ActionIDs.h
               ${CMAKE_SOURCE_DIR}/xbmc/input/XBMC_vkeys.h
         DESTINATION ${includedir}/${APP_NAME_LC}
         COMPONENT kodi-addon-dev)

@@ -37,13 +37,14 @@
 
 #if defined(HAS_GL)
 #include "LinuxRendererGL.h"
-#include "HwDecRender/RendererVAAPI.h"
+#include "HwDecRender/RendererVAAPIGL.h"
 #include "HwDecRender/RendererVDPAU.h"
 #if defined(TARGET_DARWIN_OSX)
 #include "HwDecRender/RendererVTBGL.h"
 #endif
 #elif HAS_GLES == 2
   #include "LinuxRendererGLES.h"
+  #include "HwDecRender/RendererVAAPIGLES.h"
 #if defined(HAS_MMAL)
 #include "HwDecRender/MMALRenderer.h"
 #endif
@@ -55,9 +56,6 @@
 #endif
 #if defined(HAS_LIBAMCODEC)
 #include "HwDecRender/RendererAML.h"
-#endif
-#if defined(HAVE_LIBOPENMAX)
-#include "HwDecRender/RendererOpenMax.h"
 #endif
 #elif defined(HAS_DX)
   #include "WinRenderer.h"
@@ -102,7 +100,6 @@ static std::string GetRenderFormatName(ERenderFormat format)
     case RENDER_FMT_VDPAU:     return "VDPAU";
     case RENDER_FMT_DXVA:      return "DXVA";
     case RENDER_FMT_VAAPI:     return "VAAPI";
-    case RENDER_FMT_OMXEGL:    return "OMXEGL";
     case RENDER_FMT_CVBREF:    return "BGRA";
     case RENDER_FMT_BYPASS:    return "BYPASS";
     case RENDER_FMT_MEDIACODEC:return "MEDIACODEC";
@@ -566,12 +563,6 @@ void CRenderManager::CreateRenderer()
     {
 #if defined(HAS_IMXVPU)
       m_pRenderer = new CRendererIMX;
-#endif
-    }
-    else if (m_format == RENDER_FMT_OMXEGL)
-    {
-#if defined(HAVE_LIBOPENMAX)
-      m_pRenderer = new CRendererOMX;
 #endif
     }
     else if (m_format == RENDER_FMT_DXVA)
@@ -1143,7 +1134,6 @@ int CRenderManager::AddVideoPicture(VideoPicture& pic)
     return -1;
 
   if(pic.format == RENDER_FMT_VDPAU
-  || pic.format == RENDER_FMT_OMXEGL
   || pic.format == RENDER_FMT_CVBREF
   || pic.format == RENDER_FMT_VAAPI
   || pic.format == RENDER_FMT_MEDIACODEC

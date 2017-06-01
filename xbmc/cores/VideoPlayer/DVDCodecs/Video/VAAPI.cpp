@@ -503,8 +503,10 @@ bool CVideoSurfaces::HasRefs()
 // VAAPI
 //-----------------------------------------------------------------------------
 
-bool CDecoder::m_capGeneral = false;
-bool CDecoder::m_capHevc = false;
+// @TODO
+// temporarily disabled runtime check
+bool CDecoder::m_capGeneral = true;
+bool CDecoder::m_capHevc = true;
 
 CDecoder::CDecoder(CProcessInfo& processInfo) :
   m_vaapiOutput(&m_inMsgEvent),
@@ -2606,7 +2608,7 @@ void COutput::ReleaseBufferPool(bool precleanup)
     if (pic->texture)
     {
       glDeleteTextures(1, &pic->texture);
-      pic->texture = None;
+      pic->texture = 0;
     }
     av_frame_free(&pic->avFrame);
     pic->valid = false;
@@ -2635,12 +2637,16 @@ bool COutput::GLInit()
   }
 #endif
 
+// GL_TEXTURE_RECTANGLE_ARB is not available in GLES
+// ref: http://stackoverflow.com/questions/6883160/opengl-es-gl-texture-rectangle
+#ifdef HAS_GL
   if (!g_Windowing.IsExtSupported("GL_ARB_texture_non_power_of_two") &&
        g_Windowing.IsExtSupported("GL_ARB_texture_rectangle"))
   {
     m_textureTarget = GL_TEXTURE_RECTANGLE_ARB;
   }
   else
+#endif
     m_textureTarget = GL_TEXTURE_2D;
 
   eglCreateImageKHR = (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
