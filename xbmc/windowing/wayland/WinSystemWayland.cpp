@@ -23,6 +23,10 @@
 #include <algorithm>
 #include <limits>
 
+#if defined(HAVE_LIBVA)
+#include <va/va_wayland.h>
+#endif
+
 #include "Application.h"
 #include "Connection.h"
 #include "guilib/DispResource.h"
@@ -525,4 +529,13 @@ void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t s
   {
     pointer.set_cursor(serial, wayland::surface_t(), 0, 0);
   }
+}
+
+void* CWinSystemWayland::GetVaDisplay()
+{
+#if defined(HAVE_LIBVA)
+  return vaGetDisplayWl(reinterpret_cast<wl_display*> (m_connection->GetDisplay().c_ptr()));
+#else
+  return nullptr;
+#endif
 }
