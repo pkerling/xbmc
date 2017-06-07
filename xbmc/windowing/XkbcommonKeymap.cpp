@@ -341,3 +341,8 @@ std::uint32_t CXkbcommonKeymap::UnicodeCodepointForKeycode(xkb_keycode_t code) c
 {
   return xkb_state_key_get_utf32(m_state, code);
 }
+
+bool CXkbcommonKeymap::ShouldKeycodeRepeat(xkb_keycode_t code) const
+{
+  return xkb_keymap_key_repeats(m_keymap, code);
+}

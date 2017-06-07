@@ -91,6 +91,10 @@ public:
    * Get Unicode codepoint/UTF32 code for provided keycode
    */
   std::uint32_t UnicodeCodepointForKeycode(xkb_keycode_t code) const;
+  /**
+   * Check whether a given keycode should have key repeat
+   */
+  bool ShouldKeycodeRepeat(xkb_keycode_t code) const;
   
   static XBMCKey XBMCKeyForKeysym(xkb_keysym_t sym);
   

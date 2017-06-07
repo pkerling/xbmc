@@ -23,6 +23,7 @@
 
 #include <wayland-client-protocol.hpp>
 
+#include "threads/Timer.h"
 #include "windowing/XBMC_events.h"
 #include "windowing/XkbcommonKeymap.h"
 
@@ -128,7 +129,7 @@ private:
   void SendMouseButton(unsigned char button, bool pressed);
   
   void ConvertAndSendKey(std::uint32_t scancode, bool pressed);
-  void SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed);
+  XBMC_Event SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed);
   
   std::uint32_t m_globalName;
   wayland::seat_t m_seat;
@@ -145,6 +146,22 @@ private:
   
   std::unique_ptr<CXkbcommonContext> m_xkbContext;
   std::unique_ptr<CXkbcommonKeymap> m_keymap;
+  // Default values are used if compositor does not send any
+  std::atomic<int> m_keyRepeatDelay = {1000};
+  std::atomic<int> m_keyRepeatInterval = {50};
+  // Save complete XBMC_Event so no keymap lookups which might not be thread-safe
+  // are needed in the repeat callback
+  XBMC_Event m_keyToRepeat;
+  CTimer m_keyRepeatTimer;
+  
+  class CKeyRepeatCallback : public ITimerCallback
+  {
+    CSeatInputProcessor* m_processor;
+  public:
+    CKeyRepeatCallback(CSeatInputProcessor* processor);
+    void OnTimeout() override;
+  };
+  CKeyRepeatCallback m_keyRepeatCallback;
 };
 
 }
