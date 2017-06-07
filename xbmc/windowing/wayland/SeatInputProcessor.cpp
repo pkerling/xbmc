@@ -106,7 +106,7 @@ constexpr int WL_KEYBOARD_XKB_CODE_OFFSET = 8;
 }
 
 CSeatInputProcessor::CSeatInputProcessor(std::uint32_t globalName, const wayland::seat_t& seat, IInputHandler* handler)
-: m_globalName(globalName), m_seat(seat), m_handler(handler)
+: m_globalName(globalName), m_seat(seat), m_handler(handler), m_keyRepeatTimer(&m_keyRepeatCallback), m_keyRepeatCallback(this)
 {
   assert(m_handler);
 
@@ -233,6 +233,13 @@ void CSeatInputProcessor::HandleKeyboardCapability()
   {
     m_handler->OnLeave(m_globalName, InputType::KEYBOARD);
   };
+  m_keyboard.on_repeat_info() = [this](std::int32_t rate, std::int32_t delay)
+  {
+    CLog::Log(LOGDEBUG, "Seat %s key repeat rate: %d cps, delay %d ms", m_name.c_str(), rate, delay);
+    // rate is in characters per second, so convert to msec interval
+    m_keyRepeatInterval = (rate != 0) ? static_cast<int> (1000.0f / rate) : 0;
+    m_keyRepeatDelay = delay;
+  };
   m_keyboard.on_keymap() = [this](wayland::keyboard_keymap_format format, int fd, std::uint32_t size)
   {
     if (format != wayland::keyboard_keymap_format::xkb_v1)
@@ -242,6 +249,8 @@ void CSeatInputProcessor::HandleKeyboardCapability()
       close(fd);
       return;
     }
+    
+    m_keyRepeatTimer.Stop();
     
     try
     {
@@ -255,7 +264,7 @@ void CSeatInputProcessor::HandleKeyboardCapability()
     }
     catch(std::exception& e)
     {
-      CLog::Log(LOGERROR, "Could not parse keymap from Wayland compositor, continuing without: %s", e.what());
+      CLog::Log(LOGERROR, "Could not parse keymap from compositor: %s - continuing without keymap", e.what());
     }
     
     close(fd);
@@ -278,6 +287,7 @@ void CSeatInputProcessor::HandleKeyboardCapability()
       return;
     }
     
+    m_keyRepeatTimer.Stop();
     m_keymap->UpdateMask(modsDepressed, modsLatched, modsLocked, group);
   };
 }
@@ -301,10 +311,24 @@ void CSeatInputProcessor::ConvertAndSendKey(std::uint32_t scancode, bool pressed
     scancode = 0;
   }
 
-  SendKey(scancode, xbmcKey, static_cast<std::uint16_t> (utf32), pressed);
+  XBMC_Event event = SendKey(scancode, xbmcKey, static_cast<std::uint16_t> (utf32), pressed);
+  
+  if (pressed && m_keymap->ShouldKeycodeRepeat(xkbCode) && m_keyRepeatInterval > 0)
+  {
+    // Can't modify keyToRepeat until we're sure the thread isn't accessing it
+    m_keyRepeatTimer.Stop(true);
+    // Update/Set key
+    m_keyToRepeat = event;
+    // Start timer with initial delay
+    m_keyRepeatTimer.Start(m_keyRepeatDelay, false);
+  }
+  else
+  {
+    m_keyRepeatTimer.Stop();
+  }
 }
 
-void CSeatInputProcessor::SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed)
+XBMC_Event CSeatInputProcessor::SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed)
 {
   assert(m_keymap);
 
@@ -319,6 +343,25 @@ void CSeatInputProcessor::SendKey(unsigned char scancode, XBMCKey key, std::uint
     .unicode = unicodeCodepoint
   };
   m_handler->OnEvent(m_globalName, InputType::KEYBOARD, event);
+  // Return created event for convenience (key repeat)
+  return event;
+}
+
+CSeatInputProcessor::CKeyRepeatCallback::CKeyRepeatCallback(CSeatInputProcessor* processor)
+: m_processor(processor)
+{
+}
+
+void CSeatInputProcessor::CKeyRepeatCallback::OnTimeout()
+{
+  // Reset ourselves
+  m_processor->m_keyRepeatTimer.RestartAsync(m_processor->m_keyRepeatInterval);
+  // Simulate repeat: Key up and down
+  XBMC_Event event = m_processor->m_keyToRepeat;
+  event.type = XBMC_KEYUP;
+  m_processor->m_handler->OnEvent(m_processor->m_globalName, InputType::KEYBOARD, event);
+  event.type = XBMC_KEYDOWN;
+  m_processor->m_handler->OnEvent(m_processor->m_globalName, InputType::KEYBOARD, event);
 }
 
 void CSeatInputProcessor::HandleTouchCapability()
