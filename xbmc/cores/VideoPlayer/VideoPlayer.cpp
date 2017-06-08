@@ -459,7 +459,7 @@ void CSelectionStreams::Update(CDVDInputStream* input, CDVDDemux* demuxer, std::
 
       DVDNavAudioStreamInfo info = nav->GetAudioStreamInfo(i);
       s.name     = info.name;
-      s.language = g_LangCodeExpander.ConvertToISO6392T(info.language);
+      s.language = g_LangCodeExpander.ConvertToISO6392B(info.language);
       s.channels = info.channels;
       Update(s);
     }
@@ -477,7 +477,7 @@ void CSelectionStreams::Update(CDVDInputStream* input, CDVDDemux* demuxer, std::
       DVDNavSubtitleStreamInfo info = nav->GetSubtitleStreamInfo(i);
       s.name     = info.name;
       s.flags = info.flags;
-      s.language = g_LangCodeExpander.ConvertToISO6392T(info.language);
+      s.language = g_LangCodeExpander.ConvertToISO6392B(info.language);
       Update(s);
     }
 
@@ -523,7 +523,7 @@ void CSelectionStreams::Update(CDVDInputStream* input, CDVDDemux* demuxer, std::
       s.type     = stream->type;
       s.id       = stream->uniqueId;
       s.demuxerId = stream->demuxerId;
-      s.language = g_LangCodeExpander.ConvertToISO6392T(stream->language);
+      s.language = g_LangCodeExpander.ConvertToISO6392B(stream->language);
       s.flags    = stream->flags;
       s.filename = demuxer->GetFileName();
       s.filename2 = filename2;
@@ -2351,7 +2351,8 @@ void CVideoPlayer::CheckAutoSceneSkip()
     return;
 
   const int64_t clock = GetTime();
-  int lastPos = m_Edl.GetLastQueryTime();
+  int lastPos = m_Edl.GetLastCheckASSTime();
+  m_Edl.SetLastCheckASSTime(clock);
 
   CEdl::Cut cut;
   if (!m_Edl.InCut(clock, &cut))
@@ -4536,6 +4537,11 @@ bool CVideoPlayer::OnAction(const CAction &action)
             return true;
           }
         }
+        if (!CServiceBroker::GetPVRManager().GetCurrentChannel())
+        {
+          // If this is a recording, then handle the actions in the next block
+          break;
+        }
         bool bPreview(action.GetID() == ACTION_MOVE_UP && // only up/down shows a preview, all others do switch
                       CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH));
 
@@ -4588,6 +4594,11 @@ bool CVideoPlayer::OnAction(const CAction &action)
             m_messenger.Put(new CDVDMsgPlayerSeek(mode));
             return true;
           }
+        }
+        if (!CServiceBroker::GetPVRManager().GetCurrentChannel())
+        {
+          // If this is a recording, then handle the actions in the next block
+          break;
         }
         bool bPreview(action.GetID() == ACTION_MOVE_DOWN && // only up/down shows a preview, all others do switch
                       CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH));

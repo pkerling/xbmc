@@ -363,7 +363,7 @@ bool CInputManager::OnEvent(XBMC_Event& newEvent)
   {
     m_Keyboard.ProcessKeyDown(newEvent.key.keysym);
     CKey key = m_Keyboard.TranslateKey(newEvent.key.keysym);
-    if (key.GetButtonCode() == m_LastKey.GetButtonCode() && m_LastKey.GetButtonCode() & CKey::MODIFIER_LONG)
+    if (key.GetButtonCode() == m_LastKey.GetButtonCode() && (m_LastKey.GetButtonCode() & CKey::MODIFIER_LONG))
     {
       // Do not repeat long presses
       break;
@@ -375,7 +375,7 @@ bool CInputManager::OnEvent(XBMC_Event& newEvent)
     }
     else
     {
-      if (key.GetButtonCode() != m_LastKey.GetButtonCode() && key.GetButtonCode() & CKey::MODIFIER_LONG)
+      if (key.GetButtonCode() != m_LastKey.GetButtonCode() && (key.GetButtonCode() & CKey::MODIFIER_LONG))
       {
         m_LastKey = key;  // OnKey is reentrant; need to do this before entering
         OnKey(key);
@@ -816,14 +816,14 @@ void CInputManager::SetRemoteControlName(const std::string& name)
 #endif
 }
 
-void CInputManager::OnSettingChanged(const CSetting *setting)
+void CInputManager::OnSettingChanged(std::shared_ptr<const CSetting> setting)
 {
   if (setting == nullptr)
     return;
 
   const std::string &settingId = setting->GetId();
   if (settingId == CSettings::SETTING_INPUT_ENABLEMOUSE)
-    m_Mouse.SetEnabled(dynamic_cast<const CSettingBool*>(setting)->GetValue());
+    m_Mouse.SetEnabled(std::dynamic_pointer_cast<const CSettingBool>(setting)->GetValue());
 }
 
 void CInputManager::RegisterKeyboardHandler(KEYBOARD::IKeyboardHandler* handler)

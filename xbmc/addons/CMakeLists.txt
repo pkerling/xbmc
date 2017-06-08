@@ -3,6 +3,7 @@ set(SOURCES Addon.cpp
             BinaryAddonCache.cpp
             AddonDatabase.cpp
             AddonDll.cpp
+            AddonInfo.cpp
             AddonInstaller.cpp
             AddonInstanceHandler.cpp
             AddonManager.cpp
@@ -16,7 +17,6 @@ set(SOURCES Addon.cpp
             FilesystemInstaller.cpp
             GameResource.cpp
             GUIDialogAddonInfo.cpp
-            GUIDialogAddonSettings.cpp
             GUIViewStateAddonBrowser.cpp
             GUIWindowAddonBrowser.cpp
             ImageDecoder.cpp
@@ -42,6 +42,7 @@ set(HEADERS Addon.h
             BinaryAddonCache.h
             AddonDatabase.h
             AddonDll.h
+            AddonInfo.h
             AddonInstaller.h
             AddonInstanceHandler.h
             AddonManager.h
@@ -57,7 +58,6 @@ set(HEADERS Addon.h
             FilesystemInstaller.h
             GameResource.h
             GUIDialogAddonInfo.h
-            GUIDialogAddonSettings.h
             GUIViewStateAddonBrowser.h
             GUIWindowAddonBrowser.h
             IAddon.h

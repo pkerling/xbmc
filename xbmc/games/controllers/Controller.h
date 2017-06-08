@@ -22,18 +22,21 @@
 #include "ControllerLayout.h"
 #include "ControllerTypes.h"
 #include "addons/Addon.h"
+#include "input/joysticks/JoystickTypes.h"
 
 #include <string>
+#include <vector>
 
 namespace GAME
 {
+using KODI::JOYSTICK::FEATURE_TYPE;
 
 class CController : public ADDON::CAddon
 {
 public:
-  static std::unique_ptr<CController> FromExtension(ADDON::AddonProps props, const cp_extension_t* ext);
+  static std::unique_ptr<CController> FromExtension(ADDON::CAddonInfo addonInfo, const cp_extension_t* ext);
 
-  CController(ADDON::AddonProps addonprops);
+  CController(ADDON::CAddonInfo addonInfo);
 
   virtual ~CController(void) { }
 
@@ -41,6 +44,8 @@ public:
 
   std::string Label(void);
   std::string ImagePath(void) const;
+  void GetFeatures(std::vector<std::string>& features, FEATURE_TYPE type = FEATURE_TYPE::UNKNOWN) const;
+  KODI::JOYSTICK::INPUT_TYPE GetInputType(const std::string& feature) const;
 
   bool LoadLayout(void);
 

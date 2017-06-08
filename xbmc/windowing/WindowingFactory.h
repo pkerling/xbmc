@@ -38,14 +38,14 @@
 #elif defined(TARGET_ANDROID) && defined(HAS_GLES)
 #include "android/WinSystemAndroidGLESContext.h"
 
+#elif defined(HAVE_WAYLAND) && defined(HAS_GL)
+#include "wayland/WinSystemWaylandGLContext.h"
+
 #elif defined(TARGET_LINUX) && defined(HAVE_MIR) && defined(HAS_GL)
 #include "mir/WinSystemMirGLContext.h"
 
 #elif defined(TARGET_LINUX) && defined(HAVE_MIR) && defined(HAS_GLES)
 #include "mir/WinSystemMirGLESContext.h"
-
-#elif defined(TARGET_LINUX)   && defined(HAVE_X11)   && defined(HAS_GLES)
-#include "X11/WinSystemX11GLESContext.h"
 
 #elif defined(TARGET_LINUX)   && defined(HAVE_X11)   && defined(HAS_GL)
 #include "X11/WinSystemX11GLContext.h"

@@ -118,7 +118,7 @@ public:
   void GetVideoRect(CRect &source, CRect &dest, CRect &view);
   float GetAspectRatio() const;
 
-  static void SettingOptionsRenderMethodsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsRenderMethodsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
 
 protected:
   void CalcNormalRenderRect(float offsetX, float offsetY, float width, float height,
@@ -152,5 +152,5 @@ protected:
 
   // rendering flags
   unsigned m_iFlags;
-  ERenderFormat m_format;
+  ERenderFormat m_format = RENDER_FMT_NONE;
 };

@@ -25,7 +25,7 @@
 #include "addons/PeripheralAddon.h"
 #include "addons/AddonButtonMap.h"
 #include "addons/AddonManager.h"
-#include "addons/GUIDialogAddonSettings.h"
+#include "addons/settings/GUIDialogAddonSettings.h"
 #include "addons/GUIWindowAddonBrowser.h"
 #include "bus/PeripheralBus.h"
 #include "bus/PeripheralBusUSB.h"
@@ -79,16 +79,13 @@ using namespace PERIPHERALS;
 using namespace XFILE;
 
 CPeripherals::CPeripherals() :
-  m_eventScanner(this),
-  m_portMapper(*this)
+  m_eventScanner(this)
 {
-  RegisterObserver(&m_portMapper);
 }
 
 CPeripherals::~CPeripherals()
 {
   Clear();
-  UnregisterObserver(&m_portMapper);
 }
 
 void CPeripherals::Initialise()
@@ -152,12 +149,7 @@ void CPeripherals::Clear()
     CSingleLock mappingsLock(m_critSectionMappings);
     /* delete mappings */
     for (auto& mapping : m_mappings)
-    {
-      std::map<std::string, PeripheralDeviceSetting> settings = mapping.m_settings;
-      for (const auto& setting : mapping.m_settings)
-        delete setting.second.m_setting;
       mapping.m_settings.clear();
-    }
     m_mappings.clear();
   }
 
@@ -544,7 +536,7 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, std::map<s
 
   while (currentNode)
   {
-    CSetting *setting = nullptr;
+    SettingPtr setting;
     std::string strKey = XMLUtils::GetAttribute(currentNode, "key");
     if (strKey.empty())
       continue;
@@ -557,7 +549,7 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, std::map<s
     {
       const std::string value = XMLUtils::GetAttribute(currentNode, "value");
       bool bValue = (value != "no" && value != "false" && value != "0");
-      setting = new CSettingBool(strKey, iLabelId, bValue);
+      setting = std::make_shared<CSettingBool>(strKey, iLabelId, bValue);
     }
     else if (strSettingsType == "int")
     {
@@ -565,7 +557,7 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, std::map<s
       int iMin   = currentNode->Attribute("min") ? atoi(currentNode->Attribute("min")) : 0;
       int iStep  = currentNode->Attribute("step") ? atoi(currentNode->Attribute("step")) : 1;
       int iMax   = currentNode->Attribute("max") ? atoi(currentNode->Attribute("max")) : 255;
-      setting = new CSettingInt(strKey, iLabelId, iValue, iMin, iStep, iMax);
+      setting = std::make_shared<CSettingInt>(strKey, iLabelId, iValue, iMin, iStep, iMax);
     }
     else if (strSettingsType == "float")
     {
@@ -573,7 +565,7 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, std::map<s
       float fMin   = currentNode->Attribute("min") ? (float) atof(currentNode->Attribute("min")) : 0;
       float fStep  = currentNode->Attribute("step") ? (float) atof(currentNode->Attribute("step")) : 0;
       float fMax   = currentNode->Attribute("max") ? (float) atof(currentNode->Attribute("max")) : 0;
-      setting = new CSettingNumber(strKey, iLabelId, fValue, fMin, fStep, fMax);
+      setting = std::make_shared<CSettingNumber>(strKey, iLabelId, fValue, fMin, fStep, fMax);
     }
     else if (StringUtils::EqualsNoCase(strSettingsType, "enum"))
     {
@@ -586,13 +578,13 @@ void CPeripherals::GetSettingsFromMappingsFile(TiXmlElement *xmlNode, std::map<s
         for (unsigned int i = 0; i < valuesVec.size(); i++)
           enums.push_back(std::make_pair(atoi(valuesVec[i].c_str()), atoi(valuesVec[i].c_str())));
         int iValue = currentNode->Attribute("value") ? atoi(currentNode->Attribute("value")) : 0;
-        setting = new CSettingInt(strKey, iLabelId, iValue, enums);
+        setting = std::make_shared<CSettingInt>(strKey, iLabelId, iValue, enums);
       }
     }
     else
     {
       std::string strValue = XMLUtils::GetAttribute(currentNode, "value");
-      setting = new CSettingString(strKey, iLabelId, strValue);
+      setting = std::make_shared<CSettingString>(strKey, iLabelId, strValue);
     }
 
     if (setting)
@@ -904,7 +896,7 @@ void CPeripherals::UnregisterJoystickButtonMapper(IButtonMapper* mapper)
     peripheral->UnregisterJoystickButtonMapper(mapper);
 }
 
-void CPeripherals::OnSettingChanged(const CSetting *setting)
+void CPeripherals::OnSettingChanged(std::shared_ptr<const CSetting> setting)
 {
   if (setting == nullptr)
     return;
@@ -922,7 +914,7 @@ void CPeripherals::OnSettingChanged(const CSetting *setting)
   }
 }
 
-void CPeripherals::OnSettingAction(const CSetting *setting)
+void CPeripherals::OnSettingAction(std::shared_ptr<const CSetting> setting)
 {
   if (setting == nullptr)
     return;
@@ -985,12 +977,11 @@ void CPeripherals::OnSettingAction(const CSetting *setting)
   else if (settingId == CSettings::SETTING_INPUT_PERIPHERALLIBRARIES)
   {
     std::string strAddonId;
-    CGUIWindowAddonBrowser::SelectAddonID(ADDON::ADDON_PERIPHERALDLL, strAddonId, false, true, true, false, true);
-    if (!strAddonId.empty())
+    if (CGUIWindowAddonBrowser::SelectAddonID(ADDON::ADDON_PERIPHERALDLL, strAddonId, false, true, true, false, true) == 1 && !strAddonId.empty())
     {
       ADDON::AddonPtr addon;
       if (ADDON::CAddonMgr::GetInstance().GetAddon(strAddonId, addon))
-        CGUIDialogAddonSettings::ShowAndGetInput(addon);
+        CGUIDialogAddonSettings::ShowForAddon(addon);
     }
   }
 }

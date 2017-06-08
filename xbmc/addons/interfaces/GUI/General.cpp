@@ -19,16 +19,30 @@
  */
 
 #include "General.h"
-#include "DialogContextMenu.h"
-#include "DialogExtendedProgressBar.h"
-#include "DialogFileBrowser.h"
-#include "DialogKeyboard.h"
-#include "DialogNumeric.h"
-#include "DialogOK.h"
-#include "DialogProgress.h"
-#include "DialogSelect.h"
-#include "DialogTextViewer.h"
-#include "DialogYesNo.h"
+#include "controls/Button.h"
+#include "controls/Edit.h"
+#include "controls/FadeLabel.h"
+#include "controls/Image.h"
+#include "controls/Label.h"
+#include "controls/Progress.h"
+#include "controls/RadioButton.h"
+#include "controls/Rendering.h"
+#include "controls/SettingsSlider.h"
+#include "controls/Slider.h"
+#include "controls/Spin.h"
+#include "controls/TextBox.h"
+#include "dialogs/ContextMenu.h"
+#include "dialogs/ExtendedProgressBar.h"
+#include "dialogs/FileBrowser.h"
+#include "dialogs/Keyboard.h"
+#include "dialogs/Numeric.h"
+#include "dialogs/OK.h"
+#include "dialogs/Progress.h"
+#include "dialogs/Select.h"
+#include "dialogs/TextViewer.h"
+#include "dialogs/YesNo.h"
+#include "ListItem.h"
+#include "Window.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/gui/General.h"
 
 #include "addons/AddonDll.h"
@@ -54,6 +68,18 @@ void Interface_GUIGeneral::Init(AddonGlobalInterface* addonInterface)
 {
   addonInterface->toKodi->kodi_gui = static_cast<AddonToKodiFuncTable_kodi_gui*>(malloc(sizeof(AddonToKodiFuncTable_kodi_gui)));
 
+  Interface_GUIControlButton::Init(addonInterface);
+  Interface_GUIControlEdit::Init(addonInterface);
+  Interface_GUIControlFadeLabel::Init(addonInterface);
+  Interface_GUIControlImage::Init(addonInterface);
+  Interface_GUIControlLabel::Init(addonInterface);
+  Interface_GUIControlProgress::Init(addonInterface);
+  Interface_GUIControlRadioButton::Init(addonInterface);
+  Interface_GUIControlAddonRendering::Init(addonInterface);
+  Interface_GUIControlSettingsSlider::Init(addonInterface);
+  Interface_GUIControlSlider::Init(addonInterface);
+  Interface_GUIControlSpin::Init(addonInterface);
+  Interface_GUIControlTextBox::Init(addonInterface);
   Interface_GUIDialogContextMenu::Init(addonInterface);
   Interface_GUIDialogExtendedProgress::Init(addonInterface);
   Interface_GUIDialogFileBrowser::Init(addonInterface);
@@ -64,6 +90,8 @@ void Interface_GUIGeneral::Init(AddonGlobalInterface* addonInterface)
   Interface_GUIDialogSelect::Init(addonInterface);
   Interface_GUIDialogTextViewer::Init(addonInterface);
   Interface_GUIDialogYesNo::Init(addonInterface);
+  Interface_GUIListItem::Init(addonInterface);
+  Interface_GUIWindow::Init(addonInterface);
 
   addonInterface->toKodi->kodi_gui->general = static_cast<AddonToKodiFuncTable_kodi_gui_general*>(malloc(sizeof(AddonToKodiFuncTable_kodi_gui_general)));
 
@@ -81,6 +109,18 @@ void Interface_GUIGeneral::DeInit(AddonGlobalInterface* addonInterface)
   if (addonInterface->toKodi && /* <-- needed as long as the old addon way is used */
       addonInterface->toKodi->kodi_gui)
   {
+    Interface_GUIControlButton::DeInit(addonInterface);
+    Interface_GUIControlEdit::DeInit(addonInterface);
+    Interface_GUIControlFadeLabel::DeInit(addonInterface);
+    Interface_GUIControlImage::DeInit(addonInterface);
+    Interface_GUIControlLabel::DeInit(addonInterface);
+    Interface_GUIControlProgress::DeInit(addonInterface);
+    Interface_GUIControlRadioButton::DeInit(addonInterface);
+    Interface_GUIControlAddonRendering::DeInit(addonInterface);
+    Interface_GUIControlSettingsSlider::DeInit(addonInterface);
+    Interface_GUIControlSlider::DeInit(addonInterface);
+    Interface_GUIControlSpin::DeInit(addonInterface);
+    Interface_GUIControlTextBox::DeInit(addonInterface);
     Interface_GUIDialogContextMenu::DeInit(addonInterface);
     Interface_GUIDialogExtendedProgress::DeInit(addonInterface);
     Interface_GUIDialogFileBrowser::DeInit(addonInterface);
@@ -91,6 +131,8 @@ void Interface_GUIGeneral::DeInit(AddonGlobalInterface* addonInterface)
     Interface_GUIDialogSelect::DeInit(addonInterface);
     Interface_GUIDialogTextViewer::DeInit(addonInterface);
     Interface_GUIDialogYesNo::DeInit(addonInterface);
+    Interface_GUIListItem::DeInit(addonInterface);
+    Interface_GUIWindow::DeInit(addonInterface);
 
     free(addonInterface->toKodi->kodi_gui->general);
     free(addonInterface->toKodi->kodi_gui);

@@ -92,18 +92,18 @@ void CAdvancedSettings::OnSettingsUnloaded()
   m_initialized = false;
 }
 
-void CAdvancedSettings::OnSettingChanged(const CSetting *setting)
+void CAdvancedSettings::OnSettingChanged(std::shared_ptr<const CSetting> setting)
 {
   if (setting == NULL)
     return;
 
   const std::string &settingId = setting->GetId();
   if (settingId == CSettings::SETTING_DEBUG_SHOWLOGINFO)
-    SetDebugMode(((CSettingBool*)setting)->GetValue());
+    SetDebugMode(std::static_pointer_cast<const CSettingBool>(setting)->GetValue());
   else if (settingId == CSettings::SETTING_DEBUG_EXTRALOGGING)
-    m_extraLogEnabled = static_cast<const CSettingBool*>(setting)->GetValue();
+    m_extraLogEnabled = std::static_pointer_cast<const CSettingBool>(setting)->GetValue();
   else if (settingId == CSettings::SETTING_DEBUG_SETEXTRALOGLEVEL)
-    setExtraLogLevel(CSettingUtils::GetList(static_cast<const CSettingList*>(setting)));
+    setExtraLogLevel(CSettingUtils::GetList(std::static_pointer_cast<const CSettingList>(setting)));
 }
 
 void CAdvancedSettings::Initialize()
@@ -372,13 +372,10 @@ void CAdvancedSettings::Initialize()
 
   m_enableMultimediaKeys = false;
 
-#if defined(TARGET_DARWIN_IOS)
-  m_canWindowed = false;
-#else
   m_canWindowed = true;
-#endif
   m_guiVisualizeDirtyRegions = false;
   m_guiAlgorithmDirtyRegions = 3;
+  m_guiSmartRedraw = false;
   m_airTunesPort = 36666;
   m_airPlayPort = 36667;
 
@@ -841,7 +838,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
     const char* hide = pElement->Attribute("hide");
     if (hide == NULL || strnicmp("false", hide, 4) != 0)
     {
-      CSetting *setting = CServiceBroker::GetSettings().GetSetting(CSettings::SETTING_DEBUG_SHOWLOGINFO);
+      SettingPtr setting = CServiceBroker::GetSettings().GetSetting(CSettings::SETTING_DEBUG_SHOWLOGINFO);
       if (setting != NULL)
         setting->SetVisible(false);
     }
@@ -1194,6 +1191,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   {
     XMLUtils::GetBoolean(pElement, "visualizedirtyregions", m_guiVisualizeDirtyRegions);
     XMLUtils::GetInt(pElement, "algorithmdirtyregions",     m_guiAlgorithmDirtyRegions);
+    XMLUtils::GetBoolean(pElement, "smartredraw", m_guiSmartRedraw);
   }
 
   std::string seekSteps;
@@ -1207,7 +1205,7 @@ void CAdvancedSettings::ParseSettingsFile(const std::string &file)
   }
 
   // load in the settings overrides
-  CServiceBroker::GetSettings().Load(pRootElement, true);  // true to hide the settings we read in
+  CServiceBroker::GetSettings().LoadHidden(pRootElement);
 }
 
 void CAdvancedSettings::Clear()
@@ -1389,7 +1387,7 @@ bool CAdvancedSettings::CanLogComponent(int component) const
   return ((m_extraLogLevels & component) == component);
 }
 
-void CAdvancedSettings::SettingOptionsLoggingComponentsFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CAdvancedSettings::SettingOptionsLoggingComponentsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
 {
   list.push_back(std::make_pair(g_localizeStrings.Get(669), LOGSAMBA));
   list.push_back(std::make_pair(g_localizeStrings.Get(670), LOGCURL));

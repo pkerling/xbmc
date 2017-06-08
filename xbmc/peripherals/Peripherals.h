@@ -24,7 +24,6 @@
 #include "EventScanner.h"
 #include "bus/PeripheralBus.h"
 #include "devices/Peripheral.h"
-#include "games/ports/PortMapper.h" //! @todo Find me a better place
 #include "interfaces/IAnnouncer.h"
 #include "messaging/IMessageTarget.h"
 #include "settings/lib/ISettingCallback.h"
@@ -300,8 +299,8 @@ namespace PERIPHERALS
     void UnregisterJoystickButtonMapper(KODI::JOYSTICK::IButtonMapper* mapper);
 
     // implementation of ISettingCallback
-    virtual void OnSettingChanged(const CSetting *setting) override;
-    virtual void OnSettingAction(const CSetting *setting) override;
+    virtual void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+    virtual void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
 
     // implementation of IMessageTarget
     virtual void OnApplicationMessage(KODI::MESSAGING::ThreadMessage* pMsg) override;
@@ -323,7 +322,6 @@ namespace PERIPHERALS
     std::vector<PeripheralBusPtr>        m_busses;
     std::vector<PeripheralDeviceMapping> m_mappings;
     CEventScanner                        m_eventScanner;
-	GAME::CPortMapper                    m_portMapper; //! @todo Find me a better place
     CCriticalSection                     m_critSectionBusses;
     CCriticalSection                     m_critSectionMappings;
   };

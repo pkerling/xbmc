@@ -36,6 +36,7 @@
 #include "GUIAudioManager.h"
 #include "Application.h"
 #include "messaging/ApplicationMessenger.h"
+#include "settings/AdvancedSettings.h"
 #include "utils/Variant.h"
 #include "utils/StringUtils.h"
 
@@ -341,6 +342,9 @@ void CGUIWindow::CenterWindow()
 
 void CGUIWindow::DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions)
 {
+  if (!IsControlDirty() && g_advancedSettings.m_guiSmartRedraw)
+    return;
+
   g_graphicsContext.SetRenderingResolution(m_coordsRes, m_needsScaling);
   g_graphicsContext.AddGUITransform();
   CGUIControlGroup::DoProcess(currentTime, dirtyregions);
@@ -736,9 +740,9 @@ bool CGUIWindow::OnMessage(CGUIMessage& message)
       if (HasID(message.GetSenderId()) || !message.GetSenderId())
       {
         if (message.GetParam1() == GUI_MSG_PAGE_CHANGE ||
-            message.GetParam1() == GUI_MSG_REFRESH_THUMBS ||
-            message.GetParam1() == GUI_MSG_REFRESH_LIST ||
-            message.GetParam1() == GUI_MSG_WINDOW_RESIZE)
+          message.GetParam1() == GUI_MSG_REFRESH_THUMBS ||
+          message.GetParam1() == GUI_MSG_REFRESH_LIST ||
+          message.GetParam1() == GUI_MSG_WINDOW_RESIZE)
         { // alter the message accordingly, and send to all controls
           for (iControls it = m_children.begin(); it != m_children.end(); ++it)
           {
@@ -747,12 +751,14 @@ bool CGUIWindow::OnMessage(CGUIMessage& message)
             control->OnMessage(msg);
           }
         }
+        else if (message.GetParam1() == GUI_MSG_STATE_CHANGED)
+          MarkDirtyRegion(DIRTY_STATE_CHILD); //Don't force an dirtyRect, we don't know if / what has changed.
       }
     }
     break;
   }
 
-  return SendControlMessage(message);
+  return CGUIControlGroup::OnMessage(message);
 }
 
 bool CGUIWindow::NeedLoad() const
