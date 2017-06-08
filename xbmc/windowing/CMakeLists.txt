@@ -12,4 +12,9 @@ if((CORE_SYSTEM_NAME STREQUAL linux OR CORE_SYSTEM_NAME STREQUAL rbpi) AND NOT M
   list(APPEND HEADERS WinEventsLinux.h)
 endif()
 
+if(CORE_PLATFORM_NAME STREQUAL wayland)
+  list(APPEND SOURCES XkbcommonKeymap.cpp)
+  list(APPEND HEADERS XkbcommonKeymap.h)
+endif()
+
 core_add_library(windowing)
