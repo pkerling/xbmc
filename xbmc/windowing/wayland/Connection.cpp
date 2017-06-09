@@ -30,8 +30,14 @@ using namespace KODI::WINDOWING::WAYLAND;
 namespace
 {
 
-void Bind(wayland::registry_t& registry, wayland::proxy_t& target, std::uint32_t name, std::string const& interface, std::uint32_t bindVersion, std::uint32_t offeredVersion)
+void Bind(wayland::registry_t& registry, wayland::proxy_t& target, std::uint32_t name, std::string const& interface, std::uint32_t minVersion, std::uint32_t maxVersion, std::uint32_t offeredVersion)
 {
+  if (offeredVersion < minVersion)
+  {
+    throw std::runtime_error(std::string("Wayland server has version ") + std::to_string(offeredVersion) + " of protocol " + interface + ", but we need at least version " + std::to_string(minVersion));
+  }
+  // Binding below the offered version is OK
+  auto bindVersion = std::min(maxVersion, offeredVersion);
   CLog::Log(LOGDEBUG, "Binding Wayland protocol %s version %u (server has version %u)", interface.c_str(), bindVersion, offeredVersion);
   registry.bind(name, target, bindVersion);
 }
@@ -45,9 +51,11 @@ CConnection::CConnection(IConnectionHandler* handler)
   m_registry = m_display->get_registry();
   
   m_binds = {
-    { wayland::compositor_t::interface_name, { m_compositor, 3 } },
-    { wayland::shell_t::interface_name, { m_shell, 1 } },
-    { wayland::shm_t::interface_name, { m_shm, 1 } }
+    // version 3 adds wl_surface::set_buffer_scale
+    // version 4 adds wl_surface::damage_buffer
+    { wayland::compositor_t::interface_name, { m_compositor, 1, 4 } },
+    { wayland::shell_t::interface_name, { m_shell, 1, 1 } },
+    { wayland::shm_t::interface_name, { m_shm, 1, 1 } },
   };
 
   HandleRegistry();
@@ -69,18 +77,23 @@ void CConnection::HandleRegistry()
     auto it = m_binds.find(interface);
     if (it != m_binds.end())
     {
-      Bind(m_registry, it->second.target, name, interface, it->second.bindVersion, version);
+      Bind(m_registry, it->second.target, name, interface, it->second.minVersion, it->second.maxVersion, version);
     }
     else if (interface == wayland::seat_t::interface_name)
     {
       wayland::seat_t seat;
-      Bind(m_registry, seat, name, interface, 5, version);
+      // version 2 adds name event, optional
+      // version 4 adds wl_keyboard repeat_info, optional
+      // version 5 adds discrete axis events in wl_pointer
+      Bind(m_registry, seat, name, interface, 1, 5, version);
       m_handler->OnSeatAdded(name, seat);
     }
     else if (interface == wayland::output_t::interface_name)
     {
       wayland::output_t output;
-      Bind(m_registry, output, name, interface, 2, version);
+      // version 2 adds done(), required
+      // version 3 only adds destructor
+      Bind(m_registry, output, name, interface, 2, 3, version);
       m_handler->OnOutputAdded(name, output);
     }
   };
@@ -107,19 +120,19 @@ wayland::display_t& CConnection::GetDisplay()
   return *m_display;
 }
 
-wayland::compositor_t& CConnection::GetCompositor()
+wayland::compositor_t CConnection::GetCompositor()
 {
   assert(m_compositor);
   return m_compositor;
 }
 
-wayland::shell_t& CConnection::GetShell()
+wayland::shell_t CConnection::GetShell()
 {
   assert(m_shell);
   return m_shell;
 }
 
-wayland::shm_t& CConnection::GetShm()
+wayland::shm_t CConnection::GetShm()
 {
   assert(m_shm);
   return m_shm;

@@ -57,9 +57,9 @@ public:
   explicit CConnection(IConnectionHandler* handler);
   
   wayland::display_t& GetDisplay();
-  wayland::compositor_t& GetCompositor();
-  wayland::shell_t& GetShell();
-  wayland::shm_t& GetShm();  
+  wayland::compositor_t GetCompositor();
+  wayland::shell_t GetShell();
+  wayland::shm_t GetShm();
   
 private:
   void CheckRequiredGlobals();
@@ -72,10 +72,13 @@ private:
   struct InterfaceBindInfo
   {
     wayland::proxy_t& target;
-    std::uint32_t bindVersion;
-    bool required = true;
-    InterfaceBindInfo(wayland::proxy_t& target, std::uint32_t bindVersion)
-      : target(target), bindVersion(bindVersion) {}
+    // Throw exception if trying to bind below this version
+    std::uint32_t minVersion;
+    // Limit bind version to the minimum of this and compositor version
+    std::uint32_t maxVersion;
+    bool required;
+    InterfaceBindInfo(wayland::proxy_t& target, std::uint32_t minVersion, std::uint32_t maxVersion, bool required = true)
+      : target(target), minVersion(minVersion), maxVersion(maxVersion), required(required) {}
   };
   std::map<std::string, InterfaceBindInfo> m_binds;
   
