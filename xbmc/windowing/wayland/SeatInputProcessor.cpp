@@ -272,10 +272,9 @@ void CSeatInputProcessor::HandleKeyboardCapability()
 
       m_keymap.reset(m_xkbContext->KeymapFromSharedMemory(fd, size));
     }
-    catch(...)
+    catch(std::exception& e)
     {
-      close(fd);
-      throw;
+      CLog::Log(LOGERROR, "Could not parse keymap from Wayland compositor, continuing without: %s", e.what());
     }
     
     close(fd);
