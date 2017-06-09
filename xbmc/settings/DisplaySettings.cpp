@@ -779,7 +779,7 @@ void CDisplaySettings::SettingOptionsPreferredStereoscopicViewModesFiller(Settin
 
 void CDisplaySettings::SettingOptionsMonitorsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
 {
-#if defined(HAS_GLX) || defined(HAVE_WAYLAND)
+#if defined(HAS_GLX)
   std::vector<std::string> monitors;
   g_Windowing.GetConnectedOutputs(&monitors);
   std::string currentMonitor = CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
@@ -791,6 +791,26 @@ void CDisplaySettings::SettingOptionsMonitorsFiller(SettingConstPtr setting, std
       current = monitors[i];
     }
     list.push_back(std::make_pair(monitors[i], monitors[i]));
+  }
+#elif defined(HAVE_WAYLAND)
+  std::vector<std::string> monitors;
+  g_Windowing.GetConnectedOutputs(&monitors);
+  bool foundMonitor = false;
+  std::string currentMonitor = CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
+  for (auto const& monitor : monitors)
+  {
+    if(monitor == currentMonitor)
+    {
+      foundMonitor = true;
+    }
+    list.push_back(std::make_pair(monitor, monitor));
+  }
+  
+  if (!foundMonitor && !current.empty())
+  {
+    // Add current value so no monitor change is triggered when entering the settings screen and
+    // the preferred monitor is preserved
+    list.push_back(std::make_pair(current, current));
   }
 #endif
 }
