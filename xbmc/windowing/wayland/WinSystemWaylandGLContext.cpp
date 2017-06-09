@@ -89,7 +89,7 @@ bool CWinSystemWaylandGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO&
   return true;
 }
 
-void CWinSystemWaylandGLContext::HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height)
+void CWinSystemWaylandGLContext::HandleSurfaceConfigure(std::int32_t width, std::int32_t height)
 {
   // Wayland will tell us here the size of the surface that was actually created,
   // which might be different from what we expected e.g. when fullscreening
@@ -105,7 +105,7 @@ void CWinSystemWaylandGLContext::HandleSurfaceConfigure(wayland::shell_surface_r
   {
     m_glContext.Resize(width, height);
   }
-  CWinSystemWayland::HandleSurfaceConfigure(edges, width, height);
+  CWinSystemWayland::HandleSurfaceConfigure(width, height);
   if (changed)
   {
     CRenderSystemGL::ResetRenderSystem(width, height, m_bFullScreen, m_fRefreshRate);

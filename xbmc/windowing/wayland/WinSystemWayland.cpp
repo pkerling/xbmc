@@ -36,6 +36,7 @@
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
+#include "ShellSurfaceWlShell.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -114,20 +115,17 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         RESOLUTION_INFO& res)
 {
   m_surface = m_connection->GetCompositor().create_surface();
-  m_shellSurface = m_connection->GetShell().get_shell_surface(m_surface);
-  // "class" should match the name of the .desktop file; it's needed for correct
-  // interaction with WM menus and displaying the window icon in the app list
-  m_shellSurface.set_class("kodi");
-  m_shellSurface.set_title(name);
-  m_shellSurface.on_ping() = std::bind(&wayland::shell_surface_t::pong, &m_shellSurface, _1);
-  m_shellSurface.on_configure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2, _3);
+  m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));
+  m_shellSurface->Initialize();
+  
+  m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2);
 
   return true;
 }
 
 bool CWinSystemWayland::DestroyWindow()
 {
-  m_shellSurface = wayland::shell_surface_t();
+  m_shellSurface.reset();
   // waylandpp automatically calls wl_surface_destroy when the last reference is removed
   m_surface = wayland::surface_t();
 
@@ -289,19 +287,19 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
   if (fullScreen)
   {
-    m_shellSurface.set_fullscreen(wayland::shell_surface_fullscreen_method::driver, res.fRefreshRate * 1000, output);
+    m_shellSurface->SetFullScreen(output, m_fRefreshRate);
   }
   else
   {
     // Shouldn't happen since we claim not to support windowed modes
     CLog::Log(LOGWARNING, "Wayland windowing system asked to switch to windowed mode which is not really supported");
-    m_shellSurface.set_toplevel();
+    m_shellSurface->SetWindowed();
   }
 
   return true;
 }
 
-void CWinSystemWayland::HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height)
+void CWinSystemWayland::HandleSurfaceConfigure(std::int32_t width, std::int32_t height)
 {
   CLog::Log(LOGINFO, "Got Wayland surface size %dx%d", width, height);
 
