@@ -15,13 +15,13 @@ To build Kodi with the Wayland windowing system backend, please roughly follow `
 Before actually compiling, you will additionally need to
 
 * install your distribution's develoment packages for Wayland, e.g. `libwayland-dev` on Debian/Ubuntu, and the `wayland-protocols` package and
-* build and install waylandpp from (https://github.com/pkerling/waylandpp/) - please follow the build instructions in the repository.
+* build and install waylandpp from https://github.com/pkerling/waylandpp/ - please follow the build instructions in the repository.
 
 To enable Wayland, you must run CMake with `-DCORE_PLATFORM_NAME=wayland`, i.e. to build run
 
-   $ mkdir kodi-build && cd kodi-build
-   $ cmake .. -DCORE_PLATFORM_NAME=wayland -DCMAKE_INSTALL_PREFIX=/usr/local
-   $ cmake --build .
+    $ mkdir kodi-build && cd kodi-build
+    $ cmake .. -DCORE_PLATFORM_NAME=wayland -DCMAKE_INSTALL_PREFIX=/usr/local
+    $ cmake --build .
 
 ## Useful links
 
