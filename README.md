@@ -8,7 +8,20 @@ This is my fork of Kodi where I will be coding on my Google Summer of Code proje
 
 Feel free to participate in discussions either directly here on GitHub (issues/pull requests) or the [Kodi community forum thread](http://forum.kodi.tv/showthread.php?tid=309254) and report bugs or features that you would like to see integrated.
 
-There will be more instructions on compiling etc. once basic Wayland output support works.
+## Compiling with Wayland
+
+To build Kodi with the Wayland windowing system backend, please roughly follow `docs/README.linux` with the following exceptions.
+
+Before actually compiling, you will additionally need to
+
+* install your distribution's develoment packages for Wayland, e.g. `libwayland-dev` on Debian/Ubuntu, and the `wayland-protocols` package and
+* build and install waylandpp from (https://github.com/pkerling/waylandpp/) - please follow the build instructions in the repository.
+
+To enable Wayland, you must run CMake with `-DCORE_PLATFORM_NAME=wayland`, i.e. to build run
+
+   $ mkdir kodi-build && cd kodi-build
+   $ cmake .. -DCORE_PLATFORM_NAME=wayland -DCMAKE_INSTALL_PREFIX=/usr/local
+   $ cmake --build .
 
 ## Useful links
 
