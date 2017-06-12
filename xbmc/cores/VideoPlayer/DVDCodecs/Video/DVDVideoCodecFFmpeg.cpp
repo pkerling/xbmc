@@ -1188,6 +1188,9 @@ IHardwareDecoder* CDVDVideoCodecFFmpeg::CreateVideoDecoderHW(AVPixelFormat pixfm
 #define VP_VIDEOCODEC_HW
 IHardwareDecoder* CDVDVideoCodecFFmpeg::CreateVideoDecoderHW(AVPixelFormat pixfmt, CProcessInfo &processInfo)
 {
+  // FIXME These #ifdefs will have to go eventually, but it is necessary to make
+  // compilation with Wayland work as there is no VDPAU. FernetMenta is OK with this
+  // for the time being since this cleanup is not part of the Wayland work.
 #if defined(HAVE_LIBVA)
   if (pixfmt == AV_PIX_FMT_VAAPI_VLD && CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOPLAYER_USEVAAPI))
     return new VAAPI::CDecoder(m_processInfo);
