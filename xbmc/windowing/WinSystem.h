@@ -120,6 +120,19 @@ public:
   virtual bool IsTextInputEnabled() { return false; }
 
   std::string GetClipboardText(void);
+  
+  /**
+   * Get VADisplay that can be used for hardware decoding
+   * 
+   * Kodi currently does not use libva backend-specific interfaces for presenting
+   * the decoded frames.
+   * If this changes, the API for interacting with the windowing system
+   * will have to be augmented.
+   * 
+   * \return new VADisplay that can be used for hardware decoding or nullptr
+   *         if unsupported or creation failed
+   */
+  virtual void* GetVaDisplay() { return nullptr; }
 
 protected:
   void UpdateDesktopResolution(RESOLUTION_INFO& newRes, int screen, int width, int height, float refreshRate, uint32_t dwFlags = 0);
