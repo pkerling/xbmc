@@ -21,6 +21,9 @@
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#if defined(HAVE_LIBVA)
+#include <va/va_x11.h>
+#endif
 
 #include "WinSystemX11GLContext.h"
 #include "GLContextGLX.h"
@@ -232,4 +235,19 @@ std::unique_ptr<CVideoSync> CWinSystemX11GLContext::GetVideoSync(void *clock)
     pVSync.reset(new CVideoSyncGLX(clock));
   }
   return pVSync;
+}
+
+void* CWinSystemX11GLContext::GetVaDisplay()
+{
+#if defined(HAVE_LIBVA)
+  if (dynamic_cast<CGLContextEGL*>(m_pGLContext))
+  {
+    return vaGetDisplay(m_dpy);
+  }
+  
+  // EGL is used in the Kodi VAAPI implementation to bind the surfaces to
+  // textures, so GLX is not supported
+#endif
+  
+  return nullptr;
 }
