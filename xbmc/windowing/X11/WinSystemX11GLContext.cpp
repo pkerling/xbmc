@@ -240,14 +240,8 @@ std::unique_ptr<CVideoSync> CWinSystemX11GLContext::GetVideoSync(void *clock)
 void* CWinSystemX11GLContext::GetVaDisplay()
 {
 #if defined(HAVE_LIBVA)
-  if (dynamic_cast<CGLContextEGL*>(m_pGLContext))
-  {
-    return vaGetDisplay(m_dpy);
-  }
-  
-  // EGL is used in the Kodi VAAPI implementation to bind the surfaces to
-  // textures, so GLX is not supported
-#endif
-  
+  return vaGetDisplay(m_dpy);
+#else
   return nullptr;
+#endif
 }
