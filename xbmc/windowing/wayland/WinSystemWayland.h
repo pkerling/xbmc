@@ -69,7 +69,7 @@ public:
   bool HasCursor() override;
   void ShowOSMouse(bool show) override;
   
-  void* GetVaDisplay() override;
+  void* GetVaDisplay();
   
   virtual void Register(IDispResource *resource);
   virtual void Unregister(IDispResource *resource);
