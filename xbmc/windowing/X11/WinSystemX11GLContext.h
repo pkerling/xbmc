@@ -51,7 +51,7 @@ public:
   EGLContext GetEGLContext() const;
   EGLConfig GetEGLConfig() const;
   
-  virtual void* GetVaDisplay() override;
+  void* GetVaDisplay();
 
 protected:
   bool SetWindow(int width, int height, bool fullscreen, const std::string &output, int *winstate = NULL) override;
