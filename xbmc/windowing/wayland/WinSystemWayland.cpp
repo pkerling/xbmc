@@ -531,11 +531,9 @@ void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t s
   }
 }
 
+#if defined(HAVE_LIBVA)
 void* CWinSystemWayland::GetVaDisplay()
 {
-#if defined(HAVE_LIBVA)
   return vaGetDisplayWl(reinterpret_cast<wl_display*> (m_connection->GetDisplay().c_ptr()));
-#else
-  return nullptr;
-#endif
 }
+#endif
