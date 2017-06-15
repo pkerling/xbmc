@@ -67,6 +67,17 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
   };
 }
 
+COutput::~COutput()
+{
+  // Reset event handlers - someone might still hold a reference to the output_t,
+  // causing events to be dispatched. They should not go to a deleted class.
+  m_output.on_geometry() = nullptr;
+  m_output.on_mode() = nullptr;
+  m_output.on_done() = nullptr;
+  m_output.on_scale() = nullptr;
+}
+
+
 float COutput::GetPixelRatioForMode(const Mode& mode) const
 {
   if (m_physicalWidth == 0 || m_physicalHeight == 0 || mode.width == 0 || mode.height == 0)

@@ -111,7 +111,7 @@ protected:
   std::map<std::uint32_t, CSeatInputProcessor> m_seatProcessors;
   CCriticalSection m_seatProcessorsMutex;
   // m_outputsInPreparation did not receive their done event yet
-  std::map<std::uint32_t, COutput> m_outputs, m_outputsInPreparation;
+  std::map<std::uint32_t, std::unique_ptr<COutput>> m_outputs, m_outputsInPreparation;
   CCriticalSection m_outputsMutex;
   
   bool m_osCursorVisible = true;

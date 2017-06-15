@@ -70,17 +70,13 @@ bool CWinSystemWayland::InitWindowSystem()
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
   }
   // Do another roundtrip to get initial wl_output information
-  int tries = 0;
-  while (m_outputs.empty())
+  if (m_connection->GetDisplay().roundtrip() < 0)
   {
-    if (tries++ > 5)
-    {
-      throw std::runtime_error("No outputs received from compositor");
-    }
-    if (m_connection->GetDisplay().roundtrip() < 0)
-    {
-      throw std::runtime_error("Wayland roundtrip failed");
-    }
+    throw std::runtime_error("Wayland roundtrip failed");
+  }
+  if (m_outputs.empty())
+  {
+    throw std::runtime_error("No outputs received from compositor");
   }
   
   // Event loop is started in CreateWindow
@@ -105,6 +101,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_cursorImage = wayland::cursor_image_t();
   m_cursorTheme = wayland::cursor_theme_t();
   m_seatProcessors.clear();
+  m_outputsInPreparation.clear();
   m_outputs.clear();
 
   m_connection.reset();
@@ -235,7 +232,7 @@ void CWinSystemWayland::GetConnectedOutputs(std::vector<std::string>* outputs)
   std::transform(m_outputs.cbegin(), m_outputs.cend(), std::back_inserter(*outputs),
                  [this](decltype(m_outputs)::value_type const& pair)
                  {
-                   return UserFriendlyOutputName(pair.second); });
+                   return UserFriendlyOutputName(*pair.second); });
 }
 
 void CWinSystemWayland::UpdateResolutions()
@@ -265,13 +262,12 @@ void CWinSystemWayland::UpdateResolutions()
   if (!output)
   {
     // Well just use the first one
-    output = &m_outputs.begin()->second;
+    output = m_outputs.begin()->second.get();
   }
   
   std::string outputName = UserFriendlyOutputName(*output);
 
   auto const& modes = output->GetModes();
-  // TODO wait until output has all information
   auto const& currentMode = output->GetCurrentMode();
   auto physicalSize = output->GetPhysicalSize();
   CLog::Log(LOGINFO, "User wanted output \"%s\", we now have \"%s\" size %dx%d mm with %zu mode(s):", userOutput.c_str(), outputName.c_str(), std::get<0>(physicalSize), std::get<1>(physicalSize), modes.size());
@@ -309,16 +305,21 @@ bool CWinSystemWayland::ResizeWindow(int newWidth, int newHeight, int newLeft, i
   return false;
 }
 
+/**
+ * Find output by name
+ *
+ * Every caller of this function must hold a lock \ref m_outputsMutex
+ * for the duration of the call and as long as it uses the returned COutput.
+ */
 COutput* CWinSystemWayland::FindOutputByUserFriendlyName(const std::string& name)
 {
-  CSingleLock lock(m_outputsMutex);
   auto outputIt = std::find_if(m_outputs.begin(), m_outputs.end(),
                                [this, &name](decltype(m_outputs)::value_type const& entry)
                                {
-                                 return (name == UserFriendlyOutputName(entry.second));
+                                 return (name == UserFriendlyOutputName(*entry.second));
                                });
 
-  return (outputIt == m_outputs.end() ? nullptr : &outputIt->second);
+  return (outputIt == m_outputs.end() ? nullptr : outputIt->second.get());
 }
 
 bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
@@ -530,9 +531,7 @@ void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 void CWinSystemWayland::OnOutputAdded(std::uint32_t name, wayland::output_t& output)
 {
   // This is not accessed from multiple threads
-  m_outputsInPreparation.emplace(std::piecewise_construct,
-                                 std::forward_as_tuple(name),
-                                 std::forward_as_tuple(name, output, std::bind(&CWinSystemWayland::OnOutputDone, this, name)));
+  m_outputsInPreparation.emplace(name, new COutput(name, output, std::bind(&CWinSystemWayland::OnOutputDone, this, name)));
 }
 
 void CWinSystemWayland::OnOutputDone(std::uint32_t name)
