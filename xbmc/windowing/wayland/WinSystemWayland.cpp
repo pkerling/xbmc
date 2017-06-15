@@ -83,7 +83,7 @@ bool CWinSystemWayland::InitWindowSystem()
     }
   }
   
-  CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
+  // Event loop is started in CreateWindow
 
   // pointer is by default not on this window, will be immediately rectified
   // by the enter() events if it is
@@ -116,7 +116,11 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         RESOLUTION_INFO& res)
 {
   m_surface = m_connection->GetCompositor().create_surface();
-  m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));
+  
+  // Try to get this resolution if compositor does not say otherwise
+  m_nWidth = res.iWidth;
+  m_nHeight = res.iHeight;
+  
   auto xdgShell = m_connection->GetXdgShellUnstableV6();
   if (xdgShell)
   {
@@ -128,10 +132,69 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));  
   }
   
+  // Just remember initial width/height for context creation
+  // This is used for sizing the EGLSurface
+  m_shellSurface->OnConfigure() = [this](std::int32_t width, std::int32_t height)
+  {
+    CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", width, height);
+    m_nWidth = width;
+    m_nHeight = height;
+  };
+  
+  if (fullScreen)
+  {
+    // Try to start on correct monitor  
+    COutput* output = FindOutputByUserFriendlyName(CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
+    if (output)
+    {
+      m_shellSurface->SetFullScreen(output->GetWaylandOutput(), res.fRefreshRate);
+    }
+  }
+  
   m_shellSurface->Initialize();
   
+  // Set real handler during runtime
   m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2);
-
+  
+  if (m_nWidth == 0 || m_nHeight == 0)
+  {
+  // Adopt size from resolution if compositor did not specify anything
+    m_nWidth = res.iWidth;
+    m_nHeight = res.iHeight;
+  }
+  else
+  {
+    // Update resolution with real size
+    res.iWidth = m_nWidth;
+    res.iHeight = m_nHeight;
+    res.iScreenWidth = m_nWidth;
+    res.iScreenHeight = m_nHeight;
+    res.iSubtitles = (int) (0.965 * m_nHeight);
+    g_graphicsContext.ResetOverscan(res);
+  }
+  
+  // Now start processing events
+  //
+  // There are two stages to the event handling:
+  // * Initialization (which ends here): Everything runs synchronously and init
+  //   code that needs events processed must call roundtrip().
+  //   This is done for simplicity because it is a lot easier than to make
+  //   everything thread-safe everywhere in the startup code, which is also
+  //   not really necessary.
+  // * Runtime (which starts here): Every object creation from now on
+  //   needs to take great care to be thread-safe:
+  //   Since the event pump is always running now, there is a tiny window between
+  //   creating an object and attaching the C++ event handlers during which
+  //   events can get queued and dispatched for the object but the handlers have
+  //   not been set yet. Consequently, the events would get lost.
+  //   However, this does not apply to objects that are created in response to
+  //   compositor events. Since the callbacks are called from the event processing
+  //   thread and ran strictly sequentially, no other events are dispatched during
+  //   the runtime of a callback. Luckily this applies to global binding like
+  //   wl_output and wl_seat and thus to most if not all runtime object creation
+  //   cases we have to support.
+  CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
+  
   return true;
 }
 
@@ -313,6 +376,13 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
 void CWinSystemWayland::HandleSurfaceConfigure(std::int32_t width, std::int32_t height)
 {
+  // Wayland will tell us here the size of the surface that was actually created,
+  // which might be different from what we expected e.g. when fullscreening
+  // on an output we chose - the compositor might have decided to use a different
+  // output for example
+  // It is very important that the EGL native module and the rendering system use the
+  // Wayland-announced size for rendering or corrupted graphics output will result.
+  
   CLog::Log(LOGINFO, "Got Wayland surface size %dx%d", width, height);
 
   // Mark everything opaque so the compositor can render it faster

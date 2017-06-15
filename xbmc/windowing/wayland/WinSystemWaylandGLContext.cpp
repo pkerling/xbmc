@@ -48,7 +48,10 @@ bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
     return false;
   }
 
-  if (!m_glContext.CreateSurface(m_surface, res.iWidth, res.iHeight))
+  // CWinSystemWayland::CreateNewWindow sets internal m_nWidth and m_nHeight
+  // to the resolution that should be used for the initial surface size
+  // - the compositor might want something other than the resolution given
+  if (!m_glContext.CreateSurface(m_surface, m_nWidth, m_nHeight))
   {
     return false;
   }
