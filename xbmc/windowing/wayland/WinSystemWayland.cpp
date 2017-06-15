@@ -546,10 +546,12 @@ void CWinSystemWayland::OnOutputDone(std::uint32_t name)
     return;
   }
   
-  CSingleLock lock(m_outputsMutex);
-  // Move from m_outputsInPreparation to m_outputs
-  m_outputs.emplace(std::move(*it));
-  m_outputsInPreparation.erase(it);
+  {
+    CSingleLock lock(m_outputsMutex);
+    // Move from m_outputsInPreparation to m_outputs
+    m_outputs.emplace(std::move(*it));
+    m_outputsInPreparation.erase(it);
+  }
 
   // Maybe the output that was added was the one we should be on?
   if (m_bFullScreen)
