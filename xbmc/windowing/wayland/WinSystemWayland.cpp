@@ -404,6 +404,10 @@ void CWinSystemWayland::HandleSurfaceConfigure(std::int32_t width, std::int32_t 
 
     m_nWidth = width;
     m_nHeight = height;
+  }
+
+  {
+    CSingleLock lock(g_graphicsContext);
     // Update desktop resolution
     auto& res = CDisplaySettings::GetInstance().GetCurrentResolutionInfo();
     res.iWidth = width;
@@ -546,6 +550,17 @@ void CWinSystemWayland::OnOutputDone(std::uint32_t name)
   // Move from m_outputsInPreparation to m_outputs
   m_outputs.emplace(std::move(*it));
   m_outputsInPreparation.erase(it);
+
+  // Maybe the output that was added was the one we should be on?
+  if (m_bFullScreen)
+  {
+    CSingleLock lock(g_graphicsContext);
+    UpdateResolutions();
+    // This will call SetFullScreen(), which will match the output against
+    // the information from the resolution and call set_fullscreen on the
+    // surface if it changed.
+    g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
+  }
 }
 
 void CWinSystemWayland::OnGlobalRemoved(std::uint32_t name)
@@ -559,7 +574,9 @@ void CWinSystemWayland::OnGlobalRemoved(std::uint32_t name)
     CSingleLock lock(m_outputsMutex);
     if (m_outputs.erase(name) != 0)
     {
-      // TODO Handle: Update resolution etc.
+      // Theoretically, the compositor should automatically put us on another
+      // (visible and connected) output if the output we were on is lost,
+      // so there is nothing in particular to do here
     }
   }
 }
