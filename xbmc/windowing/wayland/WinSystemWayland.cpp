@@ -37,6 +37,7 @@
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "ShellSurfaceWlShell.h"
+#include "ShellSurfaceXdgShellUnstableV6.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -116,6 +117,17 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 {
   m_surface = m_connection->GetCompositor().create_surface();
   m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));
+  auto xdgShell = m_connection->GetXdgShellUnstableV6();
+  if (xdgShell)
+  {
+    m_shellSurface.reset(new CShellSurfaceXdgShellUnstableV6(m_connection->GetDisplay(), xdgShell, m_surface, name, "kodi"));
+  }
+  else
+  {
+    CLog::Log(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
+    m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));  
+  }
+  
   m_shellSurface->Initialize();
   
   m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2);

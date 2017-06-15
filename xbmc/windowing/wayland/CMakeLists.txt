@@ -9,6 +9,7 @@ set(SOURCES Connection.cpp
             SeatInputProcessor.cpp
             ShellSurface.cpp
             ShellSurfaceWlShell.cpp
+            ShellSurfaceXdgShellUnstableV6.cpp
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.cpp
             WinEventsWayland.cpp
             WinSystemWayland.cpp
@@ -20,6 +21,7 @@ set(HEADERS Connection.h
             SeatInputProcessor.h
             ShellSurface.h
             ShellSurfaceWlShell.h
+            ShellSurfaceXdgShellUnstableV6.h
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.hpp
             WinEventsWayland.h
             WinSystemWayland.h
