@@ -323,6 +323,8 @@ COutput* CWinSystemWayland::FindOutputByUserFriendlyName(const std::string& name
 
 bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
+  CSingleLock lock(m_configurationMutex);
+  
   if (m_currentOutput == res.strOutput && m_nWidth == res.iWidth && m_nHeight == res.iHeight && m_fRefreshRate == res.fRefreshRate && m_bFullScreen == fullScreen)
   {
     // Nothing to do
@@ -384,31 +386,40 @@ void CWinSystemWayland::HandleSurfaceConfigure(std::int32_t width, std::int32_t 
   // Wayland-announced size for rendering or corrupted graphics output will result.
   
   CLog::Log(LOGINFO, "Got Wayland surface size %dx%d", width, height);
-
-  // Mark everything opaque so the compositor can render it faster
-  wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
-  opaqueRegion.add(0, 0, width, height);
-  m_surface.set_opaque_region(opaqueRegion);
-  // No surface commit, EGL context will do that when it changes the buffer
-
-  if (m_nWidth == width && m_nHeight == height)
   {
-    // Nothing to do
-    return;
-  }
+    CSingleLock lock(m_configurationMutex);
 
-  m_nWidth = width;
-  m_nHeight = height;
-  // Update desktop resolution
-  auto& res = CDisplaySettings::GetInstance().GetCurrentResolutionInfo();
-  res.iWidth = width;
-  res.iHeight = height;
-  res.iScreenWidth = width;
-  res.iScreenHeight = height;
-  res.iSubtitles = (int) (0.965 * height);
-  g_graphicsContext.ResetOverscan(res);
-  CDisplaySettings::GetInstance().ApplyCalibrations();
+    // Mark everything opaque so the compositor can render it faster
+    wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
+    opaqueRegion.add(0, 0, width, height);
+    m_surface.set_opaque_region(opaqueRegion);
+    // No surface commit, EGL context will do that when it changes the buffer
+
+    if (m_nWidth == width && m_nHeight == height)
+    {
+      // Nothing to do
+      return;
+    }
+
+    m_nWidth = width;
+    m_nHeight = height;
+    // Update desktop resolution
+    auto& res = CDisplaySettings::GetInstance().GetCurrentResolutionInfo();
+    res.iWidth = width;
+    res.iHeight = height;
+    res.iScreenWidth = width;
+    res.iScreenHeight = height;
+    res.iSubtitles = (int) (0.965 * height);
+    g_graphicsContext.ResetOverscan(res);
+    CDisplaySettings::GetInstance().ApplyCalibrations();
+  }
+  
   // Force resolution update
+  // SetVideoResolution() automatically delegates to main thread via internal
+  // message if called from other threads
+  // This will call SetFullScreen() with the new resolution, which also updates
+  // the size of the egl_window etc.
+  // The call always blocks, so the configuration lock must be released beforehand.
   g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
 }
 
