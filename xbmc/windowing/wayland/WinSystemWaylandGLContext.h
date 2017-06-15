@@ -54,7 +54,6 @@ public:
 protected:
   void SetVSyncImpl(bool enable) override;
   void PresentRenderImpl(bool rendered) override;
-  void HandleSurfaceConfigure(std::int32_t width, std::int32_t height) override;
 
 private:
   CGLContextEGL m_glContext;
