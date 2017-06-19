@@ -101,9 +101,6 @@ protected:
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
   
-  // Mutex for protecting modifications of m_nWidth, m_nHeight etc.
-  CCriticalSection m_configurationMutex;
-  
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
   std::unique_ptr<IShellSurface> m_shellSurface;
@@ -124,6 +121,8 @@ protected:
   CCriticalSection m_dispResourcesMutex;
   
   std::string m_currentOutput;
+  // Whether this is the first call to SetFullScreen
+  bool m_isInitialSetFullScreen = true;
 };
 
 
