@@ -415,20 +415,22 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
 
   RESOLUTION_INFO info_mod = GetResInfo(res);
 
-  m_iScreenWidth  = info_mod.iWidth;
-  m_iScreenHeight = info_mod.iHeight;
-  m_iScreenId     = info_mod.iScreen;
-  m_scissors.SetRect(0, 0, (float)m_iScreenWidth, (float)m_iScreenHeight);
-  m_Resolution    = res;
-  m_fFPSOverride = 0 ;
-
+  bool switched = true;
   if (g_advancedSettings.m_fullScreen)
   {
 #if defined (TARGET_DARWIN) || defined (TARGET_WINDOWS)
     bool blankOtherDisplays = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
     g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
 #else
-    g_Windowing.SetFullScreen(true,  info_org, false);
+    switched = g_Windowing.SetFullScreen(true,  info_org, false);
+    // FIXME At the moment only Wayland expects the return value to be interpreted
+    // - all other windowing implementations might still assume that it does
+    // not matter what they return as it was before.
+    // This needs to get fixed when the resolution switching code is refactored.
+    if (g_Windowing.GetWinSystem() != WINDOW_SYSTEM_WAYLAND)
+    {
+      switched = true;
+    }
 #endif
   }
   else if (lastRes >= RES_DESKTOP )
@@ -436,12 +438,22 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   else
     g_Windowing.ResizeWindow(info_org.iWidth, info_org.iHeight, -1, -1);
 
-  // make sure all stereo stuff are correctly setup
-  SetStereoView(RENDER_STEREO_VIEW_OFF);
+  if (switched)
+  {
+    m_iScreenWidth  = info_mod.iWidth;
+    m_iScreenHeight = info_mod.iHeight;
+    m_iScreenId     = info_mod.iScreen;
+    m_scissors.SetRect(0, 0, (float)m_iScreenWidth, (float)m_iScreenHeight);
+    m_Resolution    = res;
+    m_fFPSOverride = 0 ;
 
-  // update anyone that relies on sizing information
-  CInputManager::GetInstance().SetMouseResolution(info_org.iWidth, info_org.iHeight, 1, 1);
-  g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
+    // make sure all stereo stuff are correctly setup
+    SetStereoView(RENDER_STEREO_VIEW_OFF);
+
+    // update anyone that relies on sizing information
+    CInputManager::GetInstance().SetMouseResolution(info_org.iWidth, info_org.iHeight, 1, 1);
+    g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
+  }
 
   Unlock();
 }
