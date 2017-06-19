@@ -56,6 +56,7 @@ CConnection::CConnection(IConnectionHandler* handler)
     { wayland::compositor_t::interface_name, { m_compositor, 1, 4 } },
     { wayland::shell_t::interface_name, { m_shell, 1, 1 } },
     { wayland::shm_t::interface_name, { m_shm, 1, 1 } },
+    { wayland::zxdg_shell_v6_t::interface_name, { m_xdgShellUnstableV6, 1, 1, false } }
   };
 
   HandleRegistry();
@@ -136,4 +137,9 @@ wayland::shm_t CConnection::GetShm()
 {
   assert(m_shm);
   return m_shm;
+}
+
+wayland::zxdg_shell_v6_t CConnection::GetXdgShellUnstableV6()
+{
+  return m_xdgShellUnstableV6;
 }

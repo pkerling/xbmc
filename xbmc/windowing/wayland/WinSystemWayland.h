@@ -28,6 +28,7 @@
 #include "Connection.h"
 #include "Output.h"
 #include "SeatInputProcessor.h"
+#include "ShellSurface.h"
 #include "threads/CriticalSection.h"
 #include "windowing/WinSystem.h"
 
@@ -91,7 +92,7 @@ public:
 protected:
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
-  virtual void HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height);
+  virtual void HandleSurfaceConfigure(std::int32_t width, std::int32_t height);
   
   std::string UserFriendlyOutputName(COutput const& output);
   COutput* FindOutputByUserFriendlyName(std::string const& name);
@@ -100,9 +101,12 @@ protected:
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
   
+  // Mutex for protecting modifications of m_nWidth, m_nHeight etc.
+  CCriticalSection m_configurationMutex;
+  
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
-  wayland::shell_surface_t m_shellSurface;
+  std::unique_ptr<IShellSurface> m_shellSurface;
   
   std::map<std::uint32_t, CSeatInputProcessor> m_seatProcessors;
   CCriticalSection m_seatProcessorsMutex;

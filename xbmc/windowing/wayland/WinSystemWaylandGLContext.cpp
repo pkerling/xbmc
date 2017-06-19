@@ -48,7 +48,10 @@ bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
     return false;
   }
 
-  if (!m_glContext.CreateSurface(m_surface, res.iWidth, res.iHeight))
+  // CWinSystemWayland::CreateNewWindow sets internal m_nWidth and m_nHeight
+  // to the resolution that should be used for the initial surface size
+  // - the compositor might want something other than the resolution given
+  if (!m_glContext.CreateSurface(m_surface, m_nWidth, m_nHeight))
   {
     return false;
   }
@@ -72,44 +75,28 @@ bool CWinSystemWaylandGLContext::DestroyWindowSystem()
 
 bool CWinSystemWaylandGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
-  // Resize the native window so Wayland has a chance of knowing what
-  // size we want
-  m_glContext.Resize(res.iWidth, res.iHeight);
+  auto width = res.iWidth;
+  auto height = res.iHeight;
+  
+  int currWidth, currHeight;
+  m_glContext.GetAttachedSize(currWidth, currHeight);
+
+  if (width != currWidth || height != currHeight)
+  {
+    m_glContext.Resize(width, height);
+  }
   
   if (!CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays))
   {
     return false;
   }
   
-  if (!CRenderSystemGL::ResetRenderSystem(res.iWidth, res.iHeight, fullScreen, res.fRefreshRate))
+  if (!CRenderSystemGL::ResetRenderSystem(width, height, fullScreen, res.fRefreshRate))
   {
     return false;
   }
   
   return true;
-}
-
-void CWinSystemWaylandGLContext::HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height)
-{
-  // Wayland will tell us here the size of the surface that was actually created,
-  // which might be different from what we expected e.g. when fullscreening
-  // on an output we chose - the compositor might have decided to use a different
-  // output for example
-  // It is very important that the EGL native module and the rendering system use the
-  // Wayland-announced size for rendering or corrupted graphics output will result.
-  int currWidth, currHeight;
-  m_glContext.GetAttachedSize(currWidth, currHeight);
-  bool changed = (width != currWidth || height != currHeight);
-  
-  if (changed)
-  {
-    m_glContext.Resize(width, height);
-  }
-  CWinSystemWayland::HandleSurfaceConfigure(edges, width, height);
-  if (changed)
-  {
-    CRenderSystemGL::ResetRenderSystem(width, height, m_bFullScreen, m_fRefreshRate);
-  }
 }
 
 void CWinSystemWaylandGLContext::SetVSyncImpl(bool enable)

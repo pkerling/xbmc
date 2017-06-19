@@ -25,6 +25,7 @@
 #include <memory>
 
 #include <wayland-client.hpp>
+#include <wayland-extra-protocols.hpp>
 
 namespace KODI
 {
@@ -59,6 +60,7 @@ public:
   wayland::display_t& GetDisplay();
   wayland::compositor_t GetCompositor();
   wayland::shell_t GetShell();
+  wayland::zxdg_shell_v6_t GetXdgShellUnstableV6();
   wayland::shm_t GetShm();
   
 private:
@@ -85,6 +87,7 @@ private:
   wayland::registry_t m_registry;
   wayland::compositor_t m_compositor;
   wayland::shell_t m_shell;
+  wayland::zxdg_shell_v6_t m_xdgShellUnstableV6;
   wayland::shm_t m_shm;
 };
 

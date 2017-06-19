@@ -36,6 +36,8 @@
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
+#include "ShellSurfaceWlShell.h"
+#include "ShellSurfaceXdgShellUnstableV6.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
@@ -81,7 +83,7 @@ bool CWinSystemWayland::InitWindowSystem()
     }
   }
   
-  CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
+  // Event loop is started in CreateWindow
 
   // pointer is by default not on this window, will be immediately rectified
   // by the enter() events if it is
@@ -114,20 +116,91 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         RESOLUTION_INFO& res)
 {
   m_surface = m_connection->GetCompositor().create_surface();
-  m_shellSurface = m_connection->GetShell().get_shell_surface(m_surface);
-  // "class" should match the name of the .desktop file; it's needed for correct
-  // interaction with WM menus and displaying the window icon in the app list
-  m_shellSurface.set_class("kodi");
-  m_shellSurface.set_title(name);
-  m_shellSurface.on_ping() = std::bind(&wayland::shell_surface_t::pong, &m_shellSurface, _1);
-  m_shellSurface.on_configure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2, _3);
-
+  
+  // Try to get this resolution if compositor does not say otherwise
+  m_nWidth = res.iWidth;
+  m_nHeight = res.iHeight;
+  
+  auto xdgShell = m_connection->GetXdgShellUnstableV6();
+  if (xdgShell)
+  {
+    m_shellSurface.reset(new CShellSurfaceXdgShellUnstableV6(m_connection->GetDisplay(), xdgShell, m_surface, name, "kodi"));
+  }
+  else
+  {
+    CLog::Log(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
+    m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));  
+  }
+  
+  // Just remember initial width/height for context creation
+  // This is used for sizing the EGLSurface
+  m_shellSurface->OnConfigure() = [this](std::int32_t width, std::int32_t height)
+  {
+    CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", width, height);
+    m_nWidth = width;
+    m_nHeight = height;
+  };
+  
+  if (fullScreen)
+  {
+    // Try to start on correct monitor  
+    COutput* output = FindOutputByUserFriendlyName(CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
+    if (output)
+    {
+      m_shellSurface->SetFullScreen(output->GetWaylandOutput(), res.fRefreshRate);
+    }
+  }
+  
+  m_shellSurface->Initialize();
+  
+  // Set real handler during runtime
+  m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2);
+  
+  if (m_nWidth == 0 || m_nHeight == 0)
+  {
+  // Adopt size from resolution if compositor did not specify anything
+    m_nWidth = res.iWidth;
+    m_nHeight = res.iHeight;
+  }
+  else
+  {
+    // Update resolution with real size
+    res.iWidth = m_nWidth;
+    res.iHeight = m_nHeight;
+    res.iScreenWidth = m_nWidth;
+    res.iScreenHeight = m_nHeight;
+    res.iSubtitles = (int) (0.965 * m_nHeight);
+    g_graphicsContext.ResetOverscan(res);
+  }
+  
+  // Now start processing events
+  //
+  // There are two stages to the event handling:
+  // * Initialization (which ends here): Everything runs synchronously and init
+  //   code that needs events processed must call roundtrip().
+  //   This is done for simplicity because it is a lot easier than to make
+  //   everything thread-safe everywhere in the startup code, which is also
+  //   not really necessary.
+  // * Runtime (which starts here): Every object creation from now on
+  //   needs to take great care to be thread-safe:
+  //   Since the event pump is always running now, there is a tiny window between
+  //   creating an object and attaching the C++ event handlers during which
+  //   events can get queued and dispatched for the object but the handlers have
+  //   not been set yet. Consequently, the events would get lost.
+  //   However, this does not apply to objects that are created in response to
+  //   compositor events. Since the callbacks are called from the event processing
+  //   thread and ran strictly sequentially, no other events are dispatched during
+  //   the runtime of a callback. Luckily this applies to global binding like
+  //   wl_output and wl_seat and thus to most if not all runtime object creation
+  //   cases we have to support.
+  CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
+  
   return true;
 }
 
 bool CWinSystemWayland::DestroyWindow()
 {
-  m_shellSurface = wayland::shell_surface_t();
+  m_shellSurface.reset();
   // waylandpp automatically calls wl_surface_destroy when the last reference is removed
   m_surface = wayland::surface_t();
 
@@ -250,6 +323,8 @@ COutput* CWinSystemWayland::FindOutputByUserFriendlyName(const std::string& name
 
 bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
+  CSingleLock lock(m_configurationMutex);
+  
   if (m_currentOutput == res.strOutput && m_nWidth == res.iWidth && m_nHeight == res.iHeight && m_fRefreshRate == res.fRefreshRate && m_bFullScreen == fullScreen)
   {
     // Nothing to do
@@ -289,46 +364,62 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
   if (fullScreen)
   {
-    m_shellSurface.set_fullscreen(wayland::shell_surface_fullscreen_method::driver, res.fRefreshRate * 1000, output);
+    m_shellSurface->SetFullScreen(output, m_fRefreshRate);
   }
   else
   {
     // Shouldn't happen since we claim not to support windowed modes
     CLog::Log(LOGWARNING, "Wayland windowing system asked to switch to windowed mode which is not really supported");
-    m_shellSurface.set_toplevel();
+    m_shellSurface->SetWindowed();
   }
 
   return true;
 }
 
-void CWinSystemWayland::HandleSurfaceConfigure(wayland::shell_surface_resize edges, std::int32_t width, std::int32_t height)
+void CWinSystemWayland::HandleSurfaceConfigure(std::int32_t width, std::int32_t height)
 {
+  // Wayland will tell us here the size of the surface that was actually created,
+  // which might be different from what we expected e.g. when fullscreening
+  // on an output we chose - the compositor might have decided to use a different
+  // output for example
+  // It is very important that the EGL native module and the rendering system use the
+  // Wayland-announced size for rendering or corrupted graphics output will result.
+  
   CLog::Log(LOGINFO, "Got Wayland surface size %dx%d", width, height);
-
-  // Mark everything opaque so the compositor can render it faster
-  wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
-  opaqueRegion.add(0, 0, width, height);
-  m_surface.set_opaque_region(opaqueRegion);
-  // No surface commit, EGL context will do that when it changes the buffer
-
-  if (m_nWidth == width && m_nHeight == height)
   {
-    // Nothing to do
-    return;
-  }
+    CSingleLock lock(m_configurationMutex);
 
-  m_nWidth = width;
-  m_nHeight = height;
-  // Update desktop resolution
-  auto& res = CDisplaySettings::GetInstance().GetCurrentResolutionInfo();
-  res.iWidth = width;
-  res.iHeight = height;
-  res.iScreenWidth = width;
-  res.iScreenHeight = height;
-  res.iSubtitles = (int) (0.965 * height);
-  g_graphicsContext.ResetOverscan(res);
-  CDisplaySettings::GetInstance().ApplyCalibrations();
+    // Mark everything opaque so the compositor can render it faster
+    wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
+    opaqueRegion.add(0, 0, width, height);
+    m_surface.set_opaque_region(opaqueRegion);
+    // No surface commit, EGL context will do that when it changes the buffer
+
+    if (m_nWidth == width && m_nHeight == height)
+    {
+      // Nothing to do
+      return;
+    }
+
+    m_nWidth = width;
+    m_nHeight = height;
+    // Update desktop resolution
+    auto& res = CDisplaySettings::GetInstance().GetCurrentResolutionInfo();
+    res.iWidth = width;
+    res.iHeight = height;
+    res.iScreenWidth = width;
+    res.iScreenHeight = height;
+    res.iSubtitles = (int) (0.965 * height);
+    g_graphicsContext.ResetOverscan(res);
+    CDisplaySettings::GetInstance().ApplyCalibrations();
+  }
+  
   // Force resolution update
+  // SetVideoResolution() automatically delegates to main thread via internal
+  // message if called from other threads
+  // This will call SetFullScreen() with the new resolution, which also updates
+  // the size of the egl_window etc.
+  // The call always blocks, so the configuration lock must be released beforehand.
   g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
 }
 
