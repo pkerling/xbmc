@@ -152,7 +152,6 @@ private:
   // Save complete XBMC_Event so no keymap lookups which might not be thread-safe
   // are needed in the repeat callback
   XBMC_Event m_keyToRepeat;
-  CTimer m_keyRepeatTimer;
   
   class CKeyRepeatCallback : public ITimerCallback
   {
@@ -162,6 +161,7 @@ private:
     void OnTimeout() override;
   };
   CKeyRepeatCallback m_keyRepeatCallback;
+  CTimer m_keyRepeatTimer;
 };
 
 }

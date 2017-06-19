@@ -106,7 +106,7 @@ constexpr int WL_KEYBOARD_XKB_CODE_OFFSET = 8;
 }
 
 CSeatInputProcessor::CSeatInputProcessor(std::uint32_t globalName, const wayland::seat_t& seat, IInputHandler* handler)
-: m_globalName(globalName), m_seat(seat), m_handler(handler), m_keyRepeatTimer(&m_keyRepeatCallback), m_keyRepeatCallback(this)
+: m_globalName(globalName), m_seat(seat), m_handler(handler), m_keyRepeatCallback(this), m_keyRepeatTimer(&m_keyRepeatCallback)
 {
   assert(m_handler);
 
