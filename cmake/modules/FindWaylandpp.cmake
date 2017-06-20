@@ -13,6 +13,7 @@
 if(PKG_CONFIG_FOUND)
   pkg_check_modules(PC_WAYLANDPP wayland-client++ wayland-egl++ wayland-cursor++ wayland-scanner++ QUIET)
   pkg_check_modules(PC_WAYLAND_PROTOCOLS wayland-protocols>=1.7 QUIET)
+  # TODO: Remove check when CMake minimum version is bumped globally
   if(CMAKE_VERSION VERSION_EQUAL 3.4.0 OR CMAKE_VERSION VERSION_GREATER 3.4.0)
     if(PC_WAYLANDPP_FOUND)
       pkg_get_variable(PC_WAYLANDPP_SCANNER wayland-scanner++ wayland_scannerpp)
