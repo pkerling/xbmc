@@ -38,7 +38,7 @@ namespace WAYLAND
 class IShellSurface
 {
 protected:
-  void InvokeOnConfigure(std::int32_t width, std::int32_t height);
+  void InvokeOnConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
   
 public:
   /**
@@ -63,12 +63,13 @@ public:
    */
   virtual void Initialize() = 0;
   
-  using ConfigureHandler = std::function<void(std::int32_t, std::int32_t)>;
+  using ConfigureHandler = std::function<void(std::uint32_t, std::int32_t, std::int32_t)>;
   
   virtual void SetFullScreen(wayland::output_t const& output, float refreshRate) = 0;
   virtual void SetWindowed() = 0;
   
   ConfigureHandler& OnConfigure();
+  virtual void AckConfigure(std::uint32_t serial) = 0;
   
 private:
   ConfigureHandler m_onConfigure;

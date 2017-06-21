@@ -27,10 +27,10 @@ IShellSurface::ConfigureHandler& IShellSurface::OnConfigure()
   return m_onConfigure;
 }
 
-void IShellSurface::InvokeOnConfigure(std::int32_t width, std::int32_t height)
+void IShellSurface::InvokeOnConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height)
 {
   if (m_onConfigure)
   {
-    m_onConfigure(width, height);
+    m_onConfigure(serial, width, height);
   }
 }

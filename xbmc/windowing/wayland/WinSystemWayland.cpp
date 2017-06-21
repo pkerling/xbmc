@@ -154,11 +154,12 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
   // Just remember initial width/height for context creation
   // This is used for sizing the EGLSurface
-  m_shellSurface->OnConfigure() = [this](std::int32_t width, std::int32_t height)
+  m_shellSurface->OnConfigure() = [this](std::uint32_t serial, std::int32_t width, std::int32_t height)
   {
     CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", width, height);
     m_nWidth = width;
     m_nHeight = height;
+    AckConfigure(serial);
   };
 
   if (fullScreen)
@@ -173,8 +174,6 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
   m_shellSurface->Initialize();
 
-  // Set real handler during runtime
-  m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2);
 
   if (m_nWidth == 0 || m_nHeight == 0)
   {
@@ -187,6 +186,8 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     // Update resolution with real size
     UpdateDesktopResolution(res, 0, m_nWidth, m_nHeight, res.fRefreshRate);
   }
+  // Set real handler during runtime
+  m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2, _3);
 
   // Now start processing events
   //
@@ -405,17 +406,56 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     m_shellSurface->SetWindowed();
   }
 
+  if (wasConfigure)
+  {
+    AckConfigure(m_currentConfigureSerial);
+  }
+
   bool wasInitialSetFullScreen = m_isInitialSetFullScreen;
   m_isInitialSetFullScreen = false;
 
-  // Need to return true:
+  // Need to return true
   // * when this SetFullScreen() call was initiated by a configure() event
   // * on first SetFullScreen so GraphicsContext gets resolution
   // Otherwise, Kodi must keep the old resolution.
   return wasConfigure || wasInitialSetFullScreen;
 }
 
-void CWinSystemWayland::HandleSurfaceConfigure(std::int32_t width, std::int32_t height)
+void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height)
+{
+  CSingleLock lock(g_graphicsContext);
+  CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d", serial, width, height);
+  m_currentConfigureSerial = serial;
+  if (!ResetSurfaceSize(width, height, m_scale))
+  {
+    // nothing changed, ack immediately
+    AckConfigure(serial);
+  }
+  // configure is acked when the Kodi surface has actually been reconfigured
+}
+
+void CWinSystemWayland::AckConfigure(std::uint32_t serial)
+{
+  // Send ack if we have a new serial number or this is the first time
+  // this function is called
+  if (serial != m_lastAckedSerial || !m_firstSerialAcked)
+  {
+    CLog::LogF(LOGDEBUG, "Acking serial %u", serial);
+    m_shellSurface->AckConfigure(serial);
+    m_lastAckedSerial = serial;
+    m_firstSerialAcked = true;
+  }
+}
+
+/**
+ * Set the internal surface size variables and perform resolution change
+ *
+ * Call only from Wayland event processing thread!
+ *
+ * \return Whether surface parameters changed and video resolution change was
+ *         performed
+ */
+bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale)
 {
   // Wayland will tell us here the size of the surface that was actually created,
   // which might be different from what we expected e.g. when fullscreening
@@ -486,6 +526,8 @@ void CWinSystemWayland::HandleSurfaceConfigure(std::int32_t width, std::int32_t 
   // FIXME Ideally this class would be completely decoupled from g_graphicsContext,
   // but this is not possible at the moment before the refactoring is done.
   g_graphicsContext.SetVideoResolution(switchToRes, true);
+
+  return true;
 }
 
 std::string CWinSystemWayland::UserFriendlyOutputName(const COutput& output)

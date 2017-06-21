@@ -92,7 +92,8 @@ public:
 protected:
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
-  virtual void HandleSurfaceConfigure(std::int32_t width, std::int32_t height);
+  void HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
+  bool ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale);
   
   std::string UserFriendlyOutputName(COutput const& output);
   COutput* FindOutputByUserFriendlyName(std::string const& name);
@@ -100,6 +101,7 @@ protected:
   // Called when wl_output::done is received for an output, i.e. associated
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
+  void AckConfigure(std::uint32_t serial);
   
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
@@ -121,6 +123,9 @@ protected:
   CCriticalSection m_dispResourcesMutex;
   
   std::string m_currentOutput;
+  std::uint32_t m_currentConfigureSerial = 0;
+  bool m_firstSerialAcked = false;
+  std::uint32_t m_lastAckedSerial = 0;
   // Whether this is the first call to SetFullScreen
   bool m_isInitialSetFullScreen = true;
 };

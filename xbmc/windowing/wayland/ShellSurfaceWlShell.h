@@ -53,6 +53,7 @@ public:
   
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
+  void AckConfigure(std::uint32_t serial) override;
 };
 
 }
