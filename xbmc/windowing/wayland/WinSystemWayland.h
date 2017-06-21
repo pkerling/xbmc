@@ -94,6 +94,7 @@ protected:
   void SendFocusChange(bool focus);
   void HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
   bool ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale);
+  bool SetSizeFromSurfaceSize(std::int32_t surfaceWidth, std::int32_t surfaceHeight);
   
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
   std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
@@ -124,6 +125,9 @@ protected:
   CCriticalSection m_dispResourcesMutex;
   
   std::string m_currentOutput;
+  // Size of our surface in "surface coordinates", i.e. without scaling applied
+  std::int32_t m_surfaceWidth, m_surfaceHeight;
+  std::int32_t m_scale = 1;
   std::uint32_t m_currentConfigureSerial = 0;
   bool m_firstSerialAcked = false;
   std::uint32_t m_lastAckedSerial = 0;

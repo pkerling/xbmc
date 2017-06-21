@@ -146,8 +146,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   m_surface = m_connection->GetCompositor().create_surface();
 
   // Try to get this resolution if compositor does not say otherwise
-  m_nWidth = res.iWidth;
-  m_nHeight = res.iHeight;
+  SetSizeFromSurfaceSize(res.iWidth, res.iHeight);
 
   auto xdgShell = m_connection->GetXdgShellUnstableV6();
   if (xdgShell)
@@ -165,8 +164,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   m_shellSurface->OnConfigure() = [this](std::uint32_t serial, std::int32_t width, std::int32_t height)
   {
     CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", width, height);
-    m_nWidth = width;
-    m_nHeight = height;
+    SetSizeFromSurfaceSize(width, height);
     AckConfigure(serial);
   };
 
@@ -182,18 +180,9 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
   m_shellSurface->Initialize();
 
+  // Update resolution with real size as it could have changed due to configure()
+  UpdateDesktopResolution(res, 0, m_nWidth, m_nHeight, res.fRefreshRate);
 
-  if (m_nWidth == 0 || m_nHeight == 0)
-  {
-    // Adopt size from resolution if compositor did not specify anything
-    m_nWidth = res.iWidth;
-    m_nHeight = res.iHeight;
-  }
-  else
-  {
-    // Update resolution with real size
-    UpdateDesktopResolution(res, 0, m_nWidth, m_nHeight, res.fRefreshRate);
-  }
   // Set real handler during runtime
   m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2, _3);
 
@@ -486,8 +475,7 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   CLog::Log(LOGINFO, "Got new Wayland surface size %dx%d", m_nWidth, m_nHeight);
 
   // Now update actual resolution with configured one
-  m_nWidth = width;
-  m_nHeight = height;
+  bool sizeChanged = SetSizeFromSurfaceSize(width, height);
 
   // Get actual frame rate from monitor
   // TODO Track wl_surface.enter() events and get frame rate of the output
@@ -502,13 +490,13 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   }
 
   // Find matching Kodi resolution member
-  switchToRes = FindMatchingCustomResolution(width, height, m_fRefreshRate);
+  switchToRes = FindMatchingCustomResolution(m_nWidth, m_nHeight, m_fRefreshRate);
 
   if (switchToRes == RES_INVALID)
   {
     // Add new resolution if none found
     RESOLUTION_INFO newResInfo;
-    UpdateDesktopResolution(newResInfo, 0, width, height, m_fRefreshRate);
+    UpdateDesktopResolution(newResInfo, 0, m_nWidth, m_nHeight, m_fRefreshRate);
     newResInfo.strOutput = m_currentOutput; // we just assume the compositor put us on the right output
     CDisplaySettings::GetInstance().AddResolutionInfo(newResInfo);
     CDisplaySettings::GetInstance().ApplyCalibrations();
@@ -536,6 +524,31 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   g_graphicsContext.SetVideoResolution(switchToRes, true);
 
   return true;
+}
+
+/**
+ * Calculate internal resolution from surface size and set variables
+ *
+ * \return whether any size variable changed
+ */
+bool CWinSystemWayland::SetSizeFromSurfaceSize(std::int32_t surfaceWidth, std::int32_t surfaceHeight)
+{
+  std::int32_t newWidth = surfaceWidth * m_scale;
+  std::int32_t newHeight = surfaceHeight * m_scale;
+
+  if (surfaceWidth != m_surfaceWidth || surfaceHeight != m_surfaceHeight || newWidth != m_nWidth || newHeight != m_nHeight)
+  {
+    m_surfaceWidth = surfaceWidth;
+    m_surfaceHeight = surfaceHeight;
+    m_nWidth = newWidth;
+    m_nHeight = newHeight;
+    CLog::LogF(LOGINFO, "Set surface size %dx%d at scale %d -> resolution %dx%d", m_surfaceWidth, m_surfaceHeight, m_scale, m_nWidth, m_nHeight);
+    return true;
+  }
+  else
+  {
+    return false;
+  }
 }
 
 std::string CWinSystemWayland::UserFriendlyOutputName(std::shared_ptr<COutput> const& output)
