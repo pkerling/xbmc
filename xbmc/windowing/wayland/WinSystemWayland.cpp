@@ -520,9 +520,11 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   CSingleLock lock(g_graphicsContext);
 
   // Now update actual resolution with configured one
+  bool scaleChanged = (scale != m_scale);
   m_scale = scale;
   bool sizeChanged = SetSizeFromSurfaceSize(width, height);
-
+ 
+  float refreshRate = m_fRefreshRate;
   // Get actual frame rate from monitor
   // TODO Track wl_surface.enter() events and get frame rate of the output
   // we are actually on
@@ -531,8 +533,14 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
     auto output = FindOutputByUserFriendlyName(m_currentOutput);
     if (output)
     {
-      m_fRefreshRate = output->GetCurrentMode().refreshMilliHz / 1000.0f;
+      refreshRate = output->GetCurrentMode().refreshMilliHz / 1000.0f;
     }
+  }
+
+  if (refreshRate == m_fRefreshRate && !scaleChanged && !sizeChanged)
+  {
+    CLog::LogF(LOGDEBUG, "No change in size, refresh rate, and scale, returning");
+    return false;
   }
 
   // Find matching Kodi resolution member
