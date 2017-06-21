@@ -103,6 +103,9 @@ protected:
   // Called when wl_output::done is received for an output, i.e. associated
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
+  void UpdateBufferScale();
+  void ApplyBufferScale(std::int32_t scale);
+
   void AckConfigure(std::uint32_t serial);
   
   std::unique_ptr<CConnection> m_connection;
@@ -125,6 +128,9 @@ protected:
   CCriticalSection m_dispResourcesMutex;
   
   std::string m_currentOutput;
+  // Set of outputs that show some part of our main surface as indicated by
+  // compositor
+  std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
   // Size of our surface in "surface coordinates", i.e. without scaling applied
   std::int32_t m_surfaceWidth, m_surfaceHeight;
   std::int32_t m_scale = 1;

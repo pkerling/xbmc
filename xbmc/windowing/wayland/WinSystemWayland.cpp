@@ -64,6 +64,14 @@ RESOLUTION FindMatchingCustomResolution(int width, int height, float refreshRate
   return RES_INVALID;
 }
 
+struct OutputScaleComparer
+{
+  bool operator()(std::shared_ptr<COutput> const& output1, std::shared_ptr<COutput> const& output2)
+  {
+    return output1->GetScale() < output2->GetScale();
+  }
+};
+
 struct OutputCurrentRefreshRateComparer
 {
   bool operator()(std::shared_ptr<COutput> const& output1, std::shared_ptr<COutput> const& output2)
@@ -75,7 +83,6 @@ struct OutputCurrentRefreshRateComparer
 const std::string CONFIGURE_RES_ID = "configure";
 
 }
-
 
 CWinSystemWayland::CWinSystemWayland() :
 CWinSystemBase()
@@ -134,6 +141,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_seatProcessors.clear();
   m_outputsInPreparation.clear();
   m_outputs.clear();
+  m_surfaceOutputs.clear();
 
   m_connection.reset();
   return CWinSystemBase::DestroyWindowSystem();
@@ -144,6 +152,32 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         RESOLUTION_INFO& res)
 {
   m_surface = m_connection->GetCompositor().create_surface();
+  m_surface.on_enter() = [this](wayland::output_t wloutput)
+  {
+    if (auto output = FindOutputByWaylandOutput(wloutput))
+    {
+      CLog::Log(LOGDEBUG, "Entering output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
+      m_surfaceOutputs.emplace(output);
+      UpdateBufferScale();
+    }
+    else
+    {
+      CLog::Log(LOGWARNING, "Entering output that was not configured yet, ignoring");
+    }
+  };
+  m_surface.on_leave() = [this](wayland::output_t wloutput)
+  {    
+    if (auto output = FindOutputByWaylandOutput(wloutput))
+    {
+      CLog::Log(LOGDEBUG, "Leaving output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
+      m_surfaceOutputs.erase(output);
+      UpdateBufferScale();
+    }
+    else
+    {
+      CLog::Log(LOGWARNING, "Leaving output that was not configured yet, ignoring");
+    }
+  };
 
   // Try to get this resolution if compositor does not say otherwise
   SetSizeFromSurfaceSize(res.iWidth, res.iHeight);
@@ -170,11 +204,13 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
   if (fullScreen)
   {
-    // Try to start on correct monitor  
+    // Try to start on correct monitor and with correct buffer scale
     auto output = FindOutputByUserFriendlyName(CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
     if (output)
     {
       m_shellSurface->SetFullScreen(output->GetWaylandOutput(), res.fRefreshRate);
+      m_scale = output->GetScale();
+      ApplyBufferScale(m_scale);
     }
   }
 
@@ -405,6 +441,11 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
   if (wasConfigure)
   {
+    // Buffer scale must also match egl size configuration
+    ApplyBufferScale(m_scale);
+
+    // Next buffer that the graphic context attaches will have the size corresponding
+    // to this configure, so go and ack it
     AckConfigure(m_currentConfigureSerial);
   }
 
@@ -472,9 +513,8 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   // FIXME See comment in SetFullScreen
   CSingleLock lock(g_graphicsContext);
 
-  CLog::Log(LOGINFO, "Got new Wayland surface size %dx%d", m_nWidth, m_nHeight);
-
   // Now update actual resolution with configured one
+  m_scale = scale;
   bool sizeChanged = SetSizeFromSurfaceSize(width, height);
 
   // Get actual frame rate from monitor
@@ -652,7 +692,8 @@ void CWinSystemWayland::Unregister(IDispResource* resource)
 void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 {
   CSingleLock lock(m_seatProcessorsMutex);
-  m_seatProcessors.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
+  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
+  newSeatEmplace.first->second.SetCoordinateScale(m_scale);
 }
 
 void CWinSystemWayland::OnOutputAdded(std::uint32_t name, wayland::output_t& output)
@@ -664,28 +705,31 @@ void CWinSystemWayland::OnOutputAdded(std::uint32_t name, wayland::output_t& out
 void CWinSystemWayland::OnOutputDone(std::uint32_t name)
 {
   auto it = m_outputsInPreparation.find(name);
-  if (it == m_outputsInPreparation.end())
+  if (it != m_outputsInPreparation.end())
   {
-    return;
+    // This output was added for the first time - done is also sent when
+    // output parameters change later
+
+    {
+      CSingleLock lock(m_outputsMutex);
+      // Move from m_outputsInPreparation to m_outputs
+      m_outputs.emplace(std::move(*it));
+      m_outputsInPreparation.erase(it);
+    }
+
+    // Maybe the output that was added was the one we should be on?
+    if (m_bFullScreen)
+    {
+      CSingleLock lock(g_graphicsContext);
+      UpdateResolutions();
+      // This will call SetFullScreen(), which will match the output against
+      // the information from the resolution and call set_fullscreen on the
+      // surface if it changed.
+      g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
+    }
   }
 
-  {
-    CSingleLock lock(m_outputsMutex);
-    // Move from m_outputsInPreparation to m_outputs
-    m_outputs.emplace(std::move(*it));
-    m_outputsInPreparation.erase(it);
-  }
-
-  // Maybe the output that was added was the one we should be on?
-  if (m_bFullScreen)
-  {
-    CSingleLock lock(g_graphicsContext);
-    UpdateResolutions();
-    // This will call SetFullScreen(), which will match the output against
-    // the information from the resolution and call set_fullscreen on the
-    // surface if it changed.
-    g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
-  }
+  UpdateBufferScale();
 }
 
 void CWinSystemWayland::OnGlobalRemoved(std::uint32_t name)
@@ -760,6 +804,30 @@ void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t s
   else
   {
     pointer.set_cursor(serial, wayland::surface_t(), 0, 0);
+  }
+}
+
+void CWinSystemWayland::UpdateBufferScale()
+{
+  // Adjust our surface size to the output with the biggest scale in order
+  // to get the best quality
+  auto const maxBufferScaleIt = std::max_element(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(), OutputScaleComparer());
+  if (maxBufferScaleIt != m_surfaceOutputs.cend())
+  {
+    auto const newScale = (*maxBufferScaleIt)->GetScale();
+    // Recalculate resolution with new scale if it changed
+    ResetSurfaceSize(m_surfaceWidth, m_surfaceHeight, newScale);
+  }
+}
+
+void CWinSystemWayland::ApplyBufferScale(std::int32_t scale)
+{
+  CLog::LogF(LOGINFO, "Setting Wayland buffer scale to %d", scale);
+  m_surface.set_buffer_scale(scale);
+  CSingleLock lock(m_seatProcessorsMutex);
+  for (auto& seatProcessor : m_seatProcessors)
+  {
+    seatProcessor.second.SetCoordinateScale(scale);
   }
 }
 
