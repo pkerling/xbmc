@@ -456,6 +456,13 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     // Buffer scale must also match egl size configuration
     ApplyBufferScale(m_scale);
 
+    // FIXME This assumes that the resolution has already been set. Should
+    // be moved to some post-change callback when resolution setting is refactored.
+    if (!m_inhibitSkinReload)
+    {
+      g_application.ReloadSkin();
+    }
+
     // Next buffer that the graphic context attaches will have the size corresponding
     // to this configure, so go and ack it
     AckConfigure(m_currentConfigureSerial);
@@ -471,6 +478,15 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   return wasConfigure || wasInitialSetFullScreen;
 }
 
+
+void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
+{
+  m_inhibitSkinReload = inhibit;
+  if (!inhibit)
+  {
+    g_application.ReloadSkin();
+  }
+}
 void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height)
 {
   CSingleLock lock(g_graphicsContext);

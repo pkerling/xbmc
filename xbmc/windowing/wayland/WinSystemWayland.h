@@ -69,6 +69,8 @@ public:
   
   bool HasCursor() override;
   void ShowOSMouse(bool show) override;
+
+  void SetInhibitSkinReload(bool inhibit);
   
   void* GetVaDisplay();
   
@@ -126,7 +128,9 @@ protected:
   
   std::set<IDispResource*> m_dispResources;
   CCriticalSection m_dispResourcesMutex;
-  
+
+  bool m_inhibitSkinReload = false;
+
   std::string m_currentOutput;
   // Set of outputs that show some part of our main surface as indicated by
   // compositor
