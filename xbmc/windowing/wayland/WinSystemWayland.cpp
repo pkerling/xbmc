@@ -524,17 +524,14 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   m_scale = scale;
   bool sizeChanged = SetSizeFromSurfaceSize(width, height);
  
+  // Get actual frame rate from monitor, take highest frame rate if multiple
+  // m_surfaceOutputs is only updated from event handling thread, so no lock
+  auto maxRefreshIt = std::max_element(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(), OutputCurrentRefreshRateComparer());
   float refreshRate = m_fRefreshRate;
-  // Get actual frame rate from monitor
-  // TODO Track wl_surface.enter() events and get frame rate of the output
-  // we are actually on
-   {
-    CSingleLock lockOut(m_outputsMutex);
-    auto output = FindOutputByUserFriendlyName(m_currentOutput);
-    if (output)
-    {
-      refreshRate = output->GetCurrentMode().refreshMilliHz / 1000.0f;
-    }
+  if (maxRefreshIt != m_surfaceOutputs.cend())
+  {
+    refreshRate = (*maxRefreshIt)->GetCurrentMode().refreshMilliHz / 1000.0f;
+    CLog::LogF(LOGDEBUG, "Resolved actual (maximum) refresh rate to %.3f Hz on output \"%s\"", refreshRate, UserFriendlyOutputName(*maxRefreshIt).c_str());
   }
 
   if (refreshRate == m_fRefreshRate && !scaleChanged && !sizeChanged)
@@ -542,6 +539,8 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
     CLog::LogF(LOGDEBUG, "No change in size, refresh rate, and scale, returning");
     return false;
   }
+
+  m_fRefreshRate = refreshRate;
 
   // Find matching Kodi resolution member
   switchToRes = FindMatchingCustomResolution(m_nWidth, m_nHeight, m_fRefreshRate);
