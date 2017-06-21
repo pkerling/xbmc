@@ -95,8 +95,9 @@ protected:
   void HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
   bool ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale);
   
-  std::string UserFriendlyOutputName(COutput const& output);
-  COutput* FindOutputByUserFriendlyName(std::string const& name);
+  std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
+  std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
+  std::shared_ptr<COutput> FindOutputByWaylandOutput(wayland::output_t const& output);
   
   // Called when wl_output::done is received for an output, i.e. associated
   // information like modes is available
@@ -110,7 +111,7 @@ protected:
   std::map<std::uint32_t, CSeatInputProcessor> m_seatProcessors;
   CCriticalSection m_seatProcessorsMutex;
   // m_outputsInPreparation did not receive their done event yet
-  std::map<std::uint32_t, std::unique_ptr<COutput>> m_outputs, m_outputsInPreparation;
+  std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputs, m_outputsInPreparation;
   CCriticalSection m_outputsMutex;
   
   bool m_osCursorVisible = true;

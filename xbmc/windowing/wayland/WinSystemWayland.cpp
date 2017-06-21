@@ -64,6 +64,14 @@ RESOLUTION FindMatchingCustomResolution(int width, int height, float refreshRate
   return RES_INVALID;
 }
 
+struct OutputCurrentRefreshRateComparer
+{
+  bool operator()(std::shared_ptr<COutput> const& output1, std::shared_ptr<COutput> const& output2)
+  {
+    return output1->GetCurrentMode().refreshMilliHz < output2->GetCurrentMode().refreshMilliHz;
+  }
+};
+
 const std::string CONFIGURE_RES_ID = "configure";
 
 }
@@ -165,7 +173,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   if (fullScreen)
   {
     // Try to start on correct monitor  
-    COutput* output = FindOutputByUserFriendlyName(CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
+    auto output = FindOutputByUserFriendlyName(CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
     if (output)
     {
       m_shellSurface->SetFullScreen(output->GetWaylandOutput(), res.fRefreshRate);
@@ -251,7 +259,7 @@ void CWinSystemWayland::GetConnectedOutputs(std::vector<std::string>* outputs)
   std::transform(m_outputs.cbegin(), m_outputs.cend(), std::back_inserter(*outputs),
                  [this](decltype(m_outputs)::value_type const& pair)
                  {
-                   return UserFriendlyOutputName(*pair.second); });
+                   return UserFriendlyOutputName(pair.second); });
 }
 
 void CWinSystemWayland::UpdateResolutions()
@@ -272,7 +280,7 @@ void CWinSystemWayland::UpdateResolutions()
     return;
   }
 
-  COutput* output = FindOutputByUserFriendlyName(userOutput);
+  auto output = FindOutputByUserFriendlyName(userOutput);
   if (!output)
   {
     // Fallback to current output
@@ -281,10 +289,10 @@ void CWinSystemWayland::UpdateResolutions()
   if (!output)
   {
     // Well just use the first one
-    output = m_outputs.begin()->second.get();
+    output = m_outputs.begin()->second;
   }
 
-  std::string outputName = UserFriendlyOutputName(*output);
+  std::string outputName = UserFriendlyOutputName(output);
 
   auto const& modes = output->GetModes();
   auto const& currentMode = output->GetCurrentMode();
@@ -321,21 +329,28 @@ bool CWinSystemWayland::ResizeWindow(int newWidth, int newHeight, int newLeft, i
   return false;
 }
 
-/**
- * Find output by name
- *
- * Every caller of this function must hold a lock \ref m_outputsMutex
- * for the duration of the call and as long as it uses the returned COutput.
- */
-COutput* CWinSystemWayland::FindOutputByUserFriendlyName(const std::string& name)
+std::shared_ptr<COutput> CWinSystemWayland::FindOutputByUserFriendlyName(const std::string& name)
 {
+  CSingleLock lock(m_outputsMutex);
   auto outputIt = std::find_if(m_outputs.begin(), m_outputs.end(),
                                [this, &name](decltype(m_outputs)::value_type const& entry)
                                {
-                                 return (name == UserFriendlyOutputName(*entry.second));
+                                 return (name == UserFriendlyOutputName(entry.second));
                                });
 
-  return (outputIt == m_outputs.end() ? nullptr : outputIt->second.get());
+  return (outputIt == m_outputs.end() ? nullptr : outputIt->second);
+}
+
+std::shared_ptr<COutput> CWinSystemWayland::FindOutputByWaylandOutput(wayland::output_t const& output)
+{
+  CSingleLock lock(m_outputsMutex);
+  auto outputIt = std::find_if(m_outputs.begin(), m_outputs.end(),
+                               [this, &output](decltype(m_outputs)::value_type const& entry)
+                               {
+                                 return (output == entry.second->GetWaylandOutput());
+                               });
+
+  return (outputIt == m_outputs.end() ? nullptr : outputIt->second);
 }
 
 bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
@@ -372,25 +387,18 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
       m_currentOutput = res.strOutput;
 
       // Try to match output
-      wayland::output_t output;
+      auto output = FindOutputByUserFriendlyName(res.strOutput);
+      if (output)
       {
-        CSingleLock lock(m_outputsMutex);
-
-        COutput* outputHandler = FindOutputByUserFriendlyName(res.strOutput);
-        if (outputHandler)
-        {
-          output = outputHandler->GetWaylandOutput();
-          CLog::LogF(LOGDEBUG, "Resolved output \"%s\" to bound Wayland global %u", res.strOutput.c_str(), outputHandler->GetGlobalName());
-        }
-        else
-        {
-          CLog::LogF(LOGINFO, "Could not match output \"%s\" to a currently available Wayland output, falling back to default output", res.strOutput.c_str());
-        }
-        // Release lock only when output_t has been assigned to local variable so it
-        // cannot go away
+        CLog::LogF(LOGDEBUG, "Resolved output \"%s\" to bound Wayland global %u", res.strOutput.c_str(), output->GetGlobalName());
       }
+      else
+      {
+        CLog::LogF(LOGINFO, "Could not match output \"%s\" to a currently available Wayland output, falling back to default output", res.strOutput.c_str());
+      }
+      
       CLog::LogF(LOGDEBUG, "Setting full-screen with refresh rate %.3f", res.fRefreshRate);
-      m_shellSurface->SetFullScreen(output, res.fRefreshRate);
+      m_shellSurface->SetFullScreen(output ? output->GetWaylandOutput() : wayland::output_t(), res.fRefreshRate);
     }
     else
     {
@@ -484,9 +492,9 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   // Get actual frame rate from monitor
   // TODO Track wl_surface.enter() events and get frame rate of the output
   // we are actually on
-  {
+   {
     CSingleLock lockOut(m_outputsMutex);
-    COutput* output = FindOutputByUserFriendlyName(m_currentOutput);
+    auto output = FindOutputByUserFriendlyName(m_currentOutput);
     if (output)
     {
       m_fRefreshRate = output->GetCurrentMode().refreshMilliHz / 1000.0f;
@@ -530,16 +538,16 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   return true;
 }
 
-std::string CWinSystemWayland::UserFriendlyOutputName(const COutput& output)
+std::string CWinSystemWayland::UserFriendlyOutputName(std::shared_ptr<COutput> const& output)
 {
   std::vector<std::string> parts;
-  if (!output.GetMake().empty())
+  if (!output->GetMake().empty())
   {
-    parts.emplace_back(output.GetMake());
+    parts.emplace_back(output->GetMake());
   }
-  if (!output.GetModel().empty())
+  if (!output->GetModel().empty())
   {
-    parts.emplace_back(output.GetModel());
+    parts.emplace_back(output->GetModel());
   }
   if (parts.empty())
   {
@@ -549,7 +557,7 @@ std::string CWinSystemWayland::UserFriendlyOutputName(const COutput& output)
 
   // Add position
   std::int32_t x, y;
-  std::tie(x, y) = output.GetPosition();
+  std::tie(x, y) = output->GetPosition();
   if (x != 0 || y != 0)
   {
     parts.emplace_back(StringUtils::Format("@{}x{}", x, y));
