@@ -441,6 +441,12 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
   if (wasConfigure)
   {
+    // Mark everything opaque so the compositor can render it faster
+    // Do it here so size always matches the configured egl surface
+    CLog::LogF(LOGDEBUG, "Setting opaque region size %dx%d", m_surfaceWidth, m_surfaceHeight);
+    wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
+    opaqueRegion.add(0, 0, m_surfaceWidth, m_surfaceHeight);
+    m_surface.set_opaque_region(opaqueRegion);
     // Buffer scale must also match egl size configuration
     ApplyBufferScale(m_scale);
 
@@ -503,12 +509,6 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   // Wayland-announced size for rendering or corrupted graphics output will result.
 
   RESOLUTION switchToRes = RES_INVALID;
-
-  // Mark everything opaque so the compositor can render it faster
-  wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
-  opaqueRegion.add(0, 0, width, height);
-  m_surface.set_opaque_region(opaqueRegion);
-  // No surface commit, EGL context will do that when it changes the buffer
 
   // FIXME See comment in SetFullScreen
   CSingleLock lock(g_graphicsContext);
