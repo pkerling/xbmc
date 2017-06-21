@@ -415,6 +415,21 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
 
   RESOLUTION_INFO info_mod = GetResInfo(res);
 
+  // FIXME Wayland windowing needs some way to "deny" resolution updates since what Kodi
+  // requests might not get actually set by the compositor.
+  // So in theory, m_iScreenWidth etc. would not need to be updated at all before the
+  // change is confirmed.
+  // But other windowing code expects these variables to be already set when
+  // SetFullScreen() is called, so set them anyway and remember the old values.
+  int origScreenWidth = m_iScreenWidth, origScreenHeight = m_iScreenHeight, origScreenId = m_iScreenId;
+  float origFPSOverride = m_fFPSOverride;
+
+  m_iScreenWidth = info_mod.iWidth;
+  m_iScreenHeight = info_mod.iHeight;
+  m_iScreenId = info_mod.iScreen;
+  m_Resolution = res;
+  m_fFPSOverride = 0;
+
   bool switched = true;
   if (g_advancedSettings.m_fullScreen)
   {
@@ -440,12 +455,7 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
 
   if (switched)
   {
-    m_iScreenWidth  = info_mod.iWidth;
-    m_iScreenHeight = info_mod.iHeight;
-    m_iScreenId     = info_mod.iScreen;
     m_scissors.SetRect(0, 0, (float)m_iScreenWidth, (float)m_iScreenHeight);
-    m_Resolution    = res;
-    m_fFPSOverride = 0 ;
 
     // make sure all stereo stuff are correctly setup
     SetStereoView(RENDER_STEREO_VIEW_OFF);
@@ -453,6 +463,27 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
     // update anyone that relies on sizing information
     CInputManager::GetInstance().SetMouseResolution(info_org.iWidth, info_org.iHeight, 1, 1);
     g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
+  }
+  else
+  {
+    // Reset old state
+    m_iScreenWidth = origScreenWidth;
+    m_iScreenHeight = origScreenHeight;
+    m_iScreenId = origScreenId;
+    m_fFPSOverride = origFPSOverride;
+    if (IsValidResolution(lastRes))
+    {
+      m_Resolution = lastRes;
+    }
+    else
+    {
+      // FIXME Resolution has become invalid
+      // This happens e.g. when switching monitors and the new monitor has fewer
+      // resolutions than the old one. Fall back to RES_DESKTOP and hope that
+      // the real resolution is set soon.
+      // Again, must be fixed as part of a greater refactor.
+      m_Resolution = RES_DESKTOP;
+    }
   }
 
   Unlock();
