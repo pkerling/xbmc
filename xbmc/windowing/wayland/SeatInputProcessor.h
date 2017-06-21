@@ -115,6 +115,10 @@ public:
   {
     return m_touch;
   }
+  void SetCoordinateScale(std::int32_t scale)
+  {
+    m_coordinateScale = scale;
+  }
 
 private:
   CSeatInputProcessor(CSeatInputProcessor const& other) = delete;
@@ -141,6 +145,7 @@ private:
   wayland::keyboard_t m_keyboard;
   wayland::touch_t m_touch;
   
+  std::int32_t m_coordinateScale = 1;
   std::uint16_t m_pointerX = 0;
   std::uint16_t m_pointerY = 0;
   

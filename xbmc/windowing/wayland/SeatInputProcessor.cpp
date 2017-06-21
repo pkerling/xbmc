@@ -204,8 +204,8 @@ void CSeatInputProcessor::SendMouseMotion()
   event.type = XBMC_MOUSEMOTION;
   event.motion =
   {
-    .x = m_pointerX,
-    .y = m_pointerY
+    .x = static_cast<std::uint16_t> (m_pointerX * m_coordinateScale),
+    .y = static_cast<std::uint16_t> (m_pointerY * m_coordinateScale)
   };
   m_handler->OnEvent(m_globalName, InputType::POINTER, event);
 }
@@ -217,8 +217,8 @@ void CSeatInputProcessor::SendMouseButton(unsigned char button, bool pressed)
   event.button =
   {
     .button = button,
-    .x = m_pointerX,
-    .y = m_pointerY
+    .x = static_cast<std::uint16_t> (m_pointerX * m_coordinateScale),
+    .y = static_cast<std::uint16_t> (m_pointerY * m_coordinateScale)
   };
   m_handler->OnEvent(m_globalName, InputType::POINTER, event);
 }
