@@ -179,7 +179,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     }
   };
 
-  // Try to get this resolution if compositor does not say otherwise
+  // Try with this resolution if compositor does not say otherwise
   SetSizeFromSurfaceSize(res.iWidth, res.iHeight);
 
   auto xdgShell = m_connection->GetXdgShellUnstableV6();
@@ -189,7 +189,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   }
   else
   {
-    CLog::Log(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
+    CLog::LogF(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
     m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));
   }
 
@@ -322,13 +322,13 @@ void CWinSystemWayland::UpdateResolutions()
   auto const& modes = output->GetModes();
   auto const& currentMode = output->GetCurrentMode();
   auto physicalSize = output->GetPhysicalSize();
-  CLog::Log(LOGINFO, "User wanted output \"%s\", we now have \"%s\" size %dx%d mm with %zu mode(s):", userOutput.c_str(), outputName.c_str(), std::get<0>(physicalSize), std::get<1>(physicalSize), modes.size());
+  CLog::LogF(LOGINFO, "User wanted output \"%s\", we now have \"%s\" size %dx%d mm with %zu mode(s):", userOutput.c_str(), outputName.c_str(), std::get<0>(physicalSize), std::get<1>(physicalSize), modes.size());
 
   for (auto const& mode : modes)
   {
     bool isCurrent = (mode == currentMode);
     float pixelRatio = output->GetPixelRatioForMode(mode);
-    CLog::Log(LOGINFO, "- %dx%d @%.3f Hz pixel ratio %.3f%s", mode.width, mode.height, mode.refreshMilliHz / 1000.0f, pixelRatio, isCurrent ? " current" : "");
+    CLog::LogF(LOGINFO, "- %dx%d @%.3f Hz pixel ratio %.3f%s", mode.width, mode.height, mode.refreshMilliHz / 1000.0f, pixelRatio, isCurrent ? " current" : "");
 
     RESOLUTION_INFO res;
     UpdateDesktopResolution(res, 0, mode.width, mode.height, mode.refreshMilliHz / 1000.0f);
