@@ -127,10 +127,7 @@ private:
         // Read events and release intent; this does not block
         readIntent.read();
         // Dispatch default event queue
-        if (m_display->dispatch_pending() < 0)
-        {
-          throw std::system_error(errno, std::generic_category(), "Error dispatching Wayland events");
-        }
+        m_display->dispatch_pending();
       }
 
       CLog::Log(LOGDEBUG, "Wayland message pump stopped");

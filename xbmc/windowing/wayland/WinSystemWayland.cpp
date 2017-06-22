@@ -108,10 +108,7 @@ bool CWinSystemWayland::InitWindowSystem()
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
   }
   // Do another roundtrip to get initial wl_output information
-  if (m_connection->GetDisplay().roundtrip() < 0)
-  {
-    throw std::runtime_error("Wayland roundtrip failed");
-  }
+  m_connection->GetDisplay().roundtrip();
   if (m_outputs.empty())
   {
     throw std::runtime_error("No outputs received from compositor");
