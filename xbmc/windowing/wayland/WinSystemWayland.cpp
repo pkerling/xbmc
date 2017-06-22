@@ -206,8 +206,11 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     if (output)
     {
       m_shellSurface->SetFullScreen(output->GetWaylandOutput(), res.fRefreshRate);
-      m_scale = output->GetScale();
-      ApplyBufferScale(m_scale);
+      if (m_surface.can_set_buffer_scale())
+      {
+        m_scale = output->GetScale();
+        ApplyBufferScale(m_scale);
+      }
     }
   }
 
@@ -450,8 +453,11 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
     opaqueRegion.add(0, 0, m_surfaceWidth, m_surfaceHeight);
     m_surface.set_opaque_region(opaqueRegion);
-    // Buffer scale must also match egl size configuration
-    ApplyBufferScale(m_scale);
+    if (m_surface.can_set_buffer_scale())
+    {
+      // Buffer scale must also match egl size configuration
+      ApplyBufferScale(m_scale);
+    }
 
     // FIXME This assumes that the resolution has already been set. Should
     // be moved to some post-change callback when resolution setting is refactored.
@@ -835,6 +841,12 @@ void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t s
 
 void CWinSystemWayland::UpdateBufferScale()
 {
+  if (!m_surface || !m_surface.can_set_buffer_scale())
+  {
+    // Never modify scale when we cannot set it
+    return;
+  }
+
   // Adjust our surface size to the output with the biggest scale in order
   // to get the best quality
   auto const maxBufferScaleIt = std::max_element(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(), OutputScaleComparer());
