@@ -20,8 +20,6 @@
 #pragma once
 
 #include "GLContextEGL.h"
-#include "rendering/gl/RenderSystemGL.h"
-#include "utils/GlobalsHandling.h"
 #include "WinSystemWayland.h"
 
 namespace KODI
@@ -31,13 +29,12 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CWinSystemWaylandGLContext : public CWinSystemWayland, public CRenderSystemGL
+class CWinSystemWaylandEGLContext : public CWinSystemWayland
 {
 public:
-  CWinSystemWaylandGLContext() = default;
-  virtual ~CWinSystemWaylandGLContext() = default;
+  CWinSystemWaylandEGLContext() = default;
+  virtual ~CWinSystemWaylandEGLContext() = default;
 
-  bool InitWindowSystem() override;
   bool CreateNewWindow(const std::string& name,
                        bool fullScreen,
                        RESOLUTION_INFO& res) override;
@@ -52,16 +49,15 @@ public:
   EGLConfig GetEGLConfig() const;
 
 protected:
-  void SetVSyncImpl(bool enable) override;
-  void PresentRenderImpl(bool rendered) override;
+  /**
+   * Inheriting classes should override InitWindowSystem() without parameters
+   * and call this function there with appropriate parameters
+   */
+  bool InitWindowSystem(EGLint renderableType, EGLint apiType);
 
-private:
-  CGLContextEGL m_glContext;
+  CGLContextEGL m_eglContext;
 };
 
 }
 }
 }
-
-XBMC_GLOBAL_REF(KODI::WINDOWING::WAYLAND::CWinSystemWaylandGLContext, g_Windowing);
-#define g_Windowing XBMC_GLOBAL_USE(KODI::WINDOWING::WAYLAND::CWinSystemWaylandGLContext)
