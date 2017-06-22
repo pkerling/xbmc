@@ -31,6 +31,10 @@ if(OPENGL_FOUND)
   list(APPEND SOURCES WinSystemWaylandEGLContextGL.cpp)
   list(APPEND HEADERS WinSystemWaylandEGLContextGL.h)
 endif()
+if(OPENGLES_FOUND)
+  list(APPEND SOURCES WinSystemWaylandEGLContextGLES.cpp)
+  list(APPEND HEADERS WinSystemWaylandEGLContextGLES.h)
+endif()
 
 
 core_add_library(windowing_WAYLAND)
