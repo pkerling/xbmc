@@ -33,7 +33,6 @@
 #define HAS_SCREENSAVER
 #define HAS_VIDEO_PLAYBACK
 #define HAS_VISUALISATION
-#define HAS_PVRCLIENTS
 #define HAS_ADSPADDONS
 
 #ifdef HAVE_LIBMICROHTTPD
@@ -86,6 +85,10 @@
 #define HAS_WIN32_NETWORK
 #define HAS_IRSERVERSUITE
 #define HAS_FILESYSTEM_SMB
+
+#ifdef HAVE_LIBBLURAY
+  #define HAVE_LIBBLURAY_BDJ
+#endif
 
 #define DECLARE_UNUSED(a,b) a b;
 #endif

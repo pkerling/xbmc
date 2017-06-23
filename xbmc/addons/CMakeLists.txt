@@ -2,10 +2,8 @@ set(SOURCES Addon.cpp
             AddonBuilder.cpp
             BinaryAddonCache.cpp
             AddonDatabase.cpp
-            AddonDll.cpp
             AddonInfo.cpp
             AddonInstaller.cpp
-            AddonInstanceHandler.cpp
             AddonManager.cpp
             AddonStatusHandler.cpp
             AddonSystemSettings.cpp
@@ -21,7 +19,6 @@ set(SOURCES Addon.cpp
             GUIWindowAddonBrowser.cpp
             ImageDecoder.cpp
             ImageResource.cpp
-            InputStream.cpp
             LanguageResource.cpp
             PluginSource.cpp
             PVRClient.cpp
@@ -41,10 +38,8 @@ set(HEADERS Addon.h
             AddonEvents.h
             BinaryAddonCache.h
             AddonDatabase.h
-            AddonDll.h
             AddonInfo.h
             AddonInstaller.h
-            AddonInstanceHandler.h
             AddonManager.h
             AddonStatusHandler.h
             AddonSystemSettings.h
@@ -53,7 +48,6 @@ set(HEADERS Addon.h
             AudioEncoder.h
             ContextMenuAddon.h
             ContextMenus.h
-            DllAddon.h
             DllLibCPluff.h
             FilesystemInstaller.h
             GameResource.h
@@ -63,7 +57,6 @@ set(HEADERS Addon.h
             IAddon.h
             ImageDecoder.h
             ImageResource.h
-            InputStream.h
             LanguageResource.h
             PluginSource.h
             PVRClient.h

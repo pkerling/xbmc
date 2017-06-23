@@ -58,6 +58,7 @@
 #ifdef HAS_PYTHON
 #include "interfaces/python/XBPython.h"
 #endif
+#include "input/ActionTranslator.h"
 #include "input/ButtonTranslator.h"
 #include "guilib/GUIAudioManager.h"
 #include "GUIPassword.h"
@@ -315,9 +316,9 @@ bool CApplication::OnEvent(XBMC_Event& newEvent)
     case XBMC_VIDEORESIZE:
       if (g_windowManager.Initialized())
       {
-        g_Windowing.SetWindowResolution(newEvent.resize.w, newEvent.resize.h);
         if (!g_advancedSettings.m_fullScreen)
         {
+          g_Windowing.SetWindowResolution(newEvent.resize.w, newEvent.resize.h);
           g_graphicsContext.SetVideoResolution(RES_WINDOW, true);
           CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_WIDTH, newEvent.resize.w);
           CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_HEIGHT, newEvent.resize.h);
@@ -4059,6 +4060,7 @@ void CApplication::ActivateScreenSaver(bool forceType /*= false */)
   }
 
   m_screensaverActive = true;
+  CAnnouncementManager::GetInstance().Announce(GUI, "xbmc", "OnScreensaverActivated");
 
   // disable screensaver lock from the login screen
   m_iScreenSaveLock = g_windowManager.GetActiveWindow() == WINDOW_LOGIN_SCREEN ? 1 : 0;
@@ -4393,8 +4395,8 @@ bool CApplication::ExecuteXBMCAction(std::string actionStr, const CGUIListItemPt
   else
   {
     // try translating the action from our ButtonTranslator
-    int actionID;
-    if (CButtonTranslator::TranslateActionString(actionStr.c_str(), actionID))
+    unsigned int actionID;
+    if (CActionTranslator::TranslateString(actionStr.c_str(), actionID))
     {
       OnAction(CAction(actionID));
       return true;
