@@ -69,6 +69,8 @@ public:
   
   bool HasCursor() override;
   void ShowOSMouse(bool show) override;
+
+  void SetInhibitSkinReload(bool inhibit);
   
   void* GetVaDisplay();
   
@@ -92,17 +94,21 @@ public:
 protected:
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
-  virtual void HandleSurfaceConfigure(std::int32_t width, std::int32_t height);
+  void HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
+  bool ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale);
+  bool SetSizeFromSurfaceSize(std::int32_t surfaceWidth, std::int32_t surfaceHeight);
   
-  std::string UserFriendlyOutputName(COutput const& output);
-  COutput* FindOutputByUserFriendlyName(std::string const& name);
+  std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
+  std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
+  std::shared_ptr<COutput> FindOutputByWaylandOutput(wayland::output_t const& output);
   
   // Called when wl_output::done is received for an output, i.e. associated
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
-  
-  // Mutex for protecting modifications of m_nWidth, m_nHeight etc.
-  CCriticalSection m_configurationMutex;
+  void UpdateBufferScale();
+  void ApplyBufferScale(std::int32_t scale);
+
+  void AckConfigure(std::uint32_t serial);
   
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
@@ -111,7 +117,7 @@ protected:
   std::map<std::uint32_t, CSeatInputProcessor> m_seatProcessors;
   CCriticalSection m_seatProcessorsMutex;
   // m_outputsInPreparation did not receive their done event yet
-  std::map<std::uint32_t, COutput> m_outputs, m_outputsInPreparation;
+  std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputs, m_outputsInPreparation;
   CCriticalSection m_outputsMutex;
   
   bool m_osCursorVisible = true;
@@ -122,8 +128,21 @@ protected:
   
   std::set<IDispResource*> m_dispResources;
   CCriticalSection m_dispResourcesMutex;
-  
+
+  bool m_inhibitSkinReload = false;
+
   std::string m_currentOutput;
+  // Set of outputs that show some part of our main surface as indicated by
+  // compositor
+  std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
+  // Size of our surface in "surface coordinates", i.e. without scaling applied
+  std::int32_t m_surfaceWidth, m_surfaceHeight;
+  std::int32_t m_scale = 1;
+  std::uint32_t m_currentConfigureSerial = 0;
+  bool m_firstSerialAcked = false;
+  std::uint32_t m_lastAckedSerial = 0;
+  // Whether this is the first call to SetFullScreen
+  bool m_isInitialSetFullScreen = true;
 };
 
 

@@ -36,9 +36,14 @@ CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::displa
     // surface to be
     if (m_configuredWidth != 0 && m_configuredHeight != 0)
     {
-      InvokeOnConfigure(m_configuredWidth, m_configuredHeight);
+      InvokeOnConfigure(serial, m_configuredWidth, m_configuredHeight);
     }
-    m_xdgSurface.ack_configure(serial);
+    else
+    {
+      // WinSystem does not get the configure notification, so ack must be sent
+      // here
+      AckConfigure(serial);
+    }
   };
   m_xdgToplevel.on_close() = [this]()
   {
@@ -60,6 +65,11 @@ void CShellSurfaceXdgShellUnstableV6::Initialize()
   m_surface.commit();
   // Make sure we get the initial configure before continuing
   m_display->roundtrip();
+}
+
+void CShellSurfaceXdgShellUnstableV6::AckConfigure(std::uint32_t serial)
+{
+  m_xdgSurface.ack_configure(serial);
 }
 
 CShellSurfaceXdgShellUnstableV6::~CShellSurfaceXdgShellUnstableV6()

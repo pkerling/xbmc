@@ -19,12 +19,16 @@
  */
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <set>
 #include <stdexcept>
 #include <tuple>
 
 #include <wayland-client-protocol.hpp>
+
+#include "threads/CriticalSection.h"
+#include "threads/SingleLock.h"
 
 namespace KODI
 {
@@ -41,7 +45,7 @@ class COutput
 {
 public:
   COutput(std::uint32_t globalName, wayland::output_t const & output, std::function<void()> doneHandler);
-  COutput(COutput&& other) = default;
+  ~COutput();
   
   wayland::output_t const& GetWaylandOutput() const
   {
@@ -57,6 +61,7 @@ public:
    */
   std::tuple<std::int32_t, std::int32_t> GetPosition() const
   {
+    CSingleLock lock(m_geometryCriticalSection);
     return std::make_tuple(m_x, m_y);
   }
   /**
@@ -65,14 +70,17 @@ public:
    */
   std::tuple<std::int32_t, std::int32_t> GetPhysicalSize() const
   {
+    CSingleLock lock(m_geometryCriticalSection);
     return std::make_tuple(m_physicalWidth, m_physicalHeight);
   }
   std::string const& GetMake() const
   {
+    CSingleLock lock(m_geometryCriticalSection);
     return m_make;
   }
   std::string const& GetModel() const
   {
+    CSingleLock lock(m_geometryCriticalSection);
     return m_model;
   }
   std::int32_t GetScale() const
@@ -113,22 +121,8 @@ public:
   {
     return m_modes;
   }
-  Mode const& GetCurrentMode() const
-  {
-    if (m_currentMode == m_modes.end())
-    {
-      throw std::runtime_error("Current mode not set");
-    }
-    return *m_currentMode;
-  }
-  Mode const& GetPreferredMode() const
-  {
-    if (m_preferredMode == m_modes.end())
-    {
-      throw std::runtime_error("Preferred mode not set");
-    }
-    return *m_preferredMode;
-  }
+  Mode const& GetCurrentMode() const;
+  Mode const& GetPreferredMode() const;
   
   float GetPixelRatioForMode(Mode const& mode) const;
   
@@ -139,12 +133,15 @@ private:
   std::uint32_t m_globalName;
   wayland::output_t m_output;
   std::function<void()> m_doneHandler;
-  
+
+  CCriticalSection m_geometryCriticalSection;
+  CCriticalSection m_iteratorCriticalSection;
+
   std::int32_t m_x = 0, m_y = 0;
   std::int32_t m_physicalWidth = 0, m_physicalHeight = 0;
   std::string m_make, m_model;
-  std::int32_t m_scale = 1; // default scale of 1 if no wl_output::scale is sent
-  
+  std::atomic<std::int32_t> m_scale = {1}; // default scale of 1 if no wl_output::scale is sent
+
   std::set<Mode> m_modes;
   // For std::set, insertion never invalidates existing iterators, and modes are
   // never removed, so the usage of iterators is safe

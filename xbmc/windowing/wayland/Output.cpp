@@ -32,6 +32,7 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
 
   m_output.on_geometry() = [this](std::int32_t x, std::int32_t y, std::int32_t physWidth, std::int32_t physHeight, wayland::output_subpixel subpixel, std::string const& make, std::string const& model, wayland::output_transform transform)
   {
+    CSingleLock lock(m_geometryCriticalSection);
     m_x = x;
     m_y = y;
     m_physicalWidth = physWidth;
@@ -45,6 +46,7 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
     // element and boolean information whether the element was actually added
     // which we do not need
     auto modeIterator = m_modes.emplace(width, height, refresh).first;
+    CSingleLock lock(m_iteratorCriticalSection);
     // Remember current and preferred mode
     // Current mode is the last one that was sent with current flag set
     if (flags & wayland::output_mode::current)
@@ -67,8 +69,39 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
   };
 }
 
+COutput::~COutput()
+{
+  // Reset event handlers - someone might still hold a reference to the output_t,
+  // causing events to be dispatched. They should not go to a deleted class.
+  m_output.on_geometry() = nullptr;
+  m_output.on_mode() = nullptr;
+  m_output.on_done() = nullptr;
+  m_output.on_scale() = nullptr;
+}
+
+const COutput::Mode& COutput::GetCurrentMode() const
+{
+  CSingleLock lock(m_iteratorCriticalSection);
+  if (m_currentMode == m_modes.end())
+  {
+    throw std::runtime_error("Current mode not set");
+  }
+  return *m_currentMode;
+}
+
+const COutput::Mode& COutput::GetPreferredMode() const
+{
+  CSingleLock lock(m_iteratorCriticalSection);
+  if (m_preferredMode == m_modes.end())
+  {
+    throw std::runtime_error("Preferred mode not set");
+  }
+  return *m_preferredMode;
+}
+
 float COutput::GetPixelRatioForMode(const Mode& mode) const
 {
+  CSingleLock lock(m_geometryCriticalSection);
   if (m_physicalWidth == 0 || m_physicalHeight == 0 || mode.width == 0 || mode.height == 0)
   {
     return 1.0f;

@@ -288,14 +288,30 @@ bool CDisplaySettings::OnSettingChanging(std::shared_ptr<const CSetting> setting
     SetCurrentResolution(newRes, false);
     g_graphicsContext.SetVideoResolution(newRes);
 
+    if (m_resolutionChangeInProgress)
+    {
+      // Do not recurse into showing dialogs
+      return true;
+    }
+
     // check if the old or the new resolution was/is windowed
     // in which case we don't show any prompt to the user
     if (oldRes != RES_WINDOW && newRes != RES_WINDOW && oldRes != newRes)
     {
       if (!m_resolutionChangeAborted)
       {
-        if (HELPERS::ShowYesNoDialogText(CVariant{13110}, CVariant{13111}, CVariant{""}, CVariant{""}, 15000) !=
-          DialogResponse::YES)
+        m_resolutionChangeInProgress = true;
+#if defined(HAVE_WAYLAND)
+        // If ReloadSkin() is called when a dialog is shown, it will get aborted,
+        // so reload the skin later
+        g_Windowing.SetInhibitSkinReload(true);
+#endif
+        auto response = HELPERS::ShowYesNoDialogText(CVariant{13110}, CVariant{13111}, CVariant{""}, CVariant{""}, 15000);
+#if defined(HAVE_WAYLAND)
+        g_Windowing.SetInhibitSkinReload(false);
+#endif
+        m_resolutionChangeInProgress = false;
+        if (response != DialogResponse::YES)
         {
           m_resolutionChangeAborted = true;
           return false;
@@ -313,10 +329,26 @@ bool CDisplaySettings::OnSettingChanging(std::shared_ptr<const CSetting> setting
     SetCurrentResolution(newRes, false);
     g_graphicsContext.SetVideoResolution(newRes, true);
 
+    if (m_resolutionChangeInProgress)
+    {
+      // Do not recurse into showing dialogs
+      return true;
+    }
+
     if (!m_resolutionChangeAborted)
     {
-      if (HELPERS::ShowYesNoDialogText(CVariant{13110}, CVariant{13111}, CVariant{""}, CVariant{""}, 10000) !=
-        DialogResponse::YES)
+      m_resolutionChangeInProgress = true;
+#if defined(HAVE_WAYLAND)
+      // If ReloadSkin() is called when a dialog is shown, it will get aborted,
+      // so reload the skin later
+      g_Windowing.SetInhibitSkinReload(true);
+#endif
+      auto response = HELPERS::ShowYesNoDialogText(CVariant{13110}, CVariant{13111}, CVariant{""}, CVariant{""}, 10000);
+#if defined(HAVE_WAYLAND)
+      g_Windowing.SetInhibitSkinReload(false);
+#endif
+      m_resolutionChangeInProgress = false;
+      if (response != DialogResponse::YES)
       {
         m_resolutionChangeAborted = true;
         return false;

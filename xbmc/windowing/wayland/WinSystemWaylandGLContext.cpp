@@ -22,6 +22,7 @@
 
 #include "Connection.h"
 #include "utils/log.h"
+#include "guilib/GraphicContext.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -56,7 +57,7 @@ bool CWinSystemWaylandGLContext::CreateNewWindow(const std::string& name,
     return false;
   }
 
-  return SetFullScreen(fullScreen, res, false);
+  return true;
 }
 
 bool CWinSystemWaylandGLContext::DestroyWindow()
@@ -75,25 +76,35 @@ bool CWinSystemWaylandGLContext::DestroyWindowSystem()
 
 bool CWinSystemWaylandGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
 {
-  auto width = res.iWidth;
-  auto height = res.iHeight;
-  
-  int currWidth, currHeight;
-  m_glContext.GetAttachedSize(currWidth, currHeight);
+  // FIXME See CWinSystemWayland::SetFullScreen()
+  CSingleLock lock(g_graphicsContext);
 
-  if (width != currWidth || height != currHeight)
-  {
-    m_glContext.Resize(width, height);
-  }
-  
   if (!CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays))
   {
     return false;
   }
+
+  // Look only at m_nWidth and m_nHeight which represent the actual wl_surface
+  // size instead of res.iWidth and res.iHeight, which are only a "wish"
   
-  if (!CRenderSystemGL::ResetRenderSystem(width, height, fullScreen, res.fRefreshRate))
+  int currWidth, currHeight;
+  m_glContext.GetAttachedSize(currWidth, currHeight);
+
+  // Change EGL surface size if necessary
+  if (currWidth != m_nWidth || currHeight != m_nHeight)
   {
-    return false;
+    CLog::LogF(LOGDEBUG, "Updating egl_window size to %dx%d", m_nWidth, m_nHeight);
+    m_glContext.Resize(m_nWidth, m_nHeight);
+  }
+
+  // Propagate changed dimensions to render system if necessary
+  if (m_nWidth != CRenderSystemGL::m_width || m_nHeight != CRenderSystemGL::m_height)
+  {
+    CLog::LogF(LOGDEBUG, "Resetting render system to %dx%d", m_nWidth, m_nHeight);
+    if (!CRenderSystemGL::ResetRenderSystem(m_nWidth, m_nHeight, fullScreen, res.fRefreshRate))
+    {
+      return false;
+    }
   }
   
   return true;

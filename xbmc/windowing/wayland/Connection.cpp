@@ -62,10 +62,7 @@ CConnection::CConnection(IConnectionHandler* handler)
   HandleRegistry();
   
   CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global interfaces");
-  if (m_display->roundtrip() < 0)
-  {
-    throw std::runtime_error("Wayland roundtrip failed");
-  }
+  m_display->roundtrip();
   CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrip complete");
   
   CheckRequiredGlobals();
