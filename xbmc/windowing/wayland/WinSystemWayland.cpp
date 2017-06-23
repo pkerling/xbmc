@@ -50,9 +50,9 @@ using namespace std::placeholders;
 namespace
 {
 
-// Caller should hold g_graphicsContext lock
 RESOLUTION FindMatchingCustomResolution(int width, int height, float refreshRate)
 {
+  CSingleLock lock(g_graphicsContext);
   for (size_t res = RES_DESKTOP; res < CDisplaySettings::GetInstance().ResolutionInfoSize(); ++res)
   {
     auto const& resInfo = CDisplaySettings::GetInstance().GetResolutionInfo(res);
