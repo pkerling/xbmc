@@ -13,7 +13,7 @@ set(SOURCES Connection.cpp
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.cpp
             WinEventsWayland.cpp
             WinSystemWayland.cpp
-            WinSystemWaylandGLContext.cpp)
+            WinSystemWaylandEGLContext.cpp)
 
 set(HEADERS Connection.h
             Output.h
@@ -25,6 +25,16 @@ set(HEADERS Connection.h
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.hpp
             WinEventsWayland.h
             WinSystemWayland.h
-            WinSystemWaylandGLContext.h)
+            WinSystemWaylandEGLContext.h)
+
+if(OPENGL_FOUND)
+  list(APPEND SOURCES WinSystemWaylandEGLContextGL.cpp)
+  list(APPEND HEADERS WinSystemWaylandEGLContextGL.h)
+endif()
+if(OPENGLES_FOUND)
+  list(APPEND SOURCES WinSystemWaylandEGLContextGLES.cpp)
+  list(APPEND HEADERS WinSystemWaylandEGLContextGLES.h)
+endif()
+
 
 core_add_library(windowing_WAYLAND)

@@ -19,10 +19,9 @@
  */
 #pragma once
 
-#include "GLContextEGL.h"
-#include "rendering/gl/RenderSystemGL.h"
+#include "rendering/gles/RenderSystemGLES.h"
 #include "utils/GlobalsHandling.h"
-#include "WinSystemWayland.h"
+#include "WinSystemWaylandEGLContext.h"
 
 namespace KODI
 {
@@ -31,37 +30,19 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CWinSystemWaylandGLContext : public CWinSystemWayland, public CRenderSystemGL
+class CWinSystemWaylandEGLContextGLES : public CWinSystemWaylandEGLContext, public CRenderSystemGLES
 {
 public:
-  CWinSystemWaylandGLContext() = default;
-  virtual ~CWinSystemWaylandGLContext() = default;
-
   bool InitWindowSystem() override;
-  bool CreateNewWindow(const std::string& name,
-                       bool fullScreen,
-                       RESOLUTION_INFO& res) override;
-  bool DestroyWindow() override;
-  bool DestroyWindowSystem() override;
-
-
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
-  EGLDisplay GetEGLDisplay() const;
-  EGLSurface GetEGLSurface() const;
-  EGLContext GetEGLContext() const;
-  EGLConfig GetEGLConfig() const;
-
 protected:
   void SetVSyncImpl(bool enable) override;
   void PresentRenderImpl(bool rendered) override;
-
-private:
-  CGLContextEGL m_glContext;
 };
 
 }
 }
 }
 
-XBMC_GLOBAL_REF(KODI::WINDOWING::WAYLAND::CWinSystemWaylandGLContext, g_Windowing);
-#define g_Windowing XBMC_GLOBAL_USE(KODI::WINDOWING::WAYLAND::CWinSystemWaylandGLContext)
+XBMC_GLOBAL_REF(KODI::WINDOWING::WAYLAND::CWinSystemWaylandEGLContextGLES, g_Windowing);
+#define g_Windowing XBMC_GLOBAL_USE(KODI::WINDOWING::WAYLAND::CWinSystemWaylandEGLContextGLES)
