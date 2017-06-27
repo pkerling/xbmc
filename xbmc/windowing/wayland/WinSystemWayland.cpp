@@ -33,6 +33,7 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
+#include "../linux/OSScreenSaverFreedesktop.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
@@ -46,6 +47,7 @@
 #include "utils/MathUtils.h"
 
 using namespace KODI::WINDOWING;
+using namespace KODI::WINDOWING::LINUX;
 using namespace KODI::WINDOWING::WAYLAND;
 using namespace std::placeholders;
 
@@ -884,6 +886,11 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
   {
     CLog::LogF(LOGINFO, "Using idle-inhibit-unstable-v1 protocol for screen saver inhibition");
     return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverIdleInhibitUnstableV1(m_connection->GetIdleInhibitManagerUnstableV1(), m_surface));
+  }
+  else if (COSScreenSaverFreedesktop::IsAvailable())
+  {
+    CLog::LogF(LOGINFO, "Using freedesktop.org DBus interface for screen saver inhibition");
+    return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverFreedesktop);
   }
   else
   {
