@@ -66,6 +66,7 @@ private:
 class IOSScreenSaver
 {
 public:
+  IOSScreenSaver() {}
   virtual ~IOSScreenSaver() {}
   /**
    * Do not allow the OS screen saver to become active
@@ -81,6 +82,11 @@ public:
    * MUST NOT produce any side-effects.
    */
   virtual void Uninhibit() = 0;
+
+private:
+  // Not designed to be copyable
+  IOSScreenSaver(IOSScreenSaver const& other) = delete;
+  IOSScreenSaver& operator=(IOSScreenSaver const& other) = delete;
 };
 
 /**
