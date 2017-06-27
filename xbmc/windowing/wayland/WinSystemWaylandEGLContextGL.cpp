@@ -28,7 +28,7 @@ using namespace KODI::WINDOWING::WAYLAND;
 
 bool CWinSystemWaylandEGLContextGL::InitWindowSystem()
 {
-  return CWinSystemWaylandEGLContext::InitWindowSystem(EGL_OPENGL_BIT, EGL_OPENGL_API);
+  return CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGL_OPENGL_BIT, EGL_OPENGL_API);
 }
 
 bool CWinSystemWaylandEGLContextGL::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
