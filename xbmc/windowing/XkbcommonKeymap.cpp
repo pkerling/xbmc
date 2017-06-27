@@ -210,7 +210,7 @@ CXkbcommonContext::~CXkbcommonContext()
 CXkbcommonKeymap*
 CXkbcommonContext::KeymapFromSharedMemory(int fd, std::size_t size)
 {
-  CMmap mmap(nullptr, size, PROT_READ, MAP_SHARED, fd, 0);
+  CMmap mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
   auto keymapString = static_cast<const char *> (mmap.data());
 
   xkb_keymap* keymap = xkb_keymap_new_from_string(m_context, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
