@@ -21,6 +21,7 @@
 #include <unistd.h>
 
 #include <cassert>
+#include <cmath>
 #include <limits>
 
 #include <linux/input-event-codes.h>
@@ -142,24 +143,33 @@ void CSeatInputProcessor::HandleOnCapabilities(wayland::seat_capability caps)
                          std::bind(&CSeatInputProcessor::HandleTouchCapability, this));
 }
 
+std::uint16_t CSeatInputProcessor::ConvertMouseCoordinate(double coord)
+{
+  return static_cast<std::uint16_t> (std::round(coord * m_coordinateScale));
+}
+
+void CSeatInputProcessor::SetMousePosFromSurface(double x, double y)
+{
+  m_pointerX = ConvertMouseCoordinate(x);
+  m_pointerY = ConvertMouseCoordinate(y);
+}
+
 void CSeatInputProcessor::HandlePointerCapability()
 {
-  m_pointer.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, std::int32_t surfaceX, std::int32_t surfaceY)
+  m_pointer.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, double surfaceX, double surfaceY)
   {
     m_handler->OnSetCursor(m_pointer, serial);
     m_handler->OnEnter(m_globalName, InputType::POINTER);
-    m_pointerX = wl_fixed_to_int(surfaceX);
-    m_pointerY = wl_fixed_to_int(surfaceY);
+    SetMousePosFromSurface(surfaceX, surfaceY);
     SendMouseMotion();
   };
   m_pointer.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
   {
     m_handler->OnLeave(m_globalName, InputType::POINTER);
   };
-  m_pointer.on_motion() = [this](std::uint32_t time, std::int32_t surfaceX, std::int32_t surfaceY)
+  m_pointer.on_motion() = [this](std::uint32_t time, double surfaceX, double surfaceY)
   {
-    m_pointerX = wl_fixed_to_int(surfaceX);
-    m_pointerY = wl_fixed_to_int(surfaceY);
+    SetMousePosFromSurface(surfaceX, surfaceY);
     SendMouseMotion();
   };
   m_pointer.on_button() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t button, wayland::pointer_button_state state)
@@ -202,8 +212,8 @@ void CSeatInputProcessor::SendMouseMotion()
   event.type = XBMC_MOUSEMOTION;
   event.motion =
   {
-    .x = static_cast<std::uint16_t> (m_pointerX * m_coordinateScale),
-    .y = static_cast<std::uint16_t> (m_pointerY * m_coordinateScale)
+    .x = m_pointerX,
+    .y = m_pointerY
   };
   m_handler->OnEvent(m_globalName, InputType::POINTER, event);
 }
@@ -215,8 +225,8 @@ void CSeatInputProcessor::SendMouseButton(unsigned char button, bool pressed)
   event.button =
   {
     .button = button,
-    .x = static_cast<std::uint16_t> (m_pointerX * m_coordinateScale),
-    .y = static_cast<std::uint16_t> (m_pointerY * m_coordinateScale)
+    .x = m_pointerX,
+    .y = m_pointerY
   };
   m_handler->OnEvent(m_globalName, InputType::POINTER, event);
 }

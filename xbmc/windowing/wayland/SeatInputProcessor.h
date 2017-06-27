@@ -128,7 +128,9 @@ private:
   void HandlePointerCapability();
   void HandleKeyboardCapability();
   void HandleTouchCapability();
-  
+
+  std::uint16_t ConvertMouseCoordinate(double coord);
+  void SetMousePosFromSurface(double x, double y);
   void SendMouseMotion();
   void SendMouseButton(unsigned char button, bool pressed);
   
@@ -146,6 +148,7 @@ private:
   wayland::touch_t m_touch;
   
   std::int32_t m_coordinateScale = 1;
+  // Pointer position in *scaled* coordinates
   std::uint16_t m_pointerX = 0;
   std::uint16_t m_pointerY = 0;
   
