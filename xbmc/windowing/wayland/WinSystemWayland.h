@@ -92,6 +92,8 @@ public:
   void GetConnectedOutputs(std::vector<std::string> *outputs);
 
 protected:
+  std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
+
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
   void HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);

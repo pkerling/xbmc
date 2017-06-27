@@ -33,6 +33,7 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
+#include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
@@ -44,6 +45,7 @@
 #include "WinEventsWayland.h"
 #include "utils/MathUtils.h"
 
+using namespace KODI::WINDOWING;
 using namespace KODI::WINDOWING::WAYLAND;
 using namespace std::placeholders;
 
@@ -875,3 +877,17 @@ void* CWinSystemWayland::GetVaDisplay()
   return vaGetDisplayWl(reinterpret_cast<wl_display*> (m_connection->GetDisplay().c_ptr()));
 }
 #endif
+
+std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
+{
+  if (m_surface && m_connection->GetIdleInhibitManagerUnstableV1())
+  {
+    CLog::LogF(LOGINFO, "Using idle-inhibit-unstable-v1 protocol for screen saver inhibition");
+    return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverIdleInhibitUnstableV1(m_connection->GetIdleInhibitManagerUnstableV1(), m_surface));
+  }
+  else
+  {
+    CLog::LogF(LOGINFO, "No supported method for screen saver inhibition found");
+    return nullptr;
+  }
+}
