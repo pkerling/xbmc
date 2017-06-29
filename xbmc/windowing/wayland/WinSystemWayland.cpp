@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <numeric>
 
 #if defined(HAVE_LIBVA)
 #include <va/va_wayland.h>
@@ -165,9 +166,10 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   {
     if (auto output = FindOutputByWaylandOutput(wloutput))
     {
-      CLog::Log(LOGDEBUG, "Entering output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
+      CLog::Log(LOGDEBUG, "Entering output \"%s\" with scale %d and %.3f dpi", UserFriendlyOutputName(output).c_str(), output->GetScale(), output->GetCurrentDpi());
       m_surfaceOutputs.emplace(output);
       UpdateBufferScale();
+      UpdateTouchDpi();
     }
     else
     {
@@ -181,6 +183,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
       CLog::Log(LOGDEBUG, "Leaving output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
       m_surfaceOutputs.erase(output);
       UpdateBufferScale();
+      UpdateTouchDpi();
     }
     else
     {
@@ -879,6 +882,20 @@ void CWinSystemWayland::ApplyBufferScale(std::int32_t scale)
   {
     seatProcessor.second.SetCoordinateScale(scale);
   }
+}
+
+void CWinSystemWayland::UpdateTouchDpi()
+{
+  // If we have multiple outputs with wildly different DPI, this is really just
+  // guesswork to get a halfway reasonable value. min/max would probably also be OK.
+  float dpiSum = std::accumulate(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(),  0.0f,
+                                 [](float acc, std::shared_ptr<COutput> const& output)
+                                 {
+                                   return acc + output->GetCurrentDpi();
+                                 });
+  float dpi = dpiSum / m_surfaceOutputs.size();
+  CLog::LogF(LOGDEBUG, "Computed average dpi of %.3f for touch handler", dpi);
+  CGenericTouchInputHandler::GetInstance().SetScreenDPI(dpi);
 }
 
 #if defined(HAVE_LIBVA)

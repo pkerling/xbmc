@@ -125,6 +125,8 @@ public:
   Mode const& GetPreferredMode() const;
   
   float GetPixelRatioForMode(Mode const& mode) const;
+  float GetDpiForMode(Mode const& mode) const;
+  float GetCurrentDpi() const;
   
 private:
   COutput(COutput const& other) = delete;

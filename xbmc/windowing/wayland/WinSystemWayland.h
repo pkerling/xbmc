@@ -109,6 +109,7 @@ protected:
   void OnOutputDone(std::uint32_t name);
   void UpdateBufferScale();
   void ApplyBufferScale(std::int32_t scale);
+  void UpdateTouchDpi();
 
   void AckConfigure(std::uint32_t serial);
   
