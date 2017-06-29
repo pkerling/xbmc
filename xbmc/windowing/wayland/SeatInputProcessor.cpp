@@ -28,6 +28,7 @@
 #include <wayland-client-protocol.hpp>
 
 #include "input/MouseStat.h"
+#include "input/touch/generic/GenericTouchInputHandler.h"
 #include "SeatInputProcessor.h"
 #include "utils/log.h"
 
@@ -344,7 +345,6 @@ XBMC_Event CSeatInputProcessor::SendKey(unsigned char scancode, XBMCKey key, std
   event.type = static_cast<unsigned char> (pressed ? XBMC_KEYDOWN : XBMC_KEYUP);
   event.key.keysym =
   {
-    // The scancode is a char, which is not enough to hold the value from Wayland anyway
     .scancode = scancode,
     .sym = key,
     .mod = m_keymap->ActiveXBMCModifiers(),
@@ -374,4 +374,90 @@ void CSeatInputProcessor::CKeyRepeatCallback::OnTimeout()
 
 void CSeatInputProcessor::HandleTouchCapability()
 {
+  m_touch.on_down() = [this](std::uint32_t serial, std::uint32_t time, wayland::surface_t surface, std::int32_t id, double x, double y)
+  {
+    // Find free Kodi pointer number
+    int kodiPointer = -1;
+    // Not optimal, but irrelevant for the small number of iterations
+    for (int testPointer = 0; testPointer < TOUCH_MAX_POINTERS; testPointer++)
+    {
+      if (std::all_of(m_touchPoints.cbegin(), m_touchPoints.cend(),
+                      [=](decltype(m_touchPoints)::value_type const& pair)
+                      {
+                        return (pair.second.kodiPointerNumber != testPointer);
+                      }))
+      {
+        kodiPointer = testPointer;
+        break;
+      }
+    }
+
+    if (kodiPointer != -1)
+    {
+      auto it = m_touchPoints.emplace(std::piecewise_construct, std::forward_as_tuple(id), std::forward_as_tuple(time, kodiPointer, x * m_coordinateScale, y * m_coordinateScale, 0.0f)).first;
+      SendTouchPointEvent(TouchInputDown, it->second);
+    }
+  };
+  m_touch.on_up() = [this](std::uint32_t serial, std::uint32_t time, std::int32_t id)
+  {
+    auto it = m_touchPoints.find(id);
+    if (it != m_touchPoints.end())
+    {
+      auto& point = it->second;
+      point.lastEventTime = time;
+      SendTouchPointEvent(TouchInputUp, point);
+      m_touchPoints.erase(it);
+    }
+  };
+  m_touch.on_motion() = [this](std::uint32_t time, std::int32_t id, double x, double y)
+  {
+    auto it = m_touchPoints.find(id);
+    if (it != m_touchPoints.end())
+    {
+      auto& point = it->second;
+      point.x = x * m_coordinateScale;
+      point.y = y * m_coordinateScale;
+      point.lastEventTime = time;
+      SendTouchPointEvent(TouchInputMove, point);
+    }
+  };
+  m_touch.on_cancel() = [this]()
+  {
+    // TouchInputAbort aborts for all pointers, so it does not matter which is specified
+    if (!m_touchPoints.empty())
+    {
+      SendTouchPointEvent(TouchInputAbort, m_touchPoints.begin()->second);
+    }
+    m_touchPoints.clear();
+  };
+  m_touch.on_shape() = [this](std::int32_t id, double major, double minor)
+  {
+    auto it = m_touchPoints.find(id);
+    if (it != m_touchPoints.end())
+    {
+      auto& point = it->second;
+      // Kodi only supports size without shape, so use average of both axes
+      point.size = ((major + minor) / 2.0) * m_coordinateScale;
+      UpdateTouchPoint(point);
+    }
+  };
+}
+
+void CSeatInputProcessor::SendTouchPointEvent(TouchInput event, const TouchPoint& point)
+{
+  if (event == TouchInputMove)
+  {
+    for (auto const& point : m_touchPoints)
+    {
+      // Contrary to the docs, this must be called before HandleTouchInput or the
+      // position will not be updated and gesture detection will not work
+      UpdateTouchPoint(point.second);
+    }
+  }
+  CGenericTouchInputHandler::GetInstance().HandleTouchInput(event, point.x, point.y, point.lastEventTime * INT64_C(1000000), point.kodiPointerNumber, point.size);
+}
+
+void CSeatInputProcessor::UpdateTouchPoint(const TouchPoint& point)
+{
+  CGenericTouchInputHandler::GetInstance().UpdateTouchPointer(point.kodiPointerNumber, point.x, point.y, point.lastEventTime * INT64_C(1000000), point.size);
 }

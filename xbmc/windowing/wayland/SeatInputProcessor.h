@@ -19,10 +19,12 @@
  */
 #pragma once
 
+#include <map>
 #include <memory>
 
 #include <wayland-client-protocol.hpp>
 
+#include "input/touch/ITouchInputHandler.h"
 #include "threads/Timer.h"
 #include "windowing/XBMC_events.h"
 #include "windowing/XkbcommonKeymap.h"
@@ -136,6 +138,24 @@ private:
   
   void ConvertAndSendKey(std::uint32_t scancode, bool pressed);
   XBMC_Event SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed);
+
+  struct TouchPoint
+  {
+    std::uint32_t lastEventTime;
+    /// Pointer number passed to \ref ITouchInputHandler
+    std::int32_t kodiPointerNumber;
+    /**
+     * Last coordinates - needed for TouchInputUp events where Wayland does not
+     * send new coordinates but Kodi needs them anyway
+     */
+    float x, y, size;
+    TouchPoint(std::uint32_t initialEventTime, std::int32_t kodiPointerNumber, float x, float y, float size)
+    : lastEventTime(initialEventTime), kodiPointerNumber(kodiPointerNumber), x(x), y(y), size(size)
+    {}
+  };
+
+  void SendTouchPointEvent(TouchInput event, TouchPoint const& point);
+  void UpdateTouchPoint(TouchPoint const& point);
   
   std::uint32_t m_globalName;
   wayland::seat_t m_seat;
@@ -170,6 +190,9 @@ private:
   };
   CKeyRepeatCallback m_keyRepeatCallback;
   CTimer m_keyRepeatTimer;
+
+  /// Map of wl_touch point id to data
+  std::map<std::int32_t, TouchPoint> m_touchPoints;
 };
 
 }

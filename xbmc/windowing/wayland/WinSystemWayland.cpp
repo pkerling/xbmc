@@ -33,8 +33,9 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
+#include "input/touch/generic/GenericTouchActionHandler.h"
+#include "input/touch/generic/GenericTouchInputHandler.h"
 #include "linux/PlatformConstants.h"
-#include "../linux/OSScreenSaverFreedesktop.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
@@ -45,6 +46,7 @@
 #include "utils/log.h"
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
+#include "windowing/linux/OSScreenSaverFreedesktop.h"
 #include "WinEventsWayland.h"
 
 using namespace KODI::WINDOWING;
@@ -124,6 +126,8 @@ bool CWinSystemWayland::InitWindowSystem()
   // pointer is by default not on this window, will be immediately rectified
   // by the enter() events if it is
   CServiceBroker::GetInputManager().SetMouseActive(false);
+  // Always use the generic touch action handler
+  CGenericTouchInputHandler::GetInstance().RegisterHandler(&CGenericTouchActionHandler::GetInstance());
 
   return CWinSystemBase::InitWindowSystem();
 }
@@ -146,6 +150,9 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_surfaceOutputs.clear();
 
   m_connection.reset();
+
+  CGenericTouchInputHandler::GetInstance().UnregisterHandler();
+
   return CWinSystemBase::DestroyWindowSystem();
 }
 
