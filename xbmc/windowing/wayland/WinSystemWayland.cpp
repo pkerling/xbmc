@@ -33,6 +33,7 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
+#include "linux/PlatformConstants.h"
 #include "../linux/OSScreenSaverFreedesktop.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
@@ -42,9 +43,9 @@
 #include "ShellSurfaceXdgShellUnstableV6.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
 #include "WinEventsWayland.h"
-#include "utils/MathUtils.h"
 
 using namespace KODI::WINDOWING;
 using namespace KODI::WINDOWING::LINUX;
@@ -186,12 +187,12 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   auto xdgShell = m_connection->GetXdgShellUnstableV6();
   if (xdgShell)
   {
-    m_shellSurface.reset(new CShellSurfaceXdgShellUnstableV6(m_connection->GetDisplay(), xdgShell, m_surface, name, "kodi"));
+    m_shellSurface.reset(new CShellSurfaceXdgShellUnstableV6(m_connection->GetDisplay(), xdgShell, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   }
   else
   {
     CLog::LogF(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
-    m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));
+    m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   }
 
   // Just remember initial width/height for context creation
