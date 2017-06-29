@@ -31,6 +31,7 @@ namespace KODI
 namespace JOYSTICK
 {
   class IInputHandler;
+  class IInputProvider;
 }
 
 namespace GAME
@@ -40,17 +41,17 @@ namespace GAME
   class CPort
   {
   public:
-    CPort(JOYSTICK::IInputHandler* inputHandler, CGameClient& gameClient);
+    CPort(JOYSTICK::IInputHandler* gameInput, CGameClient& gameClient);
     ~CPort();
 
-    void RegisterDevice(PERIPHERALS::CPeripheral *device);
-    void UnregisterDevice(PERIPHERALS::CPeripheral *device);
+    void RegisterInput(JOYSTICK::IInputProvider *provider);
+    void UnregisterInput(JOYSTICK::IInputProvider *provider);
 
-    JOYSTICK::IInputHandler *InputHandler() { return m_inputHandler; }
+    JOYSTICK::IInputHandler *InputHandler() { return m_gameInput; }
 
   private:
-    JOYSTICK::IInputHandler* const m_inputHandler;
-    std::unique_ptr<JOYSTICK::IInputHandler> m_controller;
+    JOYSTICK::IInputHandler* const m_gameInput;
+    std::unique_ptr<JOYSTICK::IInputHandler> m_appInput;
     std::unique_ptr<JOYSTICK::IInputHandler> m_inputSink;
   };
 }

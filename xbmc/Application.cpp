@@ -97,10 +97,6 @@
 
 #include "input/KeyboardLayoutManager.h"
 
-#ifdef HAS_SDL
-#include <SDL/SDL.h>
-#endif
-
 #ifdef HAS_UPNP
 #include "network/upnp/UPnP.h"
 #include "filesystem/UPnPDirectory.h"
@@ -677,47 +673,27 @@ bool CApplication::CreateGUI()
   m_frameMoveGuard.lock();
 
   m_renderGUI = true;
-#ifdef HAS_SDL
-  CLog::Log(LOGNOTICE, "Setup SDL");
-
-  /* Clean up on exit, exit on window close and interrupt */
-  atexit(SDL_Quit);
-
-  uint32_t sdlFlags = 0;
-
-#if defined(TARGET_DARWIN_OSX)
-  sdlFlags |= SDL_INIT_VIDEO;
-#endif
-
-  //depending on how it's compiled, SDL periodically calls XResetScreenSaver when it's fullscreen
-  //this might bring the monitor out of standby, so we have to disable it explicitly
-  //by passing 0 for overwrite to setsenv, the user can still override this by setting the environment variable
-#if defined(TARGET_POSIX) && !defined(TARGET_DARWIN)
-  setenv("SDL_VIDEO_ALLOW_SCREENSAVER", "1", 0);
-#endif
-
-#endif // HAS_SDL
-
-  m_bSystemScreenSaverEnable = g_Windowing.IsSystemScreenSaverEnabled();
-  g_Windowing.EnableSystemScreenSaver(false);
-
-#ifdef HAS_SDL
-  if (SDL_Init(sdlFlags) != 0)
-  {
-    CLog::Log(LOGFATAL, "XBAppEx: Unable to initialize SDL: %s", SDL_GetError());
-    return false;
-  }
-  #if defined(TARGET_DARWIN)
-  // SDL_Init will install a handler for segfaults, restore the default handler.
-  signal(SIGSEGV, SIG_DFL);
-  #endif
-#endif
 
   if (!g_Windowing.InitWindowSystem())
   {
     CLog::Log(LOGFATAL, "CApplication::Create: Unable to init windowing system");
     return false;
   }
+
+  // Set default screen saver mode
+  auto screensaverModeSetting = std::static_pointer_cast<CSettingString>(m_ServiceManager->GetSettings().GetSetting(CSettings::SETTING_SCREENSAVER_MODE));
+  // Can only set this after windowing has been initialized since it depends on it
+  if (g_Windowing.GetOSScreenSaver())
+  {
+    // If OS has a screen saver, use it by default
+    screensaverModeSetting->SetDefault("");
+  }
+  else
+  {
+    // If OS has no screen saver, use Kodi one by default
+    screensaverModeSetting->SetDefault("screensaver.xbmc.builtin.dim");
+  }
+  CheckOSScreenSaverInhibitionSetting();
 
   // Retrieve the matching resolution based on GUI settings
   bool sav_res = false;
@@ -1402,6 +1378,10 @@ void CApplication::OnSettingChanged(std::shared_ptr<const CSetting> setting)
   {
     CGUIMessage msg(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
     g_windowManager.SendThreadMessage(msg);
+  }
+  else if (settingId == CSettings::SETTING_SCREENSAVER_MODE)
+  {
+    CheckOSScreenSaverInhibitionSetting();
   }
   else if (StringUtils::StartsWithNoCase(settingId, "audiooutput."))
   { // AE is master of audio settings and needs to be informed first
@@ -2760,6 +2740,9 @@ bool CApplication::Cleanup()
     // unloading
     CScriptInvocationManager::GetInstance().Uninitialize();
 
+    m_globalScreensaverInhibitor.Release();
+    m_screensaverInhibitor.Release();
+
     g_Windowing.DestroyRenderSystem();
     g_Windowing.DestroyWindow();
     g_Windowing.DestroyWindowSystem();
@@ -2840,9 +2823,6 @@ void CApplication::Stop(int exitCode)
 
     g_alarmClock.StopThread();
 
-    if( m_bSystemScreenSaverEnable )
-      g_Windowing.EnableSystemScreenSaver(true);
-
     CLog::Log(LOGNOTICE, "Storing total System Uptime");
     g_sysinfo.SetTotalUptime(g_sysinfo.GetTotalUptime() + (int)(CTimeUtils::GetFrameTime() / 60000));
 
@@ -2899,14 +2879,9 @@ void CApplication::Stop(int exitCode)
 #ifdef HAS_FILESYSTEM_SFTP
     CSFTPSessionManager::DisconnectAllSessions();
 #endif
-    VECADDONS addons;
-    CServiceBroker::GetBinaryAddonCache().GetAddons(addons, ADDON_VFS);
-    for (auto& it : addons)
-    {
-      AddonPtr addon = CServiceBroker::GetBinaryAddonCache().GetAddonInstance(it->ID(), ADDON_VFS);
-      VFSEntryPtr vfs = std::static_pointer_cast<CVFSEntry>(addon);
-      vfs->DisconnectAll();
-    }
+
+    for (const auto& vfsAddon : CServiceBroker::GetVFSAddonCache().GetAddonInstances())
+      vfsAddon->DisconnectAll();
 
 #if defined(TARGET_POSIX) && defined(HAS_FILESYSTEM_SMB)
     smb.Deinit();
@@ -3990,18 +3965,50 @@ bool CApplication::WakeUpScreenSaver(bool bPowerOffKeyPressed /* = false */)
     return false;
 }
 
+void CApplication::CheckOSScreenSaverInhibitionSetting()
+{
+  // Kodi screen saver overrides OS one: always inhibit OS screen saver then
+  if (!m_ServiceManager->GetSettings().GetString(CSettings::SETTING_SCREENSAVER_MODE).empty() && g_Windowing.GetOSScreenSaver())
+  {
+    if (!m_globalScreensaverInhibitor)
+    {
+      m_globalScreensaverInhibitor = g_Windowing.GetOSScreenSaver()->CreateInhibitor();
+    }
+  }
+  else if (m_globalScreensaverInhibitor)
+  {
+    m_globalScreensaverInhibitor.Release();
+  }
+}
+
 void CApplication::CheckScreenSaverAndDPMS()
 {
-  if (!m_dpmsIsActive)
-    g_Windowing.ResetOSScreensaver();
-
   bool maybeScreensaver =
       !m_dpmsIsActive && !m_screensaverActive
       && !m_ServiceManager->GetSettings().GetString(CSettings::SETTING_SCREENSAVER_MODE).empty();
   bool maybeDPMS =
       !m_dpmsIsActive && m_dpms->IsSupported()
       && m_ServiceManager->GetSettings().GetInt(CSettings::SETTING_POWERMANAGEMENT_DISPLAYSOFF) > 0;
+  // whether the current state of the application should be regarded as active even when there is no
+  // explicit user activity such as input
+  bool haveIdleActivity =
+    // * Are we playing a video and it is not paused?
+    (m_pPlayer->IsPlayingVideo() && !m_pPlayer->IsPaused())
+    // * Are we playing some music in fullscreen vis?
+    || (m_pPlayer->IsPlayingAudio() && g_windowManager.GetActiveWindow() == WINDOW_VISUALISATION
+        && !m_ServiceManager->GetSettings().GetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION).empty());
 
+  // Handle OS screen saver state
+  if (haveIdleActivity && g_Windowing.GetOSScreenSaver())
+  {
+    // Always inhibit OS screen saver during these kinds of activities
+    m_screensaverInhibitor = g_Windowing.GetOSScreenSaver()->CreateInhibitor();
+  }
+  else if (m_screensaverInhibitor)
+  {
+    m_screensaverInhibitor.Release();
+  }
+  
   // Has the screen saver window become active?
   if (maybeScreensaver && g_windowManager.IsWindowActive(WINDOW_SCREENSAVER))
   {
@@ -4018,11 +4025,7 @@ void CApplication::CheckScreenSaverAndDPMS()
   if (!maybeScreensaver && !maybeDPMS) return;  // Nothing to do.
 
   // See if we need to reset timer.
-  // * Are we playing a video and it is not paused?
-  if ((m_pPlayer->IsPlayingVideo() && !m_pPlayer->IsPaused())
-      // * Are we playing some music in fullscreen vis?
-      || (m_pPlayer->IsPlayingAudio() && g_windowManager.GetActiveWindow() == WINDOW_VISUALISATION
-          && !m_ServiceManager->GetSettings().GetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION).empty()))
+  if (haveIdleActivity)
   {
     ResetScreenSaverTimer();
     return;
@@ -4393,7 +4396,7 @@ bool CApplication::ExecuteXBMCAction(std::string actionStr, const CGUIListItemPt
   {
     // try translating the action from our ButtonTranslator
     unsigned int actionID;
-    if (CActionTranslator::TranslateString(actionStr.c_str(), actionID))
+    if (CActionTranslator::TranslateString(actionStr, actionID))
     {
       OnAction(CAction(actionID));
       return true;
@@ -4573,14 +4576,8 @@ void CApplication::ProcessSlow()
   CSFTPSessionManager::ClearOutIdleSessions();
 #endif
 
-  VECADDONS addons;
-  CServiceBroker::GetBinaryAddonCache().GetAddons(addons, ADDON_VFS);
-  for (auto& it : addons)
-  {
-    AddonPtr addon = CServiceBroker::GetBinaryAddonCache().GetAddonInstance(it->ID(), ADDON_VFS);
-    VFSEntryPtr vfs = std::static_pointer_cast<CVFSEntry>(addon);
-    vfs->ClearOutIdle();
-  }
+  for (const auto& vfsAddon : CServiceBroker::GetVFSAddonCache().GetAddonInstances())
+    vfsAddon->ClearOutIdle();
 
   g_mediaManager.ProcessEvents();
 
@@ -5216,14 +5213,8 @@ void CApplication::CloseNetworkShares()
   CSFTPSessionManager::DisconnectAllSessions();
 #endif
 
-  VECADDONS addons;
-  CServiceBroker::GetBinaryAddonCache().GetAddons(addons, ADDON_VFS);
-  for (auto& it : addons)
-  {
-    AddonPtr addon = CServiceBroker::GetBinaryAddonCache().GetAddonInstance(it->ID(), ADDON_VFS);
-    VFSEntryPtr vfs = std::static_pointer_cast<CVFSEntry>(addon);
-    vfs->DisconnectAll();
-  }
+  for (const auto& vfsAddon : CServiceBroker::GetVFSAddonCache().GetAddonInstances())
+    vfsAddon->DisconnectAll();
 }
 
 void CApplication::RegisterActionListener(IActionListener *listener)

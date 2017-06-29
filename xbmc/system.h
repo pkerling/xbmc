@@ -27,12 +27,7 @@
 /*****************
  * All platforms
  *****************/
-#define HAS_DVD_SWSCALE
-#define HAS_VideoPlayer
 #define HAS_EVENT_SERVER
-#define HAS_SCREENSAVER
-#define HAS_VISUALISATION
-#define HAS_ADSPADDONS
 
 #ifdef HAVE_LIBMICROHTTPD
 #define HAS_WEB_SERVER
@@ -41,7 +36,6 @@
 
 #define HAS_JSONRPC
 
-#define HAS_FILESYSTEM
 #define HAS_FILESYSTEM_CDDA
 
 #ifdef HAVE_LIBSMBCLIENT
