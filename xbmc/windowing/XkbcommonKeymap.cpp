@@ -314,9 +314,14 @@ XBMCMod CXkbcommonKeymap::ActiveXBMCModifiers() const
 
 XBMCKey CXkbcommonKeymap::XBMCKeyForKeysym(xkb_keysym_t sym)
 {
-  if (sym >= 0x20 /* ASCII space */ && sym <= 0x7E /* ASCII tilde */)
+  if (sym >= 'A' && sym <= 'Z')
   {
-    // ASCII printable character range is code-compatible
+    // Uppercase ASCII characters must be lowercased as XBMCKey is modifier-invariant
+    return static_cast<XBMCKey> (sym + 'a' - 'A');
+  }
+  else if (sym >= 0x20 /* ASCII space */ && sym <= 0x7E /* ASCII tilde */)
+  {
+    // Rest of ASCII printable character range is code-compatible
     return static_cast<XBMCKey> (sym);
   }
   
