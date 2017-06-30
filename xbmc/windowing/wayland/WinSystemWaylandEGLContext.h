@@ -53,7 +53,7 @@ protected:
    * Inheriting classes should override InitWindowSystem() without parameters
    * and call this function there with appropriate parameters
    */
-  bool InitWindowSystem(EGLint renderableType, EGLint apiType);
+  bool InitWindowSystemEGL(EGLint renderableType, EGLint apiType);
 
   CGLContextEGL m_eglContext;
 };

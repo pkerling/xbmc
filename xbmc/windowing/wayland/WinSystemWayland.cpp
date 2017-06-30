@@ -33,6 +33,9 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
+#include "linux/PlatformConstants.h"
+#include "../linux/OSScreenSaverFreedesktop.h"
+#include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
@@ -40,10 +43,12 @@
 #include "ShellSurfaceXdgShellUnstableV6.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
+#include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
 #include "WinEventsWayland.h"
-#include "utils/MathUtils.h"
 
+using namespace KODI::WINDOWING;
+using namespace KODI::WINDOWING::LINUX;
 using namespace KODI::WINDOWING::WAYLAND;
 using namespace std::placeholders;
 
@@ -182,12 +187,12 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   auto xdgShell = m_connection->GetXdgShellUnstableV6();
   if (xdgShell)
   {
-    m_shellSurface.reset(new CShellSurfaceXdgShellUnstableV6(m_connection->GetDisplay(), xdgShell, m_surface, name, "kodi"));
+    m_shellSurface.reset(new CShellSurfaceXdgShellUnstableV6(m_connection->GetDisplay(), xdgShell, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   }
   else
   {
     CLog::LogF(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
-    m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, "kodi"));
+    m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   }
 
   // Just remember initial width/height for context creation
@@ -875,3 +880,22 @@ void* CWinSystemWayland::GetVaDisplay()
   return vaGetDisplayWl(reinterpret_cast<wl_display*> (m_connection->GetDisplay().c_ptr()));
 }
 #endif
+
+std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
+{
+  if (m_surface && m_connection->GetIdleInhibitManagerUnstableV1())
+  {
+    CLog::LogF(LOGINFO, "Using idle-inhibit-unstable-v1 protocol for screen saver inhibition");
+    return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverIdleInhibitUnstableV1(m_connection->GetIdleInhibitManagerUnstableV1(), m_surface));
+  }
+  else if (COSScreenSaverFreedesktop::IsAvailable())
+  {
+    CLog::LogF(LOGINFO, "Using freedesktop.org DBus interface for screen saver inhibition");
+    return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverFreedesktop);
+  }
+  else
+  {
+    CLog::LogF(LOGINFO, "No supported method for screen saver inhibition found");
+    return nullptr;
+  }
+}

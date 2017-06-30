@@ -26,7 +26,7 @@
 
 using namespace KODI::WINDOWING::WAYLAND;
 
-bool CWinSystemWaylandEGLContext::InitWindowSystem(EGLint renderableType, EGLint apiType)
+bool CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGLint renderableType, EGLint apiType)
 {
   if (!CWinSystemWayland::InitWindowSystem())
   {

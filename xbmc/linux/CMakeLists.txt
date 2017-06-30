@@ -12,6 +12,7 @@ set(HEADERS ConvUtils.h
             DllBCM.h
             LinuxResourceCounter.h
             LinuxTimezone.h
+            PlatformConstants.h
             PlatformDefs.h
             PlatformInclude.h
             PosixMountProvider.h

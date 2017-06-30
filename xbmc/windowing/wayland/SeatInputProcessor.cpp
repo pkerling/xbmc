@@ -164,8 +164,6 @@ void CSeatInputProcessor::HandlePointerCapability()
   };
   m_pointer.on_button() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t button, wayland::pointer_button_state state)
   {
-    // Keep track of currently pressed buttons, we need that for motion events
-    // FIXME Is the state actually used?
     int xbmcButton = WaylandToXbmcButton(button);
     if (xbmcButton < 0)
     {

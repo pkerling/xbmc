@@ -62,6 +62,7 @@ public:
   wayland::shell_t GetShell();
   wayland::zxdg_shell_v6_t GetXdgShellUnstableV6();
   wayland::shm_t GetShm();
+  wayland::zwp_idle_inhibit_manager_v1_t GetIdleInhibitManagerUnstableV1();
   
 private:
   void CheckRequiredGlobals();
@@ -89,6 +90,7 @@ private:
   wayland::shell_t m_shell;
   wayland::zxdg_shell_v6_t m_xdgShellUnstableV6;
   wayland::shm_t m_shm;
+  wayland::zwp_idle_inhibit_manager_v1_t m_idleInhibitManagerUnstableV1;
 };
 
 }
