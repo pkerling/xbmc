@@ -752,7 +752,7 @@ void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 
   auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct,
                                                  std::forward_as_tuple(name),
-                                                 std::forward_as_tuple(name, seat, dataDevice, *this));
+                                                 std::forward_as_tuple(name, seat, dataDevice, static_cast<IInputHandler&> (*this)));
   newSeatEmplace.first->second.SetCoordinateScale(m_scale);
 }
 
