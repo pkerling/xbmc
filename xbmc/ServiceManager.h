@@ -28,6 +28,7 @@ class CAddonMgr;
 class CBinaryAddonManager;
 class CBinaryAddonCache;
 class CVFSAddonCache;
+class CServiceAddonManager;
 }
 
 namespace ActiveAE {
@@ -71,6 +72,8 @@ namespace PERIPHERALS
   class CPeripherals;
 }
 
+class CInputManager;
+
 class CServiceManager
 {
 public:
@@ -88,6 +91,7 @@ public:
   ADDON::CBinaryAddonManager& GetBinaryAddonManager();
   ADDON::CBinaryAddonCache& GetBinaryAddonCache();
   ADDON::CVFSAddonCache& GetVFSAddonCache();
+  ADDON::CServiceAddonManager& GetServiceAddons();
   ANNOUNCEMENT::CAnnouncementManager& GetAnnouncementManager();
 #ifdef HAS_PYTHON
   XBPython& GetXBPython();
@@ -107,6 +111,7 @@ public:
 
   CSettings& GetSettings();
   CFavouritesService& GetFavouritesService();
+  CInputManager &GetInputManager();
 
 protected:
   struct delete_dataCacheCore
@@ -133,6 +138,7 @@ protected:
   std::unique_ptr<ADDON::CBinaryAddonManager> m_binaryAddonManager;
   std::unique_ptr<ADDON::CBinaryAddonCache> m_binaryAddonCache;
   std::unique_ptr<ADDON::CVFSAddonCache> m_vfsAddonCache;
+  std::unique_ptr<ADDON::CServiceAddonManager> m_serviceAddons;
   std::unique_ptr<ANNOUNCEMENT::CAnnouncementManager> m_announcementManager;
 #ifdef HAS_PYTHON
   std::unique_ptr<XBPython> m_XBPython;
@@ -147,4 +153,5 @@ protected:
   std::unique_ptr<KODI::GAME::CGameServices> m_gameServices;
   std::unique_ptr<PERIPHERALS::CPeripherals> m_peripherals;
   std::unique_ptr<CFavouritesService, delete_favouritesService> m_favouritesService;
+  std::unique_ptr<CInputManager> m_inputManager;
 };

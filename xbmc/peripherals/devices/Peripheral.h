@@ -29,12 +29,12 @@
 
 class TiXmlDocument;
 class CSetting;
+class IKeymap;
 
 namespace KODI
 {
 namespace JOYSTICK
 {
-  class IActionMap;
   class IButtonMapper;
   class IDriverHandler;
   class IDriverReceiver;
@@ -61,7 +61,7 @@ namespace PERIPHERALS
 
   public:
     CPeripheral(CPeripherals& manager, const PeripheralScanResult& scanResult, CPeripheralBus* bus);
-    virtual ~CPeripheral(void);
+    ~CPeripheral(void) override;
 
     bool operator ==(const CPeripheral &right) const;
     bool operator !=(const CPeripheral &right) const;
@@ -202,15 +202,15 @@ namespace PERIPHERALS
     virtual void UnregisterJoystickDriverHandler(KODI::JOYSTICK::IDriverHandler* handler) { }
 
     // implementation of IInputProvider
-    virtual void RegisterInputHandler(KODI::JOYSTICK::IInputHandler* handler, bool bPromiscuous);
-    virtual void UnregisterInputHandler(KODI::JOYSTICK::IInputHandler* handler);
+    void RegisterInputHandler(KODI::JOYSTICK::IInputHandler* handler, bool bPromiscuous) override;
+    void UnregisterInputHandler(KODI::JOYSTICK::IInputHandler* handler) override;
 
     virtual void RegisterJoystickButtonMapper(KODI::JOYSTICK::IButtonMapper* mapper);
     virtual void UnregisterJoystickButtonMapper(KODI::JOYSTICK::IButtonMapper* mapper);
 
     virtual KODI::JOYSTICK::IDriverReceiver* GetDriverReceiver() { return nullptr; }
 
-    virtual KODI::JOYSTICK::IActionMap* GetActionMap() { return nullptr; }
+    virtual IKeymap *GetKeymap(const std::string &controllerId) { return nullptr; }
 
   protected:
     virtual void ClearSettings(void);

@@ -31,6 +31,7 @@
 #include "PlayListPlayer.h"
 #include "profiles/ProfilesManager.h"
 #include "utils/log.h"
+#include "input/InputManager.h"
 #include "interfaces/AnnouncementManager.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
 #include "interfaces/python/XBPython.h"
@@ -41,7 +42,8 @@ using namespace KODI;
 
 CServiceManager::CServiceManager() :
   m_gameServices(new GAME::CGameServices),
-  m_peripherals(new PERIPHERALS::CPeripherals)
+  m_peripherals(new PERIPHERALS::CPeripherals),
+  m_inputManager(new CInputManager)
 {
 }
 
@@ -87,17 +89,20 @@ bool CServiceManager::Init2()
     return false;
   }
 
+  m_vfsAddonCache.reset(new ADDON::CVFSAddonCache());
+  m_vfsAddonCache->Init();
+
   m_PVRManager.reset(new PVR::CPVRManager());
   m_dataCacheCore.reset(new CDataCacheCore());
 
   m_binaryAddonCache.reset( new ADDON::CBinaryAddonCache());
   m_binaryAddonCache->Init();
 
-  m_vfsAddonCache.reset(new ADDON::CVFSAddonCache());
-  m_vfsAddonCache->Init();
-
   m_favouritesService.reset(new CFavouritesService(CProfilesManager::GetInstance().GetProfileUserDataFolder()));
   m_contextMenuManager.reset(new CContextMenuManager(*m_addonMgr.get()));
+  m_serviceAddons.reset(new ADDON::CServiceAddonManager(*m_addonMgr));
+
+  m_inputManager->InitializeInputs();
 
   init_level = 2;
   return true;
@@ -145,15 +150,17 @@ bool CServiceManager::Init3()
 
 void CServiceManager::Deinit()
 {
+  m_serviceAddons.reset();
   m_gameServices->Deinit();
   m_peripherals.reset();
+  //m_inputManager->Deinitialize(); //! @todo
   m_contextMenuManager.reset();
   m_favouritesService.reset();
-  m_vfsAddonCache.reset();
   m_binaryAddonCache.reset();
   if (m_PVRManager)
     m_PVRManager->Deinit();
   m_PVRManager.reset();
+  m_vfsAddonCache.reset();
   m_binaryAddonManager.reset();
   m_addonMgr.reset();
 #ifdef HAS_PYTHON
@@ -182,6 +189,11 @@ ADDON::CBinaryAddonManager &CServiceManager::GetBinaryAddonManager()
 ADDON::CVFSAddonCache &CServiceManager::GetVFSAddonCache()
 {
   return *m_vfsAddonCache.get();
+}
+
+ADDON::CServiceAddonManager &CServiceManager::GetServiceAddons()
+{
+  return *m_serviceAddons;
 }
 
 ANNOUNCEMENT::CAnnouncementManager& CServiceManager::GetAnnouncementManager()
@@ -245,6 +257,11 @@ PERIPHERALS::CPeripherals& CServiceManager::GetPeripherals()
 CFavouritesService& CServiceManager::GetFavouritesService()
 {
   return *m_favouritesService;
+}
+
+CInputManager& CServiceManager::GetInputManager()
+{
+  return *m_inputManager;
 }
 
 // deleters for unique_ptr

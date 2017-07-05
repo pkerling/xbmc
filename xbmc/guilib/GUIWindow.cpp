@@ -267,7 +267,7 @@ bool CGUIWindow::Load(TiXmlElement *pRootElement)
     }
     else if (strValue == "depth" && pChild->FirstChild())
     { 
-      float stereo = static_cast<float>(atof(pChild->FirstChild()->Value()));;
+      float stereo = static_cast<float>(atof(pChild->FirstChild()->Value()));
       m_stereo = std::max(-1.f, std::min(1.f, stereo));
     }
     else if (strValue == "controls")
@@ -1051,14 +1051,13 @@ bool CGUIWindow::SendMessage(int message, int id, int param1 /* = 0*/, int param
   CGUIMessage msg(message, GetID(), id, param1, param2);
   return OnMessage(msg);
 }
-
+#ifdef _DEBUG
 void CGUIWindow::DumpTextureUse()
 {
-#ifdef _DEBUG
   CLog::Log(LOGDEBUG, "%s for window %u", __FUNCTION__, GetID());
   CGUIControlGroup::DumpTextureUse();
-#endif
 }
+#endif
 
 void CGUIWindow::SetProperty(const std::string &strKey, const CVariant &value)
 {

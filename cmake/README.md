@@ -113,17 +113,24 @@ cmake --build . -- VERBOSE=1 -j$(nproc)  # or: make VERBOSE=1 -j$(nproc)
 ```
 
 ### Windows with Visual Studio project files
-
+#### Build for win32
 ```
 cmake -G "Visual Studio 14" <KODI_SRC>
 cmake --build . --config "Debug"  # or: Build solution with Visual Studio
 Debug\kodi.exe
 ```
+#### Build for x64
+```
+cmake -G "Visual Studio 14 Win64" <KODI_SRC>
+cmake --build . --config "Debug"  # or: Build solution with Visual Studio
+Debug\kodi.exe
+```
+You can always check ``cmake --help` to see which generators are available and how to call those.
 
 #### Windows installer generation
 
-The script [project/Win32BuildSetup](https://github.com/xbmc/xbmc/blob/master/project/Win32BuildSetup/BuildSetup.bat)
-builds an installable package for Windows.
+The script [project/Win32BuildSetup](https://github.com/xbmc/xbmc/blob/master/tools/buildsteps/windows/win32/BuildSetup.bat) or [project/Win64BuildSetup](https://github.com/xbmc/xbmc/blob/master/tools/buildsteps/windows/x64/BuildSetup.bat)
+builds an installable package for Windows. Choose either 32bit or 64bit, depending on what your trying to build.
 
 ### Windows with NMake Makefiles
 

@@ -123,7 +123,7 @@ bool CWinSystemWayland::InitWindowSystem()
 
   // pointer is by default not on this window, will be immediately rectified
   // by the enter() events if it is
-  CInputManager::GetInstance().SetMouseActive(false);
+  CServiceBroker::GetInputManager().SetMouseActive(false);
 
   return CWinSystemBase::InitWindowSystem();
 }
@@ -806,7 +806,7 @@ void CWinSystemWayland::OnEnter(std::uint32_t seatGlobalName, InputType type)
   }
   if (type == InputType::POINTER)
   {
-    CInputManager::GetInstance().SetMouseActive(true);
+    CServiceBroker::GetInputManager().SetMouseActive(true);
   }
 }
 
@@ -819,7 +819,7 @@ void CWinSystemWayland::OnLeave(std::uint32_t seatGlobalName, InputType type)
   }
   if (type == InputType::POINTER)
   {
-    CInputManager::GetInstance().SetMouseActive(false);
+    CServiceBroker::GetInputManager().SetMouseActive(false);
   }
 }
 

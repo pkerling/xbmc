@@ -398,15 +398,6 @@ void OnEnabled(const std::string& id)
   AddonPtr addon;
   if (CAddonMgr::GetInstance().GetAddon(id, addon, ADDON_PVRDLL))
     return addon->OnEnabled();
-
-  if (CAddonMgr::GetInstance().ServicesHasStarted())
-  {
-    if (CAddonMgr::GetInstance().GetAddon(id, addon, ADDON_SERVICE))
-      std::static_pointer_cast<CService>(addon)->Start();
-  }
-
-  if (CAddonMgr::GetInstance().GetAddon(id, addon, ADDON_REPOSITORY))
-    CRepositoryUpdater::GetInstance().ScheduleUpdate(); //notify updater there is a new addon
 }
 
 void OnDisabled(const std::string& id)
@@ -415,26 +406,10 @@ void OnDisabled(const std::string& id)
   AddonPtr addon;
   if (CAddonMgr::GetInstance().GetAddon(id, addon, ADDON_PVRDLL, false))
     return addon->OnDisabled();
-
-  if (CAddonMgr::GetInstance().ServicesHasStarted())
-  {
-    if (CAddonMgr::GetInstance().GetAddon(id, addon, ADDON_SERVICE, false))
-      std::static_pointer_cast<CService>(addon)->Stop();
-  }
 }
 
 void OnPreInstall(const AddonPtr& addon)
 {
-  //Before installing we need to stop/unregister any local addon
-  //that have this id, regardless of what the 'new' addon is.
-  AddonPtr localAddon;
-
-  if (CAddonMgr::GetInstance().ServicesHasStarted())
-  {
-    if (CAddonMgr::GetInstance().GetAddon(addon->ID(), localAddon, ADDON_SERVICE))
-      std::static_pointer_cast<CService>(localAddon)->Stop();
-  }
-
   //Fallback to the pre-install callback in the addon.
   //! @bug If primary extension point have changed we're calling the wrong method.
   addon->OnPreInstall();
@@ -442,29 +417,11 @@ void OnPreInstall(const AddonPtr& addon)
 
 void OnPostInstall(const AddonPtr& addon, bool update, bool modal)
 {
-  AddonPtr localAddon;
-  if (CAddonMgr::GetInstance().ServicesHasStarted())
-  {
-    if (CAddonMgr::GetInstance().GetAddon(addon->ID(), localAddon, ADDON_SERVICE))
-      std::static_pointer_cast<CService>(localAddon)->Start();
-  }
-
-  if (CAddonMgr::GetInstance().GetAddon(addon->ID(), localAddon, ADDON_REPOSITORY))
-    CRepositoryUpdater::GetInstance().ScheduleUpdate(); //notify updater there is a new addon or version
-
   addon->OnPostInstall(update, modal);
 }
 
 void OnPreUnInstall(const AddonPtr& addon)
 {
-  AddonPtr localAddon;
-
-  if (CAddonMgr::GetInstance().ServicesHasStarted())
-  {
-    if (CAddonMgr::GetInstance().GetAddon(addon->ID(), localAddon, ADDON_SERVICE))
-      std::static_pointer_cast<CService>(localAddon)->Stop();
-  }
-
   addon->OnPreUnInstall();
 }
 

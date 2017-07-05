@@ -100,6 +100,16 @@ CFavouritesService& CServiceBroker::GetFavouritesService()
   return g_application.m_ServiceManager->GetFavouritesService();
 }
 
+ADDON::CServiceAddonManager& CServiceBroker::GetServiceAddons()
+{
+  return g_application.m_ServiceManager->GetServiceAddons();
+}
+
+CInputManager& CServiceBroker::GetInputManager()
+{
+  return g_application.m_ServiceManager->GetInputManager();
+}
+
 bool CServiceBroker::IsBinaryAddonCacheUp()
 {
   return g_application.m_ServiceManager->init_level > 1;

@@ -127,9 +127,9 @@ class CSetCurrentItemJob : public CJob
   CFileItemPtr m_itemCurrentFile;
 public:
   CSetCurrentItemJob(const CFileItemPtr item) : m_itemCurrentFile(item) { }
-  ~CSetCurrentItemJob(void) {}
+  ~CSetCurrentItemJob(void) override {}
 
-  bool DoWork(void)
+  bool DoWork(void) override
   {
     g_infoManager.SetCurrentItemJob(m_itemCurrentFile);
     return true;
@@ -8063,7 +8063,7 @@ std::string CGUIInfoManager::GetMultiInfoLabel(const GUIInfo &info, int contextW
   }
   else if (info.m_info == CONTAINER_CONTENT)
   {
-    CGUIWindow *window = GetWindowWithCondition(contextWindow, WINDOW_CONDITION_IS_MEDIA_WINDOW);;
+    CGUIWindow *window = GetWindowWithCondition(contextWindow, WINDOW_CONDITION_IS_MEDIA_WINDOW);
     if (window)
       return static_cast<CGUIMediaWindow *>(window)->CurrentDirectory().GetContent();
   }

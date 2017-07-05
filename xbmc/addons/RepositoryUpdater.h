@@ -19,6 +19,7 @@
  *
  */
 
+#include "addons/AddonEvents.h"
 #include "addons/Repository.h"
 #include "dialogs/GUIDialogExtendedProgressBar.h"
 #include "threads/CriticalSection.h"
@@ -35,7 +36,7 @@ class CRepositoryUpdater : private ITimerCallback, private IJobCallback, public 
 public:
   static CRepositoryUpdater& GetInstance();
 
-  virtual ~CRepositoryUpdater() {}
+  ~CRepositoryUpdater() override;
 
   void Start();
 
@@ -67,7 +68,7 @@ public:
   CDateTime LastUpdated() const;
 
 
-  virtual void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
 
   struct RepositoryUpdated { };
 
@@ -80,9 +81,11 @@ private:
   CRepositoryUpdater& operator=(const CRepositoryUpdater&) = delete;
   CRepositoryUpdater& operator=(CRepositoryUpdater&&) = delete;
 
-  virtual void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
+  void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
-  virtual void OnTimeout() override;
+  void OnTimeout() override;
+
+  void OnEvent(const ADDON::AddonEvent& event);
 
   CCriticalSection m_criticalSection;
   CTimer m_timer;
