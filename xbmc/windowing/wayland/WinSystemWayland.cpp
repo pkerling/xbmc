@@ -351,7 +351,7 @@ void CWinSystemWayland::UpdateResolutions()
     CLog::LogF(LOGINFO, "- %dx%d @%.3f Hz pixel ratio %.3f%s", mode.width, mode.height, mode.refreshMilliHz / 1000.0f, pixelRatio, isCurrent ? " current" : "");
 
     RESOLUTION_INFO res;
-    UpdateDesktopResolution(res, 0, mode.width, mode.height, mode.refreshMilliHz / 1000.0f);
+    UpdateDesktopResolution(res, 0, mode.width, mode.height, mode.GetRefreshInHz());
     res.strOutput = outputName;
     res.fPixelRatio = pixelRatio;
 
@@ -569,7 +569,7 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   float refreshRate = m_fRefreshRate;
   if (maxRefreshIt != m_surfaceOutputs.cend())
   {
-    refreshRate = (*maxRefreshIt)->GetCurrentMode().refreshMilliHz / 1000.0f;
+    refreshRate = (*maxRefreshIt)->GetCurrentMode().GetRefreshInHz();
     CLog::LogF(LOGDEBUG, "Resolved actual (maximum) refresh rate to %.3f Hz on output \"%s\"", refreshRate, UserFriendlyOutputName(*maxRefreshIt).c_str());
   }
 

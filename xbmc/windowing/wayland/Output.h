@@ -94,6 +94,11 @@ public:
     std::int32_t refreshMilliHz;
     Mode(std::int32_t width, std::int32_t height, std::int32_t refreshMilliHz)
       : width(width), height(height), refreshMilliHz(refreshMilliHz) {}
+
+    float GetRefreshInHz() const
+    {
+      return refreshMilliHz / 1000.0f;
+    }
     
     std::tuple<std::int32_t, std::int32_t, std::int32_t> AsTuple() const
     {
