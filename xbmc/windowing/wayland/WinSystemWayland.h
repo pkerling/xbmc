@@ -85,6 +85,8 @@ public:
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
 
+  void PrepareFramePresentation();
+
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
 

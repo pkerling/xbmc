@@ -107,6 +107,24 @@ bool CWinSystemWaylandEGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO
   return true;
 }
 
+void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
+{
+  PrepareFramePresentation();
+
+  if (rendered)
+  {
+    m_eglContext.SwapBuffers();
+  }
+  else
+  {
+    // For presentation feedback: Get notification of the next vblank even
+    // when contents did not change
+    // XXX Weston currently does not send presented() when no new buffer is
+    // attached - will hopefully get fixed
+    m_surface.commit();
+  }
+}
+
 EGLDisplay CWinSystemWaylandEGLContext::GetEGLDisplay() const
 {
   return m_eglContext.m_eglDisplay;
