@@ -1021,6 +1021,18 @@ KODI::CSignalRegistration CWinSystemWayland::RegisterOnPresentationFeedback(Pres
   return m_presentationFeedbackHandlers.Register(handler);
 }
 
+std::unique_ptr<CVideoSync> CWinSystemWayland::GetVideoSync(void* clock)
+{
+  if (m_surface && m_connection->GetPresentation())
+  {
+    CLog::LogF(LOGINFO, "Using presentation protocol for video sync");
+    return std::unique_ptr<CVideoSync>(new CVideoSyncWpPresentation(clock));
+  }
+  else
+  {
+    CLog::LogF(LOGINFO, "No supported method for video sync found");
+    return nullptr;
+  }
 }
 
 #if defined(HAVE_LIBVA)

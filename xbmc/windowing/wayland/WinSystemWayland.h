@@ -80,6 +80,7 @@ public:
   void SetInhibitSkinReload(bool inhibit);
 
   float GetSyncOutputRefreshRate();
+  std::unique_ptr<CVideoSync> GetVideoSync(void* clock) override;
   
   void* GetVaDisplay();
   
