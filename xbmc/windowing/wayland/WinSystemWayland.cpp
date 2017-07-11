@@ -736,7 +736,7 @@ void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 void CWinSystemWayland::OnOutputAdded(std::uint32_t name, wayland::output_t& output)
 {
   // This is not accessed from multiple threads
-  m_outputsInPreparation.emplace(name, new COutput(name, output, std::bind(&CWinSystemWayland::OnOutputDone, this, name)));
+  m_outputsInPreparation.emplace(name, std::make_shared<COutput>(name, output, std::bind(&CWinSystemWayland::OnOutputDone, this, name)));
 }
 
 void CWinSystemWayland::OnOutputDone(std::uint32_t name)
