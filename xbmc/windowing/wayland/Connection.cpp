@@ -50,7 +50,7 @@ CConnection::CConnection(IConnectionHandler* handler)
   m_display.reset(new wayland::display_t); 
 }
 
-void CConnection::BindGlobals()
+void CConnection::BindSingletons()
 {
   // Do two rounds: First get global singleton interfaces, then seats and outputs
   // Processing for seats depends on the data device manager being available,
@@ -64,7 +64,8 @@ void CConnection::BindGlobals()
     { wayland::shm_t::interface_name, { m_shm, 1, 1 } },
     { wayland::data_device_manager_t::interface_name, { m_dataDeviceManager, 1, 3, false } },
     { wayland::zxdg_shell_v6_t::interface_name, { m_xdgShellUnstableV6, 1, 1, false } },
-    { wayland::zwp_idle_inhibit_manager_v1_t::interface_name, { m_idleInhibitManagerUnstableV1, 1, 1, false } }
+    { wayland::zwp_idle_inhibit_manager_v1_t::interface_name, { m_idleInhibitManagerUnstableV1, 1, 1, false } },
+    { wayland::presentation_t::interface_name, { m_presentation, 1, 1, false } }
   };
 
   m_registry = m_display->get_registry();
@@ -73,14 +74,16 @@ void CConnection::BindGlobals()
   CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global singleton interfaces");
   m_display->roundtrip();
   CheckRequiredGlobals();
+  CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrip complete");
+}
 
+void CConnection::BindOther()
+{
   m_registry = m_display->get_registry();
   HandleRegistry(false, true);
   CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global seats and outputs");
   m_display->roundtrip();
-
-  CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrips complete");
-  
+  CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrip complete");
 }
 
 void CConnection::HandleRegistry(bool bindSingletons, bool bindNonSingletons)
@@ -164,4 +167,9 @@ wayland::zxdg_shell_v6_t CConnection::GetXdgShellUnstableV6()
 wayland::zwp_idle_inhibit_manager_v1_t CConnection::GetIdleInhibitManagerUnstableV1()
 {
   return m_idleInhibitManagerUnstableV1;
+}
+
+wayland::presentation_t CConnection::GetPresentation()
+{
+  return m_presentation;
 }

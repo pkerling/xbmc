@@ -35,11 +35,13 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
+#include "linux/TimeUtils.h"
 #include "input/touch/generic/GenericTouchActionHandler.h"
 #include "input/touch/generic/GenericTouchInputHandler.h"
 #include "linux/PlatformConstants.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
+#include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "ShellSurfaceWlShell.h"
@@ -48,7 +50,7 @@
 #include "utils/log.h"
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
-#include "windowing/linux/OSScreenSaverFreedesktop.h"
+#include "VideoSyncWpPresentation.h"
 #include "WinEventsWayland.h"
 #include "windowing/linux/OSScreenSaverFreedesktop.h"
 
@@ -115,11 +117,24 @@ bool CWinSystemWayland::InitWindowSystem()
 
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
   m_connection.reset(new CConnection(this));
-  m_connection->BindGlobals();
+  m_connection->BindSingletons();
+
+  if (m_connection->GetPresentation())
+  {
+    m_connection->GetPresentation().on_clock_id() = [this](std::uint32_t clockId)
+    {
+      CLog::Log(LOGINFO, "Wayland presentation clock: %" PRIu32, clockId);
+      m_presentationClock = static_cast<clockid_t> (clockId);
+    };
+  }
+
+  m_connection->BindOther();
+
   if (m_seatProcessors.empty())
   {
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
   }
+
   // Do another roundtrip to get initial wl_output information
   m_connection->GetDisplay().roundtrip();
   if (m_outputs.empty())
@@ -527,7 +542,9 @@ void CWinSystemWayland::AckConfigure(std::uint32_t serial)
 {
   // Send ack if we have a new serial number or this is the first time
   // this function is called
-  if (serial != m_lastAckedSerial || !m_firstSerialAcked)
+  // FIXME the serial != 0 check is only temporary until configure sequence
+  // is fixed
+  if (serial != 0 && (serial != m_lastAckedSerial || !m_firstSerialAcked))
   {
     CLog::LogF(LOGDEBUG, "Acking serial %u", serial);
     m_shellSurface->AckConfigure(serial);
@@ -911,8 +928,99 @@ void CWinSystemWayland::UpdateTouchDpi()
   CGenericTouchInputHandler::GetInstance().SetScreenDPI(dpi);
 }
 
+CWinSystemWayland::SurfaceSubmission::SurfaceSubmission(timespec const& submissionTime, wayland::presentation_feedback_t const& feedback)
+: submissionTime{submissionTime}, feedback{feedback}
+{
+}
+
+timespec CWinSystemWayland::GetPresentationClockTime()
+{
+  timespec time;
+  if (clock_gettime(m_presentationClock, &time) != 0)
+  {
+    throw std::system_error(errno, std::generic_category(), "Error getting time from Wayland presentation clock with clock_gettime");
+  }
+  return time;
+}
+
 void CWinSystemWayland::PrepareFramePresentation()
 {
+  // Continuously measure display latency (i.e. time between when the frame was rendered
+  // and when it becomes visible to the user) to correct AV sync
+  if (m_connection->GetPresentation())
+  {
+    auto tStart = GetPresentationClockTime();
+    // wp_presentation_feedback creation is coupled to the surface's commit().
+    // eglSwapBuffers() (which will be called after this) will call commit().
+    // This creates a new Wayland protocol object in the main thread, but this
+    // will not result in a race since the corresponding events are never sent
+    // before commit() on the surface, which only occurs afterwards.
+    auto feedback = m_connection->GetPresentation().feedback(m_surface);
+    // Save feedback objects in list so they don't get destroyed upon exit of this function
+    // Hand iterator to lambdas so they do not hold a (then circular) reference
+    // to the actual object
+    decltype(m_surfaceSubmissions)::iterator iter;
+    {
+      CSingleLock lock(m_surfaceSubmissionsMutex);
+      iter = m_surfaceSubmissions.emplace(m_surfaceSubmissions.end(), tStart, feedback);
+    }
+
+    feedback.on_sync_output() = [this](wayland::output_t wloutput)
+    {
+      m_syncOutputID = wloutput.get_id();
+      auto output = FindOutputByWaylandOutput(wloutput);
+      if (output)
+      {
+        m_syncOutputRefreshRate = output->GetCurrentMode().GetRefreshInHz();
+      }
+      else
+      {
+        CLog::Log(LOGWARNING, "Could not find Wayland output that is supposedly the sync output");
+      }
+    };
+    feedback.on_presented() = [this,iter](std::uint32_t tvSecHi, std::uint32_t tvSecLo, std::uint32_t tvNsec, std::uint32_t refresh, std::uint32_t seqHi, std::uint32_t seqLo, wayland::presentation_feedback_kind flags)
+    {
+      timespec tv = { .tv_sec = static_cast<std::time_t> ((static_cast<std::uint64_t>(tvSecHi) << 32) + tvSecLo), .tv_nsec = tvNsec };
+      std::int64_t latency = KODI::LINUX::TimespecDifference(iter->submissionTime, tv);
+      std::uint64_t msc = (static_cast<std::uint64_t>(seqHi) << 32) + seqLo;
+      m_presentationFeedbackHandlers.Invoke(tv, refresh, m_syncOutputID, m_syncOutputRefreshRate, msc);
+
+      iter->latency = latency / 1e9f; // nanoseconds to seconds
+      float adjust{};
+      {
+        CSingleLock lock(m_surfaceSubmissionsMutex);
+        if (m_surfaceSubmissions.size() > LATENCY_MOVING_AVERAGE_SIZE)
+        {
+          adjust = - m_surfaceSubmissions.front().latency / LATENCY_MOVING_AVERAGE_SIZE;
+          m_surfaceSubmissions.pop_front();
+        }
+      }
+      m_latencyMovingAverage = m_latencyMovingAverage + iter->latency / LATENCY_MOVING_AVERAGE_SIZE + adjust;
+
+      if (g_advancedSettings.CanLogComponent(LOGAVTIMING))
+      {
+        CLog::Log(LOGDEBUG, "Presentation feedback: %" PRIi64 " ns -> moving average %f s", latency, static_cast<double> (m_latencyMovingAverage));
+      }
+    };
+    feedback.on_discarded() = [this,iter]()
+    {
+      CLog::Log(LOGDEBUG, "Presentation: Frame was discarded by compositor");
+      CSingleLock lock(m_surfaceSubmissionsMutex);
+      m_surfaceSubmissions.erase(iter);
+    };
+  }
+}
+
+float CWinSystemWayland::GetSyncOutputRefreshRate()
+{
+  return m_syncOutputRefreshRate;
+}
+
+KODI::CSignalRegistration CWinSystemWayland::RegisterOnPresentationFeedback(PresentationFeedbackHandler handler)
+{
+  return m_presentationFeedbackHandlers.Register(handler);
+}
+
 }
 
 #if defined(HAVE_LIBVA)

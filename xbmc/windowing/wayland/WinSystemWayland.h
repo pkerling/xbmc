@@ -19,6 +19,10 @@
  */
 #pragma once
 
+#include <time.h>
+
+#include <atomic>
+#include <ctime>
 #include <map>
 #include <set>
 
@@ -28,6 +32,7 @@
 #include "Connection.h"
 #include "Output.h"
 #include "Seat.h"
+#include "Signals.h"
 #include "ShellSurface.h"
 #include "threads/CriticalSection.h"
 #include "windowing/WinSystem.h"
@@ -73,11 +78,16 @@ public:
   std::string GetClipboardText() override;
 
   void SetInhibitSkinReload(bool inhibit);
+
+  float GetSyncOutputRefreshRate();
   
   void* GetVaDisplay();
   
   virtual void Register(IDispResource *resource);
   virtual void Unregister(IDispResource *resource);
+
+  using PresentationFeedbackHandler = std::function<void(timespec /* tv */, std::uint32_t /* refresh */, std::uint32_t /* sync output id */, float /* sync output fps */, std::uint64_t /* msc */)>;
+  CSignalRegistration RegisterOnPresentationFeedback(PresentationFeedbackHandler handler);
   
   // Like CWinSystemX11
   void GetConnectedOutputs(std::vector<std::string> *outputs);
@@ -120,6 +130,8 @@ private:
   void UpdateTouchDpi();
 
   void AckConfigure(std::uint32_t serial);
+
+  timespec GetPresentationClockTime();
   
   std::unique_ptr<IShellSurface> m_shellSurface;
   
@@ -135,6 +147,24 @@ private:
   wayland::cursor_image_t m_cursorImage;
   wayland::surface_t m_cursorSurface;
   
+  clockid_t m_presentationClock;
+  struct SurfaceSubmission
+  {
+    timespec submissionTime;
+    float latency;
+    wayland::presentation_feedback_t feedback;
+    SurfaceSubmission(timespec const& submissionTime, wayland::presentation_feedback_t const& feedback);
+  };
+  std::list<SurfaceSubmission> m_surfaceSubmissions;
+  CCriticalSection m_surfaceSubmissionsMutex;
+  /// Protocol object ID of the sync output returned by wp_presentation
+  std::uint32_t m_syncOutputID;
+  /// Refresh rate of sync output returned by wp_presentation
+  std::atomic<float> m_syncOutputRefreshRate{0.0f};
+  static const int LATENCY_MOVING_AVERAGE_SIZE = 30;
+  std::atomic<float> m_latencyMovingAverage;
+  CSignalHandlerList<PresentationFeedbackHandler> m_presentationFeedbackHandlers;
+
   std::set<IDispResource*> m_dispResources;
   CCriticalSection m_dispResourcesMutex;
 

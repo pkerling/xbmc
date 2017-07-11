@@ -57,7 +57,8 @@ class CConnection
 public:
   explicit CConnection(IConnectionHandler* handler);
 
-  void BindGlobals();
+  void BindSingletons();
+  void BindOther();
   
   wayland::display_t& GetDisplay();
   wayland::compositor_t GetCompositor();
@@ -66,6 +67,7 @@ public:
   wayland::data_device_manager_t GetDataDeviceManager();
   wayland::zxdg_shell_v6_t GetXdgShellUnstableV6();
   wayland::zwp_idle_inhibit_manager_v1_t GetIdleInhibitManagerUnstableV1();
+  wayland::presentation_t GetPresentation();
   
 private:
   void CheckRequiredGlobals();
@@ -95,6 +97,7 @@ private:
   wayland::data_device_manager_t m_dataDeviceManager;
   wayland::zxdg_shell_v6_t m_xdgShellUnstableV6;
   wayland::zwp_idle_inhibit_manager_v1_t m_idleInhibitManagerUnstableV1;
+  wayland::presentation_t m_presentation;
 };
 
 }
