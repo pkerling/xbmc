@@ -54,15 +54,15 @@ CGLContextEGL::~CGLContextEGL()
 }
 
 bool CGLContextEGL::CreateDisplay(wayland::display_t& display,
-                                  EGLint renderable_type,
-                                  EGLint rendering_api)
+                                  EGLint renderableType,
+                                  EGLenum renderingApi)
 {
   EGLint neglconfigs = 0;
   int major, minor;
 
   EGLint attribs[] ={
     EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
-    EGL_RENDERABLE_TYPE, renderable_type,
+    EGL_RENDERABLE_TYPE, renderableType,
     EGL_RED_SIZE, 8,
     EGL_GREEN_SIZE, 8,
     EGL_BLUE_SIZE, 8,
@@ -88,7 +88,7 @@ bool CGLContextEGL::CreateDisplay(wayland::display_t& display,
   }
   CLog::Log(LOGINFO, "Got EGL v%d.%d", major, minor);
 
-  if (eglBindAPI(rendering_api) != EGL_TRUE)
+  if (eglBindAPI(renderingApi) != EGL_TRUE)
   {
     CEGLUtils::LogError("Failed to bind EGL API");
     return false;

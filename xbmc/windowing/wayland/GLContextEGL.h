@@ -44,8 +44,8 @@ public:
   virtual ~CGLContextEGL();
 
   bool CreateDisplay(wayland::display_t& display,
-                     EGLint renderable_type,
-                     EGLint rendering_api);
+                     EGLint renderableType,
+                     EGLenum renderingApi);
 
   bool CreateSurface(wayland::surface_t& surface, int width, int height);
   void GetAttachedSize(int& width, int& height);
