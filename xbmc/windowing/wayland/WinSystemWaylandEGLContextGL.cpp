@@ -22,13 +22,35 @@
 
 #include <EGL/egl.h>
 
+#include "cores/VideoPlayer/VideoRenderers/LinuxRendererGL.h"
 #include "utils/log.h"
+
+#if defined(HAVE_LIBVA)
+#include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
+#include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererVAAPIGL.h"
+#endif
 
 using namespace KODI::WINDOWING::WAYLAND;
 
 bool CWinSystemWaylandEGLContextGL::InitWindowSystem()
 {
-  return CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGL_OPENGL_BIT, EGL_OPENGL_API);
+  if (!CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGL_OPENGL_BIT, EGL_OPENGL_API))
+  {
+    return false;
+  }
+
+  CLinuxRendererGL::Register();  
+  
+#if defined(HAVE_LIBVA)
+  bool general, hevc;
+  CRendererVAAPI::Register(GetVaDisplay(), m_eglContext.m_eglDisplay, general, hevc);
+  if (general)
+  {
+    VAAPI::CDecoder::Register(hevc);
+  }
+#endif
+
+  return true;
 }
 
 bool CWinSystemWaylandEGLContextGL::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
