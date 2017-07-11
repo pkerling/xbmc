@@ -84,14 +84,14 @@ public:
   
   void* GetVaDisplay();
   
-  virtual void Register(IDispResource *resource);
-  virtual void Unregister(IDispResource *resource);
+  void Register(IDispResource* resource);
+  void Unregister(IDispResource* resource);
 
   using PresentationFeedbackHandler = std::function<void(timespec /* tv */, std::uint32_t /* refresh */, std::uint32_t /* sync output id */, float /* sync output fps */, std::uint64_t /* msc */)>;
   CSignalRegistration RegisterOnPresentationFeedback(PresentationFeedbackHandler handler);
   
   // Like CWinSystemX11
-  void GetConnectedOutputs(std::vector<std::string> *outputs);
+  void GetConnectedOutputs(std::vector<std::string>* outputs);
 
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
@@ -136,18 +136,25 @@ private:
   
   std::unique_ptr<IShellSurface> m_shellSurface;
   
+  // Seat handling
+  // -------------
   std::map<std::uint32_t, CSeat> m_seatProcessors;
   CCriticalSection m_seatProcessorsMutex;
-  // m_outputsInPreparation did not receive their done event yet
-  std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputs, m_outputsInPreparation;
+  std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputs;
+  /// outputs that did not receive their done event yet
+  std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputsInPreparation;
   CCriticalSection m_outputsMutex;
-  
+
+  // Cursor
+  // ------
   bool m_osCursorVisible = true;
   wayland::cursor_theme_t m_cursorTheme;
   wayland::buffer_t m_cursorBuffer;
   wayland::cursor_image_t m_cursorImage;
   wayland::surface_t m_cursorSurface;
-  
+
+  // Presentation feedback
+  // ---------------------
   clockid_t m_presentationClock;
   struct SurfaceSubmission
   {
@@ -166,23 +173,29 @@ private:
   std::atomic<float> m_latencyMovingAverage;
   CSignalHandlerList<PresentationFeedbackHandler> m_presentationFeedbackHandlers;
 
+  // IDispResource
+  // -------------
   std::set<IDispResource*> m_dispResources;
   CCriticalSection m_dispResourcesMutex;
 
-  bool m_inhibitSkinReload = false;
-
+  // Surface state
+  // -------------
   std::string m_currentOutput;
-  // Set of outputs that show some part of our main surface as indicated by
-  // compositor
+  /// Set of outputs that show some part of our main surface as indicated by
+  /// compositor
   std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
-  // Size of our surface in "surface coordinates", i.e. without scaling applied
+  /// Size of our surface in "surface coordinates", i.e. without scaling applied
   std::int32_t m_surfaceWidth, m_surfaceHeight;
   std::int32_t m_scale = 1;
+
+  // Configure state
+  // ---------------
   std::uint32_t m_currentConfigureSerial = 0;
   bool m_firstSerialAcked = false;
   std::uint32_t m_lastAckedSerial = 0;
-  // Whether this is the first call to SetFullScreen
+  /// Whether this is the first call to SetFullScreen
   bool m_isInitialSetFullScreen = true;
+  bool m_inhibitSkinReload = false;
 };
 
 
