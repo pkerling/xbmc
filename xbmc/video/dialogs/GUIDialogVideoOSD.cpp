@@ -22,7 +22,8 @@
 #include "Application.h"
 #include "GUIUserMessages.h"
 #include "guilib/GUIWindowManager.h"
-#include "input/Key.h"
+#include "guilib/WindowIDs.h"
+#include "input/ActionIDs.h"
 #include "input/InputManager.h"
 #include "ServiceBroker.h"
 
@@ -34,9 +35,7 @@ CGUIDialogVideoOSD::CGUIDialogVideoOSD(void)
   m_loadType = KEEP_IN_MEMORY;
 }
 
-CGUIDialogVideoOSD::~CGUIDialogVideoOSD(void)
-{
-}
+CGUIDialogVideoOSD::~CGUIDialogVideoOSD(void) = default;
 
 void CGUIDialogVideoOSD::FrameMove()
 {

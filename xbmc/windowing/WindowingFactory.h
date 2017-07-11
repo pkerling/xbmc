@@ -44,6 +44,12 @@
 #elif defined(HAVE_WAYLAND) && defined(HAS_GLES)
 #include "wayland/WinSystemWaylandEGLContextGLES.h"
 
+#elif defined(TARGET_LINUX) && defined(HAVE_GBM) && defined(HAS_GLES)
+#include "gbm/WinSystemGbmGLESContext.h"
+
+#elif defined(HAVE_WAYLAND) && defined(HAS_GLES)
+#include "wayland/WinSystemWaylandEGLContextGLES.h"
+
 #elif defined(TARGET_LINUX) && defined(HAVE_MIR) && defined(HAS_GL)
 #include "mir/WinSystemMirGLContext.h"
 

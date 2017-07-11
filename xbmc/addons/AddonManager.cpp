@@ -20,46 +20,20 @@
 
 #include "AddonManager.h"
 
-#include <algorithm>
-#include <array>
-#include <iterator>
-#include <memory>
-#include <utility>
-
-#include "Addon.h"
-#include "addons/AddonBuilder.h"
-#include "addons/ImageResource.h"
-#include "addons/LanguageResource.h"
-#include "addons/UISoundsResource.h"
-#include "addons/Webinterface.h"
-#include "AudioDecoder.h"
-#include "AudioEncoder.h"
-#include "ContextMenuAddon.h"
-#include "ContextMenuManager.h"
-#include "cores/AudioEngine/Engines/ActiveAE/AudioDSPAddons/ActiveAEDSP.h"
-#include "DllLibCPluff.h"
+#include "ServiceBroker.h"
+#include "addons/DllLibCPluff.h"
 #include "events/AddonManagementEvent.h"
-#include "events/NotificationEvent.h"
 #include "events/EventLog.h"
+#include "events/NotificationEvent.h"
+#include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
-#include "VFSEntry.h"
-#include "LangInfo.h"
-#include "PluginSource.h"
-#include "Repository.h"
-#include "Scraper.h"
-#include "Service.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/Settings.h"
-#include "Skin.h"
-#include "system.h"
-#include "threads/SingleLock.h"
-#include "Util.h"
-#include "utils/JobManager.h"
 #include "utils/log.h"
 #include "utils/StringUtils.h"
-#include "utils/XBMCTinyXML.h"
+#include "utils/URIUtils.h"
 #include "utils/XMLUtils.h"
-#include "ServiceBroker.h"
+
+#include <array>
 
 using namespace XFILE;
 
@@ -213,7 +187,7 @@ void CAddonMgr::FillCpluffMetadata(const cp_plugin_info_t* plugin, CAddonBuilder
         builder.SetIcon(icon);
 
         std::map<std::string, std::string> art;
-        std::array<std::string, 3> artTypes{"fanart", "banner", "clearlogo"};
+        std::array<std::string, 3> artTypes{{"fanart", "banner", "clearlogo"}};
         for (auto type : artTypes)
         {
           auto value = CAddonMgr::GetInstance().GetExtValue(assets, type.c_str());
@@ -399,8 +373,11 @@ bool CAddonMgr::Init()
 
 void CAddonMgr::DeInit()
 {
-  m_cpluff->destroy_context(m_cp_context);
-  m_cpluff.reset();
+  if (m_cpluff)
+  {
+    m_cpluff->destroy_context(m_cp_context);
+    m_cpluff.reset();
+  }
   m_database.Close();
 }
 
@@ -577,27 +554,42 @@ bool CAddonMgr::GetInstalledBinaryAddons(BINARY_ADDON_LIST& binaryAddonList)
 
   for (auto builder : builders)
   {
-    cp_status_t status;
-    cp_plugin_info_t* cp_addon = m_cpluff->get_plugin_info(m_cp_context, builder.GetId().c_str(), &status);
-    if (status == CP_OK && cp_addon)
-    {
-      cp_extension_t* props = GetFirstExtPoint(cp_addon, ADDON_UNKNOWN);
-      if (props != nullptr)
-      {
-        std::string value = GetPlatformLibraryName(props->plugin->extensions->configuration);
-        if (!value.empty() &&
-            props->plugin->plugin_path &&
-            strcmp(props->plugin->plugin_path, "") != 0 &&
-            Factory(cp_addon, ADDON_UNKNOWN, builder, true))
-        {
-          binaryAddonList.push_back(BINARY_ADDON_LIST_ENTRY(!IsAddonDisabled(cp_addon->identifier), std::move(builder.GetAddonInfo())));
-        }
-      }
-      m_cpluff->release_info(m_cp_context, cp_addon);
-    }
+    BINARY_ADDON_LIST_ENTRY binaryAddon;
+    if (GetInstalledBinaryAddon(builder.GetId(), binaryAddon))
+      binaryAddonList.push_back(std::move(binaryAddon));
   }
 
   return !binaryAddonList.empty();
+}
+
+bool CAddonMgr::GetInstalledBinaryAddon(const std::string& addonId, BINARY_ADDON_LIST_ENTRY& binaryAddon)
+{
+  bool ret = false;
+  cp_status_t status;
+
+  CSingleLock lock(m_critSection);
+
+  cp_plugin_info_t *cp_addon = m_cpluff->get_plugin_info(m_cp_context, addonId.c_str(), &status);
+  if (status == CP_OK && cp_addon)
+  {
+    cp_extension_t* props = GetFirstExtPoint(cp_addon, ADDON_UNKNOWN);
+    if (props != nullptr)
+    {
+      CAddonBuilder builder;
+      std::string value = GetPlatformLibraryName(props->plugin->extensions->configuration);
+      if (!value.empty() &&
+          props->plugin->plugin_path &&
+          strcmp(props->plugin->plugin_path, "") != 0 &&
+          Factory(cp_addon, ADDON_UNKNOWN, builder, true))
+      {
+        binaryAddon = BINARY_ADDON_LIST_ENTRY(!IsAddonDisabled(cp_addon->identifier), std::move(builder.GetAddonInfo()));
+        ret = true;
+      }
+    }
+    m_cpluff->release_info(m_cp_context, cp_addon);
+  }
+
+  return ret;
 }
 
 bool CAddonMgr::GetAddonsInternal(const TYPE &type, VECADDONS &addons, bool enabledOnly)
@@ -1240,6 +1232,48 @@ bool CAddonMgr::IsCompatible(const IAddon& addon)
     }
   }
   return true;
+}
+
+ADDONDEPS CAddonMgr::GetDepsRecursive(const std::string& id)
+{
+  ADDONDEPS added;
+  AddonPtr root_addon;
+  if (!FindInstallableById(id, root_addon) && !GetAddon(id, root_addon))
+    return added;
+
+  ADDONDEPS toProcess = root_addon->GetDeps();
+  while (!toProcess.empty())
+  {
+    auto current_dep = *toProcess.begin();
+    toProcess.erase(toProcess.begin());
+    if (StringUtils::StartsWith(current_dep.first, "xbmc.") ||
+        StringUtils::StartsWith(current_dep.first, "kodi."))
+      continue;
+
+    auto added_it = added.find(current_dep.first);
+    if (added_it != added.end())
+    {
+      if (current_dep.second.first < added_it->second.first)
+        continue;
+
+      bool aopt = added_it->second.second;
+      added.erase(added_it);
+      added.insert(current_dep);
+      if (!current_dep.second.second && aopt)
+        continue;
+    }
+    else
+      added.insert(current_dep);
+
+    AddonPtr current_addon;
+    if (FindInstallableById(current_dep.first, current_addon))
+    {
+      toProcess.insert(current_addon->GetDeps().begin(),
+                       current_addon->GetDeps().end());
+    }
+  }
+
+  return added;
 }
 
 int cp_to_clog(cp_log_severity_t lvl)

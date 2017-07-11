@@ -92,9 +92,7 @@ CGUIIncludes::CGUIIncludes()
   m_expressionNodes.insert("selected");
 }
 
-CGUIIncludes::~CGUIIncludes()
-{
-}
+CGUIIncludes::~CGUIIncludes() = default;
 
 void CGUIIncludes::Clear()
 {
@@ -338,8 +336,8 @@ void CGUIIncludes::SetDefaults(TiXmlElement *node)
   if (it != m_defaults.end())
   {
     // we don't insert <left> et. al. if <posx> or <posy> is specified
-    bool hasPosX(node->FirstChild("posx"));
-    bool hasPosY(node->FirstChild("posy"));
+    bool hasPosX(node->FirstChild("posx") != nullptr);
+    bool hasPosY(node->FirstChild("posy") != nullptr);
 
     const TiXmlElement &element = (*it).second;
     const TiXmlElement *tag = element.FirstChildElement();

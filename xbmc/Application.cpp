@@ -412,13 +412,13 @@ bool CApplication::SetupNetwork()
   return m_network != NULL;
 }
 
-bool CApplication::Create()
+bool CApplication::Create(const CAppParamParser &params)
 {
   // Grab a handle to our thread to be used later in identifying the render thread.
   m_threadID = CThread::GetCurrentThreadId();
 
   m_ServiceManager.reset(new CServiceManager());
-  if (!m_ServiceManager->Init1())
+  if (!m_ServiceManager->InitStageOne())
   {
     return false;
   }
@@ -429,7 +429,7 @@ bool CApplication::Create()
   // here we register all global classes for the CApplicationMessenger,
   // after that we can send messages to the corresponding modules
   CApplicationMessenger::GetInstance().RegisterReceiver(this);
-  CApplicationMessenger::GetInstance().RegisterReceiver(&g_playlistPlayer);
+  CApplicationMessenger::GetInstance().RegisterReceiver(&CServiceBroker::GetPlaylistPlayer());
   CApplicationMessenger::GetInstance().RegisterReceiver(&g_infoManager);
   CApplicationMessenger::GetInstance().SetGUIThread(m_threadID);
 
@@ -622,7 +622,7 @@ bool CApplication::Create()
   // initialize the addon database (must be before the addon manager is init'd)
   CDatabaseManager::GetInstance().Initialize(true);
 
-  if (!m_ServiceManager->Init2())
+  if (!m_ServiceManager->InitStageTwo(params))
   {
     return false;
   }
@@ -1182,7 +1182,7 @@ bool CApplication::Initialize()
 
       CStereoscopicsManager::GetInstance().Initialize();
 
-      if (!m_ServiceManager->Init3())
+      if (!m_ServiceManager->InitStageThree())
       {
         CLog::Log(LOGERROR, "Application - Init3 failed");
       }
@@ -1217,7 +1217,7 @@ bool CApplication::Initialize()
   RegisterActionListener(&CSeekHandler::GetInstance());
   RegisterActionListener(&CPlayerController::GetInstance());
 
-  CRepositoryUpdater::GetInstance().Start();
+  CServiceBroker::GetRepositoryUpdater().Start();
   CServiceBroker::GetServiceAddons().Start();
 
   CLog::Log(LOGNOTICE, "initialize done");
@@ -1652,7 +1652,7 @@ bool CApplication::LoadSkin(const std::string& skinID)
 
   CLog::Log(LOGINFO, "  initialize new skin...");
   g_windowManager.AddMsgTarget(this);
-  g_windowManager.AddMsgTarget(&g_playlistPlayer);
+  g_windowManager.AddMsgTarget(&CServiceBroker::GetPlaylistPlayer());
   g_windowManager.AddMsgTarget(&g_infoManager);
   g_windowManager.AddMsgTarget(&g_fontManager);
   g_windowManager.AddMsgTarget(&CStereoscopicsManager::GetInstance());
@@ -1800,7 +1800,7 @@ bool CApplication::LoadCustomWindows()
 
           if (StringUtils::EqualsNoCase(strType, "dialog"))
           {
-            hasVisibleCondition = pRootElement->FirstChildElement("visible");
+            hasVisibleCondition = pRootElement->FirstChildElement("visible") != nullptr;
             pWindow = new CGUIDialog(windowId, skinFile);
           }
           else if (StringUtils::EqualsNoCase(strType, "submenu"))
@@ -2101,7 +2101,7 @@ bool CApplication::OnAction(const CAction &action)
   // In case of the action PREV_ITEM, we only allow the playlist player to take it if we're less than 3 seconds into playback.
   if (!(action.GetID() == ACTION_PREV_ITEM && m_pPlayer->CanSeek() && GetTime() > 3) )
   {
-    if (g_playlistPlayer.OnAction(action))
+    if (CServiceBroker::GetPlaylistPlayer().OnAction(action))
       return true;
   }
 
@@ -2330,7 +2330,7 @@ bool CApplication::OnAction(const CAction &action)
   }
   if (action.GetID() == ACTION_SHOW_PLAYLIST)
   {
-    int iPlaylist = g_playlistPlayer.GetCurrentPlaylist();
+    int iPlaylist = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
     if (iPlaylist == PLAYLIST_VIDEO && g_windowManager.GetActiveWindow() != WINDOW_VIDEO_PLAYLIST)
       g_windowManager.ActivateWindow(WINDOW_VIDEO_PLAYLIST);
     else if (iPlaylist == PLAYLIST_MUSIC && g_windowManager.GetActiveWindow() != WINDOW_MUSIC_PLAYLIST)
@@ -2726,6 +2726,9 @@ bool CApplication::Cleanup()
 {
   try
   {
+    if (m_ServiceManager)
+      m_ServiceManager->DeinitStageThree();
+
     CLog::Log(LOGNOTICE, "unload skin");
     UnloadSkin();
 
@@ -2765,7 +2768,11 @@ bool CApplication::Cleanup()
     CEventServer::RemoveInstance();
 #endif
     DllLoaderContainer::Clear();
-    g_playlistPlayer.Clear();
+    CServiceBroker::GetPlaylistPlayer().Clear();
+
+    if (m_ServiceManager)
+      m_ServiceManager->DeinitStageTwo();
+
     m_ServiceManager->GetSettings().Uninitialize();
     g_advancedSettings.Clear();
 
@@ -2787,7 +2794,7 @@ bool CApplication::Cleanup()
     // Cleanup was called more than once on exit during my tests
     if (m_ServiceManager)
     {
-      m_ServiceManager->Deinit();
+      m_ServiceManager->DeinitStageOne();
       m_ServiceManager.reset();
     }
 
@@ -3318,11 +3325,11 @@ PlayBackRet CApplication::PlayFile(CFileItem item, const std::string& player, bo
 
   // this really aught to be inside !bRestart, but since PlayStack
   // uses that to init playback, we have to keep it outside
-  int playlist = g_playlistPlayer.GetCurrentPlaylist();
-  if (item.IsVideo() && playlist == PLAYLIST_VIDEO && g_playlistPlayer.GetPlaylist(playlist).size() > 1)
+  int playlist = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+  if (item.IsVideo() && playlist == PLAYLIST_VIDEO && CServiceBroker::GetPlaylistPlayer().GetPlaylist(playlist).size() > 1)
   { // playing from a playlist by the looks
     // don't switch to fullscreen if we are not playing the first item...
-    options.fullscreen = !g_playlistPlayer.HasPlayedFirstFile() && g_advancedSettings.m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
+    options.fullscreen = !CServiceBroker::GetPlaylistPlayer().HasPlayedFirstFile() && g_advancedSettings.m_fullScreenOnMovieStart && !CMediaSettings::GetInstance().DoesVideoStartWindowed();
   }
   else if(m_itemCurrentFile->IsStack() && m_currentStack->Size() > 0)
   {
@@ -3436,7 +3443,7 @@ PlayBackRet CApplication::PlayFile(CFileItem item, const std::string& player, bo
 #endif
 
     if (item.HasPVRChannelInfoTag())
-      g_playlistPlayer.SetCurrentPlaylist(PLAYLIST_NONE);
+      CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(PLAYLIST_NONE);
   }
 
   CSingleLock lock(m_playStateMutex);
@@ -3475,8 +3482,8 @@ PlayBackRet CApplication::PlayFile(CFileItem item, const std::string& player, bo
   else if (iResult == PLAYBACK_FAIL)
   {
     // we send this if it isn't playlistplayer that is doing this
-    int next = g_playlistPlayer.GetNextSong();
-    int size = g_playlistPlayer.GetPlaylist(g_playlistPlayer.GetCurrentPlaylist()).size();
+    int next = CServiceBroker::GetPlaylistPlayer().GetNextSong();
+    int size = CServiceBroker::GetPlaylistPlayer().GetPlaylist(CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist()).size();
     if(next < 0
     || next >= size)
       OnPlayBackStopped();
@@ -3593,7 +3600,7 @@ void CApplication::OnPlayBackPaused()
 
   CVariant param;
   param["player"]["speed"] = 0;
-  param["player"]["playerid"] = g_playlistPlayer.GetCurrentPlaylist();
+  param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
   CAnnouncementManager::GetInstance().Announce(Player, "xbmc", "OnPause", m_itemCurrentFile, param);
 }
 
@@ -3611,7 +3618,7 @@ void CApplication::OnPlayBackResumed()
 
   CVariant param;
   param["player"]["speed"] = 1;
-  param["player"]["playerid"] = g_playlistPlayer.GetCurrentPlaylist();
+  param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
   CAnnouncementManager::GetInstance().Announce(Player, "xbmc", "OnPlay", m_itemCurrentFile, param);
 }
 
@@ -3623,7 +3630,7 @@ void CApplication::OnPlayBackSpeedChanged(int iSpeed)
 
   CVariant param;
   param["player"]["speed"] = iSpeed;
-  param["player"]["playerid"] = g_playlistPlayer.GetCurrentPlaylist();
+  param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
   CAnnouncementManager::GetInstance().Announce(Player, "xbmc", "OnSpeedChanged", m_itemCurrentFile, param);
 }
 
@@ -3636,7 +3643,7 @@ void CApplication::OnPlayBackSeek(int64_t iTime, int64_t seekOffset)
   CVariant param;
   CJSONUtils::MillisecondsToTimeObject(iTime, param["player"]["time"]);
   CJSONUtils::MillisecondsToTimeObject(seekOffset, param["player"]["seekoffset"]);
-  param["player"]["playerid"] = g_playlistPlayer.GetCurrentPlaylist();
+  param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
   param["player"]["speed"] = (int)m_pPlayer->GetPlaySpeed();
   CAnnouncementManager::GetInstance().Announce(Player, "xbmc", "OnSeek", m_itemCurrentFile, param);
   g_infoManager.SetDisplayAfterSeek(2500, static_cast<int>(seekOffset));
@@ -3693,8 +3700,8 @@ void CApplication::UpdateFileState()
     // and we'd overwrite them with settings for the *previous* item.
     //! @todo these "exceptions" should be removed and the whole logic of saving settings be revisited and
     //! possibly moved out of CApplication.  See PRs 5842, 5958, http://trac.kodi.tv/ticket/15704#comment:3
-    int playlist = g_playlistPlayer.GetCurrentPlaylist();
-    if (!m_progressTrackingItem->IsPVRChannel() && !(playlist == PLAYLIST_VIDEO && g_playlistPlayer.GetPlaylist(playlist).size() > 1))
+    int playlist = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
+    if (!m_progressTrackingItem->IsPVRChannel() && !(playlist == PLAYLIST_VIDEO && CServiceBroker::GetPlaylistPlayer().GetPlaylist(playlist).size() > 1))
       SaveFileState();
 
     // Reset tracking item
@@ -4141,7 +4148,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
       if (message.GetParam1()==GUI_MSG_REMOVED_MEDIA)
       {
         // Update general playlist: Remove DVD playlist items
-        int nRemoved = g_playlistPlayer.RemoveDVDItems();
+        int nRemoved = CServiceBroker::GetPlaylistPlayer().RemoveDVDItems();
         if ( nRemoved > 0 )
         {
           CGUIMessage msg( GUI_MSG_PLAYLIST_CHANGED, 0, 0 );
@@ -4184,7 +4191,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
 #ifdef TARGET_DARWIN_IOS
       CDarwinUtils::SetScheduling(message.GetMessage());
 #endif
-      CPlayList playList = g_playlistPlayer.GetPlaylist(g_playlistPlayer.GetCurrentPlaylist());
+      CPlayList playList = CServiceBroker::GetPlaylistPlayer().GetPlaylist(CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist());
 
       // Update our infoManager with the new details etc.
       if (m_nextPlaylistItem >= 0)
@@ -4197,11 +4204,11 @@ bool CApplication::OnMessage(CGUIMessage& message)
         // we've started a previously queued item
         CFileItemPtr item = playList[m_nextPlaylistItem];
         // update the playlist manager
-        int currentSong = g_playlistPlayer.GetCurrentSong();
+        int currentSong = CServiceBroker::GetPlaylistPlayer().GetCurrentSong();
         int param = ((currentSong & 0xffff) << 16) | (m_nextPlaylistItem & 0xffff);
-        CGUIMessage msg(GUI_MSG_PLAYLISTPLAYER_CHANGED, 0, 0, g_playlistPlayer.GetCurrentPlaylist(), param, item);
+        CGUIMessage msg(GUI_MSG_PLAYLISTPLAYER_CHANGED, 0, 0, CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist(), param, item);
         g_windowManager.SendThreadMessage(msg);
-        g_playlistPlayer.SetCurrentSong(m_nextPlaylistItem);
+        CServiceBroker::GetPlaylistPlayer().SetCurrentSong(m_nextPlaylistItem);
         m_itemCurrentFile.reset(new CFileItem(*item));
       }
       g_infoManager.SetCurrentItem(m_itemCurrentFile);
@@ -4209,7 +4216,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
 
       CVariant param;
       param["player"]["speed"] = 1;
-      param["player"]["playerid"] = g_playlistPlayer.GetCurrentPlaylist();
+      param["player"]["playerid"] = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
       CAnnouncementManager::GetInstance().Announce(Player, "xbmc", "OnPlay", m_itemCurrentFile, param);
       return true;
     }
@@ -4219,8 +4226,8 @@ bool CApplication::OnMessage(CGUIMessage& message)
     {
       // Check to see if our playlist player has a new item for us,
       // and if so, we check whether our current player wants the file
-      int iNext = g_playlistPlayer.GetNextSong();
-      CPlayList& playlist = g_playlistPlayer.GetPlaylist(g_playlistPlayer.GetCurrentPlaylist());
+      int iNext = CServiceBroker::GetPlaylistPlayer().GetNextSong();
+      CPlayList& playlist = CServiceBroker::GetPlaylistPlayer().GetPlaylist(CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist());
       if (iNext < 0 || iNext >= playlist.size())
       {
         m_pPlayer->OnNothingToQueueNotify();
@@ -4260,7 +4267,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
       {
         /* Player didn't accept next file: *ALWAYS* advance playlist in this case so the player can
             queue the next (if it wants to) and it doesn't keep looping on this song */
-        g_playlistPlayer.SetCurrentSong(iNext);
+        CServiceBroker::GetPlaylistPlayer().SetCurrentSong(iNext);
       }
 
       return true;
@@ -4299,7 +4306,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
 
       if (message.GetMessage() == GUI_MSG_PLAYBACK_ENDED)
       {
-        g_playlistPlayer.PlayNext(1, true);
+        CServiceBroker::GetPlaylistPlayer().PlayNext(1, true);
       }
       else
       {
@@ -4325,7 +4332,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
         }
       }
 
-      if (!m_pPlayer->IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_NONE && g_windowManager.GetActiveWindow() == WINDOW_VISUALISATION)
+      if (!m_pPlayer->IsPlayingAudio() && CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_NONE && g_windowManager.GetActiveWindow() == WINDOW_VISUALISATION)
       {
         m_ServiceManager->GetSettings().Save();  // save vis settings
         WakeUpScreenSaverAndDPMS();
@@ -5113,22 +5120,22 @@ bool CApplication::ProcessAndStartPlaylist(const std::string& strPlayList, CPlay
     return false;
 
   // setup correct playlist
-  g_playlistPlayer.ClearPlaylist(iPlaylist);
+  CServiceBroker::GetPlaylistPlayer().ClearPlaylist(iPlaylist);
 
   // if the playlist contains an internet stream, this file will be used
   // to generate a thumbnail for musicplayer.cover
   g_application.m_strPlayListFile = strPlayList;
 
   // add the items to the playlist player
-  g_playlistPlayer.Add(iPlaylist, playlist);
+  CServiceBroker::GetPlaylistPlayer().Add(iPlaylist, playlist);
 
   // if we have a playlist
-  if (g_playlistPlayer.GetPlaylist(iPlaylist).size())
+  if (CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).size())
   {
     // start playing it
-    g_playlistPlayer.SetCurrentPlaylist(iPlaylist);
-    g_playlistPlayer.Reset();
-    g_playlistPlayer.Play(track, "");
+    CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(iPlaylist);
+    CServiceBroker::GetPlaylistPlayer().Reset();
+    CServiceBroker::GetPlaylistPlayer().Play(track, "");
     return true;
   }
   return false;

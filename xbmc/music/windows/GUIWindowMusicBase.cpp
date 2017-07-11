@@ -94,9 +94,7 @@ CGUIWindowMusicBase::CGUIWindowMusicBase(int id, const std::string &xmlFile)
   m_thumbLoader.SetObserver(this);
 }
 
-CGUIWindowMusicBase::~CGUIWindowMusicBase ()
-{
-}
+CGUIWindowMusicBase::~CGUIWindowMusicBase () = default;
 
 bool CGUIWindowMusicBase::OnBack(int actionID)
 {
@@ -262,8 +260,8 @@ bool CGUIWindowMusicBase::OnAction(const CAction &action)
 {
   if (action.GetID() == ACTION_SHOW_PLAYLIST)
   {
-    if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC ||
-        g_playlistPlayer.GetPlaylist(PLAYLIST_MUSIC).size() > 0)
+    if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_MUSIC ||
+        CServiceBroker::GetPlaylistPlayer().GetPlaylist(PLAYLIST_MUSIC).size() > 0)
     {
       g_windowManager.ActivateWindow(WINDOW_MUSIC_PLAYLIST);
       return true;
@@ -375,7 +373,7 @@ void CGUIWindowMusicBase::ShowArtistInfo(const CFileItem *pItem, bool bShowInfo 
   CArtist artist;
   if (!m_musicdatabase.GetArtist(params.GetArtistId(), artist))
       return;
-
+  artist.bScrapedMBID = m_musicdatabase.HasScrapedArtistMBID(artist.idArtist);
   m_musicdatabase.GetArtistPath(params.GetArtistId(), artist.strPath);
   bool refresh = false;
   while (1)
@@ -448,7 +446,7 @@ bool CGUIWindowMusicBase::ShowAlbumInfo(const CFileItem *pItem, bool bShowInfo /
   CAlbum album;
   if (!m_musicdatabase.GetAlbum(params.GetAlbumId(), album))
     return false;
-
+  album.bScrapedMBID = m_musicdatabase.HasScrapedAlbumMBID(album.idAlbum);
   m_musicdatabase.GetAlbumPath(params.GetAlbumId(), album.strPath);
   bool refresh = false;
   while (1)
@@ -593,7 +591,7 @@ void CGUIWindowMusicBase::RetrieveMusicInfo()
 void CGUIWindowMusicBase::OnQueueItem(int iItem)
 {
   // Determine the proper list to queue this element
-  int playlist = g_playlistPlayer.GetCurrentPlaylist();
+  int playlist = CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist();
   if (playlist == PLAYLIST_NONE)
     playlist = g_application.m_pPlayer->GetPreferredPlaylist();
   if (playlist == PLAYLIST_NONE)
@@ -602,7 +600,7 @@ void CGUIWindowMusicBase::OnQueueItem(int iItem)
   // don't re-queue items from playlist window
   if ( iItem < 0 || iItem >= m_vecItems->Size() || GetID() == WINDOW_MUSIC_PLAYLIST) return ;
 
-  int iOldSize=g_playlistPlayer.GetPlaylist(playlist).size();
+  int iOldSize=CServiceBroker::GetPlaylistPlayer().GetPlaylist(playlist).size();
 
   // add item 2 playlist (make a copy as we alter the queuing state)
   CFileItemPtr item(new CFileItem(*m_vecItems->Get(iItem)));
@@ -629,15 +627,15 @@ void CGUIWindowMusicBase::OnQueueItem(int iItem)
     return;
   }
 
-  g_playlistPlayer.Add(playlist, queuedItems);
-  if (g_playlistPlayer.GetPlaylist(playlist).size() && !g_application.m_pPlayer->IsPlaying())
+  CServiceBroker::GetPlaylistPlayer().Add(playlist, queuedItems);
+  if (CServiceBroker::GetPlaylistPlayer().GetPlaylist(playlist).size() && !g_application.m_pPlayer->IsPlaying())
   {
     if (m_guiState.get())
       m_guiState->SetPlaylistDirectory("playlistmusic://");
 
-    g_playlistPlayer.Reset();
-    g_playlistPlayer.SetCurrentPlaylist(playlist);
-    g_playlistPlayer.Play(iOldSize, ""); // start playing at the first new item
+    CServiceBroker::GetPlaylistPlayer().Reset();
+    CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(playlist);
+    CServiceBroker::GetPlaylistPlayer().Play(iOldSize, ""); // start playing at the first new item
   }
 }
 
@@ -1036,13 +1034,13 @@ void CGUIWindowMusicBase::PlayItem(int iItem)
     URIUtils::RemoveSlashAtEnd(strPlayListDirectory);
     */
 
-    g_playlistPlayer.ClearPlaylist(PLAYLIST_MUSIC);
-    g_playlistPlayer.Reset();
-    g_playlistPlayer.Add(PLAYLIST_MUSIC, queuedItems);
-    g_playlistPlayer.SetCurrentPlaylist(PLAYLIST_MUSIC);
+    CServiceBroker::GetPlaylistPlayer().ClearPlaylist(PLAYLIST_MUSIC);
+    CServiceBroker::GetPlaylistPlayer().Reset();
+    CServiceBroker::GetPlaylistPlayer().Add(PLAYLIST_MUSIC, queuedItems);
+    CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist(PLAYLIST_MUSIC);
 
     // play!
-    g_playlistPlayer.Play();
+    CServiceBroker::GetPlaylistPlayer().Play();
   }
   else if (pItem->IsPlayList())
   {
@@ -1111,7 +1109,7 @@ bool CGUIWindowMusicBase::OnPlayMedia(int iItem, const std::string &player)
       OnQueueItem(iItem);
       return true;
     }
-    g_playlistPlayer.Play(pItem, player);
+    CServiceBroker::GetPlaylistPlayer().Play(pItem, player);
     return true;
   }
   return CGUIMediaWindow::OnPlayMedia(iItem, player);

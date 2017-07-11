@@ -41,8 +41,8 @@
  * overview.
  */
 
-#define ADDON_GLOBAL_VERSION_MAIN                     "1.0.9"
-#define ADDON_GLOBAL_VERSION_MAIN_MIN                 "1.0.2"
+#define ADDON_GLOBAL_VERSION_MAIN                     "1.0.10"
+#define ADDON_GLOBAL_VERSION_MAIN_MIN                 "1.0.10"
 #define ADDON_GLOBAL_VERSION_MAIN_XML_ID              "kodi.binary.global.main"
 #define ADDON_GLOBAL_VERSION_MAIN_DEPENDS             "AddonBase.h" \
                                                       "xbmc_addon_dll.h" \
@@ -50,8 +50,8 @@
                                                       "libXBMC_addon.h" \
                                                       "addon-instance/"
 
-#define ADDON_GLOBAL_VERSION_GENERAL                  "1.0.1"
-#define ADDON_GLOBAL_VERSION_GENERAL_MIN              "1.0.0"
+#define ADDON_GLOBAL_VERSION_GENERAL                  "1.0.2"
+#define ADDON_GLOBAL_VERSION_GENERAL_MIN              "1.0.2"
 #define ADDON_GLOBAL_VERSION_GENERAL_XML_ID           "kodi.binary.global.general"
 #define ADDON_GLOBAL_VERSION_GENERAL_DEPENDS          "General.h"
 
@@ -102,8 +102,8 @@
 #define ADDON_INSTANCE_VERSION_IMAGEDECODER_XML_ID    "kodi.binary.instance.imagedecoder"
 #define ADDON_INSTANCE_VERSION_IMAGEDECODER_DEPENDS   "addon-instance/ImageDecoder.h"
 
-#define ADDON_INSTANCE_VERSION_INPUTSTREAM            "2.0.0"
-#define ADDON_INSTANCE_VERSION_INPUTSTREAM_MIN        "2.0.0"
+#define ADDON_INSTANCE_VERSION_INPUTSTREAM            "2.0.1"
+#define ADDON_INSTANCE_VERSION_INPUTSTREAM_MIN        "2.0.1"
 #define ADDON_INSTANCE_VERSION_INPUTSTREAM_XML_ID     "kodi.binary.instance.inputstream"
 #define ADDON_INSTANCE_VERSION_INPUTSTREAM_DEPENDS    "addon-instance/Inputstream.h"
 
@@ -113,8 +113,8 @@
 #define ADDON_INSTANCE_VERSION_PERIPHERAL_DEPENDS     "addon-instance/Peripheral.h" \
                                                       "addon-instance/PeripheralUtils.h"
 
-#define ADDON_INSTANCE_VERSION_PVR                    "5.2.4"
-#define ADDON_INSTANCE_VERSION_PVR_MIN                "5.2.4"
+#define ADDON_INSTANCE_VERSION_PVR                    "5.3.0"
+#define ADDON_INSTANCE_VERSION_PVR_MIN                "5.3.0"
 #define ADDON_INSTANCE_VERSION_PVR_XML_ID             "kodi.binary.instance.pvr"
 #define ADDON_INSTANCE_VERSION_PVR_DEPENDS            "xbmc_pvr_dll.h" \
                                                       "xbmc_pvr_types.h" \
@@ -131,7 +131,7 @@
 #define ADDON_INSTANCE_VERSION_VFS_XML_ID             "kodi.binary.instance.vfs"
 #define ADDON_INSTANCE_VERSION_VFS_DEPENDS            "addon-instance/VFS.h"
 
-#define ADDON_INSTANCE_VERSION_VISUALIZATION          "2.0.0"
+#define ADDON_INSTANCE_VERSION_VISUALIZATION          "2.0.1"
 #define ADDON_INSTANCE_VERSION_VISUALIZATION_MIN      "2.0.0"
 #define ADDON_INSTANCE_VERSION_VISUALIZATION_XML_ID   "kodi.binary.instance.visualization"
 #define ADDON_INSTANCE_VERSION_VISUALIZATION_DEPENDS  "addon-instance/Visualization.h"

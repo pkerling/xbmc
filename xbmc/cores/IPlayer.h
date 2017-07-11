@@ -227,7 +227,7 @@ class IPlayer
 {
 public:
   IPlayer(IPlayerCallback& callback): m_callback(callback){};
-  virtual ~IPlayer(){};
+  virtual ~IPlayer() = default;
   virtual bool Initialize(TiXmlElement* pConfig) { return true; };
   virtual bool OpenFile(const CFileItem& file, const CPlayerOptions& options){ return false;}
   virtual bool QueueNextFile(const CFileItem &file) { return false; }
@@ -358,22 +358,12 @@ public:
    \brief hook into render loop of render thread
    */
   virtual void FrameMove() {};
-
   virtual void Render(bool clear, uint32_t alpha = 255, bool gui = true) {};
-
   virtual void FlushRenderer() {};
-
   virtual void SetRenderViewMode(int mode) {};
-
   virtual float GetRenderAspectRatio() { return 1.0; };
-
   virtual void TriggerUpdateResolution() {};
-
   virtual bool IsRenderingVideo() { return false; };
-
-  virtual bool IsRenderingGuiLayer() { return false; };
-
-  virtual bool IsRenderingVideoLayer() { return false; };
 
   virtual bool Supports(EINTERLACEMETHOD method) { return false; };
   virtual EINTERLACEMETHOD GetDeinterlacingMethodDefault() { return EINTERLACEMETHOD::VS_INTERLACEMETHOD_NONE; }

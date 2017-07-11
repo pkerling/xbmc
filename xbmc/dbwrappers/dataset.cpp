@@ -399,10 +399,12 @@ const field_value Dataset::get_field_value(int index) {
       return (*edit_object)[index].val;
     }
     else
+    {
       if (index < 0 || index >= field_count())
         throw DbErrors("Field index not found: %d",index);
 
       return (*fields_object)[index].val;
+    }
   }
   throw DbErrors("Dataset state is Inactive");
 }
@@ -430,8 +432,8 @@ int Dataset::str_compare(const char * s1, const char * s2) {
  	std::string::const_iterator p = ts1.begin();
  	std::string::const_iterator p2 = ts2.begin();
  	while (p!=ts1.end() && p2 != ts2.end()) {
- 	if (toupper(*p)!=toupper(*p2))
- 		return (toupper(*p)<toupper(*p2)) ? -1 : 1;
+ 		if (toupper(*p)!=toupper(*p2))
+ 			return (toupper(*p)<toupper(*p2)) ? -1 : 1;
  		++p;
  		++p2;		
  	}	

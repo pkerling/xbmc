@@ -45,7 +45,7 @@ class CQueueNextFileJob : public CJob
 
 public: CQueueNextFileJob(const CFileItem& item, PAPlayer &player)
     : m_item(item), m_player(player) {}
-  ~CQueueNextFileJob() override {}
+  ~CQueueNextFileJob() override = default;
   bool  DoWork() override
   {
     return m_player.QueueNextFileEx(m_item, true, true);
@@ -76,6 +76,7 @@ PAPlayer::PAPlayer(IPlayerCallback& callback) :
 {
   memset(&m_playerGUIData, 0, sizeof(m_playerGUIData));
   m_processInfo.reset(CProcessInfo::CreateInstance());
+  m_processInfo->SetDataCache(&CServiceBroker::GetDataCacheCore());
 }
 
 PAPlayer::~PAPlayer()

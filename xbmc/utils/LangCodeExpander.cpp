@@ -56,11 +56,9 @@ struct ISO3166_1
 extern const std::array<ISO639, 189> LanguageCodes;
 extern const std::array<ISO3166_1, 245> RegionCodes;
 
-CLangCodeExpander::CLangCodeExpander()
-{ }
+CLangCodeExpander::CLangCodeExpander() = default;
 
-CLangCodeExpander::~CLangCodeExpander()
-{ }
+CLangCodeExpander::~CLangCodeExpander() = default;
 
 void CLangCodeExpander::Clear()
 {
@@ -222,20 +220,19 @@ bool CLangCodeExpander::ConvertToISO6392B(const std::string& strCharCode, std::s
 
 bool CLangCodeExpander::ConvertToISO6392T(const std::string& strCharCode, std::string& strISO6392T, bool checkWin32Locales /* = false */)
 {
-
   if (!ConvertToISO6392B(strCharCode, strISO6392T, checkWin32Locales))
     return false;
 
-    for (const auto& codes : LanguageCodes)
+  for (const auto& codes : LanguageCodes)
+  {
+    if (strISO6392T == codes.iso639_2b ||
+      (checkWin32Locales && codes.win_id != NULL && strISO6392T == codes.win_id))
     {
-      if (strISO6392T == codes.iso639_2b ||
-        (checkWin32Locales && codes.win_id != NULL && strISO6392T == codes.win_id))
-      {
-        if (codes.iso639_2t != nullptr)
-          strISO6392T = codes.iso639_2t;
-        return true;
-      }
+      if (codes.iso639_2t != nullptr)
+        strISO6392T = codes.iso639_2t;
+      return true;
     }
+  }
   return false;
 }
 

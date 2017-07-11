@@ -41,6 +41,7 @@ extern "C" {
 #include "dialogs/GUIDialogSelect.h"
 #include "guiinfo/GUIInfoLabels.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "messaging/ApplicationMessenger.h"
 #include "messaging/helpers/DialogHelper.h"
 #include "settings/AdvancedSettings.h"
@@ -104,8 +105,8 @@ void CActiveAEDSP::Init(void)
 class CActiveAEDSPModeUpdateJob : public CJob
 {
 public:
-  CActiveAEDSPModeUpdateJob() {}
-  ~CActiveAEDSPModeUpdateJob(void) override {}
+  CActiveAEDSPModeUpdateJob() = default;
+  ~CActiveAEDSPModeUpdateJob(void) override = default;
 
   bool DoWork(void) override
   {
