@@ -1011,6 +1011,18 @@ void CWinSystemWayland::PrepareFramePresentation()
   }
 }
 
+float CWinSystemWayland::GetDisplayLatency()
+{
+  if (m_connection->GetPresentation())
+  {
+    return m_latencyMovingAverage * 1000.0f;
+  }
+  else
+  {
+    return CWinSystemBase::GetDisplayLatency();
+  }
+}
+
 float CWinSystemWayland::GetSyncOutputRefreshRate()
 {
   return m_syncOutputRefreshRate;
