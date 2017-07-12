@@ -94,9 +94,7 @@ CGUIDialogPVRTimerSettings::CGUIDialogPVRTimerSettings() :
   m_loadType = LOAD_EVERY_TIME;
 }
 
-CGUIDialogPVRTimerSettings::~CGUIDialogPVRTimerSettings()
-{
-}
+CGUIDialogPVRTimerSettings::~CGUIDialogPVRTimerSettings() = default;
 
 bool CGUIDialogPVRTimerSettings::CanBeActivated() const
 {
@@ -169,7 +167,7 @@ void CGUIDialogPVRTimerSettings::SetTimer(const CPVRTimerInfoTagPtr &timer)
   if (m_timerInfoTag->m_iClientChannelUid == PVR_CHANNEL_INVALID_UID)
   {
     bool bChannelSet(false);
-    if (m_timerType->IsEpgBasedTimerRule())
+    if (m_timerType->SupportsAnyChannel())
     {
       // Select "Any channel"
       const auto it = m_channelEntries.find(ENTRY_ANY_CHANNEL);
@@ -844,8 +842,8 @@ void CGUIDialogPVRTimerSettings::ChannelsFiller(
     {
       if (channelEntry.first == ENTRY_ANY_CHANNEL)
       {
-        // For epg-based timer rules only, add an "any channel" entry.
-        if (pThis->m_timerType->IsEpgBasedTimerRule())
+        // add an "any channel" entry, if supported by this type.
+        if (pThis->m_timerType->SupportsAnyChannel())
           list.push_back(std::make_pair(channelEntry.second.description, channelEntry.first));
         else
           continue;

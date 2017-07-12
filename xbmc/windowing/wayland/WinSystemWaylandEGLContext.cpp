@@ -21,6 +21,8 @@
 #include "WinSystemWaylandEGLContext.h"
 
 #include "Connection.h"
+#include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
 #include "utils/log.h"
 #include "guilib/GraphicContext.h"
 
@@ -28,12 +30,20 @@ using namespace KODI::WINDOWING::WAYLAND;
 
 bool CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGLint renderableType, EGLint apiType)
 {
+  VIDEOPLAYER::CRendererFactory::ClearRenderer();
+  CDVDFactoryCodec::ClearHWAccels();
+
   if (!CWinSystemWayland::InitWindowSystem())
   {
     return false;
   }
 
-  return m_eglContext.CreateDisplay(m_connection->GetDisplay(), renderableType, apiType);
+  if (!m_eglContext.CreateDisplay(m_connection->GetDisplay(), renderableType, apiType))
+  {
+    return false;
+  }
+
+  return true;
 }
 
 bool CWinSystemWaylandEGLContext::CreateNewWindow(const std::string& name,
@@ -100,19 +110,4 @@ bool CWinSystemWaylandEGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO
 EGLDisplay CWinSystemWaylandEGLContext::GetEGLDisplay() const
 {
   return m_eglContext.m_eglDisplay;
-}
-
-EGLSurface CWinSystemWaylandEGLContext::GetEGLSurface() const
-{
-  return m_eglContext.m_eglSurface;
-}
-
-EGLContext CWinSystemWaylandEGLContext::GetEGLContext() const
-{
-  return m_eglContext.m_eglContext;
-}
-
-EGLConfig CWinSystemWaylandEGLContext::GetEGLConfig() const
-{
-  return m_eglContext.m_eglConfig;
 }

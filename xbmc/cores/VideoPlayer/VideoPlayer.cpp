@@ -669,6 +669,9 @@ CVideoPlayer::CVideoPlayer(IPlayerCallback& callback)
   m_SkipCommercials = true;
 
   m_processInfo.reset(CProcessInfo::CreateInstance());
+  // if we have a gui, register the cache
+  m_processInfo->SetDataCache(&CServiceBroker::GetDataCacheCore());
+
   CreatePlayers();
 
   m_displayLost = false;
@@ -1448,8 +1451,8 @@ void CVideoPlayer::Process()
     }
 
     // always yield to players if they have data levels > 50 percent
-    if((m_VideoPlayerAudio->GetLevel() > 50 || m_CurrentAudio.id < 0)
-    && (m_VideoPlayerVideo->GetLevel() > 50 || m_CurrentVideo.id < 0))
+    if((m_VideoPlayerAudio->GetLevel() > 50 || m_CurrentAudio.id < 0) &&
+       (m_processInfo->GetLevelVQ() > 50 || m_CurrentVideo.id < 0))
       Sleep(0);
 
     DemuxPacket* pPacket = NULL;
@@ -1930,10 +1933,11 @@ void CVideoPlayer::HandlePlaySpeed()
         if (m_pInputStream->IsRealtime())
         {
           if ((m_CurrentAudio.id >= 0 && m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_INSYNC && m_VideoPlayerAudio->IsStalled()) ||
-              (m_CurrentVideo.id >= 0 && m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_INSYNC && m_VideoPlayerVideo->GetLevel() == 0))
+              (m_CurrentVideo.id >= 0 && m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_INSYNC &&
+               m_processInfo->GetLevelVQ() == 0))
           {
             CLog::Log(LOGDEBUG, "Stream stalled, start buffering. Audio: %d - Video: %d",
-                                 m_VideoPlayerAudio->GetLevel(),m_VideoPlayerVideo->GetLevel());
+                                 m_VideoPlayerAudio->GetLevel(), m_processInfo->GetLevelVQ());
             FlushBuffers(DVD_NOPTS_VALUE, true, true);
           }
         }
@@ -1941,7 +1945,7 @@ void CVideoPlayer::HandlePlaySpeed()
         {
           // start caching if audio and video have run dry
           if (m_VideoPlayerAudio->GetLevel() <= 50 &&
-              m_VideoPlayerVideo->GetLevel() <= 50)
+              m_processInfo->GetLevelVQ() <= 50)
           {
             SetCaching(CACHESTATE_FULL);
           }
@@ -2546,7 +2550,7 @@ void CVideoPlayer::HandleMessages()
       if (msg.GetRelative())
         time = (m_clock.GetClock() + m_State.time_offset) / 1000l + time;
 
-      time = msg.GetRestore() ? static_cast<double>(m_Edl.RestoreCutTime(static_cast<int>(time))) : time;
+      time = msg.GetRestore() ? m_Edl.RestoreCutTime(time) : time;
 
       // if input stream doesn't support ISeekTime, convert back to pts
       //! @todo
@@ -2555,7 +2559,7 @@ void CVideoPlayer::HandleMessages()
       //! of the desired segment. With the current approach calculated time may point
       //! to nirvana
       if (m_pInputStream->GetIPosTime() == nullptr)
-        time -= m_State.time_offset/1000;
+        time -= m_State.time_offset/1000l;
 
       CLog::Log(LOGDEBUG, "demuxer seek to: %f", time);
       if (m_pDemuxer && m_pDemuxer->SeekTime(time, msg.GetBackward(), &start))
@@ -4128,8 +4132,8 @@ int CVideoPlayer::OnDiscNavResult(void* pData, int iMessage)
     case BD_EVENT_ENC_ERROR:
     {
       m_dvd.state = DVDSTATE_NORMAL;
-      CLog::Log(LOGDEBUG, "CVideoPlayer::OnDiscNavResult - libbluray .m2ts file is encrypted and can't be played (DVDSTATE_NORMAL)");
-      CGUIDialogKaiToast::QueueNotification(g_localizeStrings.Get(16026), g_localizeStrings.Get(16029));
+      CLog::Log(LOGDEBUG, "CVideoPlayer::OnDiscNavResult - libbluray the disc/file is encrypted and can't be played (DVDSTATE_NORMAL)");
+      CGUIDialogKaiToast::QueueNotification(g_localizeStrings.Get(16026), g_localizeStrings.Get(29805));
     }
     break;
     default:
@@ -4781,7 +4785,7 @@ int CVideoPlayer::GetCacheLevel() const
 double CVideoPlayer::GetQueueTime()
 {
   int a = m_VideoPlayerAudio->GetLevel();
-  int v = m_VideoPlayerVideo->GetLevel();
+  int v = m_processInfo->GetLevelVQ();
   return std::max(a, v) * 8000.0 / 100;
 }
 
@@ -5220,16 +5224,6 @@ bool CVideoPlayer::IsRenderingVideo()
   return m_renderManager.IsConfigured();
 }
 
-bool CVideoPlayer::IsRenderingGuiLayer()
-{
-  return m_renderManager.IsGuiLayer();
-}
-
-bool CVideoPlayer::IsRenderingVideoLayer()
-{
-  return m_renderManager.IsVideoLayer();
-}
-
 bool CVideoPlayer::Supports(EINTERLACEMETHOD method)
 {
   if (!m_processInfo)
@@ -5299,6 +5293,16 @@ void CVideoPlayer::UpdateRenderInfo(CRenderInfo &info)
 void CVideoPlayer::UpdateRenderBuffers(int queued, int discard, int free)
 {
   m_processInfo->UpdateRenderBuffers(queued, discard, free);
+}
+
+void CVideoPlayer::UpdateGuiRender(bool gui)
+{
+  m_processInfo->SetGuiRender(gui);
+}
+
+void CVideoPlayer::UpdateVideoRender(bool video)
+{
+  m_processInfo->SetVideoRender(video);
 }
 
 // IDispResource interface

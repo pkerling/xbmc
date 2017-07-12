@@ -134,6 +134,7 @@
 #include "pvr/dialogs/GUIDialogPVRGuideSearch.h"
 #include "pvr/dialogs/GUIDialogPVRRadioRDSInfo.h"
 #include "pvr/dialogs/GUIDialogPVRRecordingInfo.h"
+#include "pvr/dialogs/GUIDialogPVRRecordingSettings.h"
 #include "pvr/dialogs/GUIDialogPVRTimerSettings.h"
 
 #include "video/dialogs/GUIDialogTeletext.h"
@@ -148,6 +149,8 @@
 /* Game related include files */
 #include "games/controllers/windows/GUIControllerWindow.h"
 #include "games/windows/GUIWindowGames.h"
+#include "games/dialogs/osd/DialogGameOSD.h"
+#include "games/dialogs/osd/DialogGameVideoSettings.h"
 
 using namespace KODI;
 using namespace PVR;
@@ -161,9 +164,7 @@ CGUIWindowManager::CGUIWindowManager()
   m_initialized = false;
 }
 
-CGUIWindowManager::~CGUIWindowManager()
-{
-}
+CGUIWindowManager::~CGUIWindowManager() = default;
 
 void CGUIWindowManager::Initialize()
 {
@@ -279,6 +280,7 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIDialogPVRGuideSearch);
   Add(new CGUIDialogPVRChannelsOSD);
   Add(new CGUIDialogPVRChannelGuide);
+  Add(new CGUIDialogPVRRecordingSettings);
 
   Add(new CGUIDialogSelect);
   Add(new CGUIDialogMusicInfo);
@@ -299,6 +301,8 @@ void CGUIWindowManager::CreateWindows()
 
   Add(new GAME::CGUIControllerWindow);
   Add(new GAME::CGUIWindowGames);
+  Add(new GAME::CDialogGameOSD);
+  Add(new GAME::CDialogGameVideoSettings);
 }
 
 bool CGUIWindowManager::DestroyWindows()
@@ -377,6 +381,7 @@ bool CGUIWindowManager::DestroyWindows()
     DestroyWindow(WINDOW_DIALOG_PVR_OSD_CHANNELS);
     DestroyWindow(WINDOW_DIALOG_PVR_CHANNEL_GUIDE);
     DestroyWindow(WINDOW_DIALOG_OSD_TELETEXT);
+    DestroyWindow(WINDOW_DIALOG_PVR_RECORDING_SETTING);
 
     DestroyWindow(WINDOW_DIALOG_TEXT_VIEWER);
     DestroyWindow(WINDOW_DIALOG_PLAY_EJECT);
@@ -400,6 +405,8 @@ bool CGUIWindowManager::DestroyWindows()
     DestroyWindow(WINDOW_WEATHER);
     DestroyWindow(WINDOW_DIALOG_GAME_CONTROLLERS);
     DestroyWindow(WINDOW_GAMES);
+    DestroyWindow(WINDOW_DIALOG_GAME_OSD);
+    DestroyWindow(WINDOW_DIALOG_GAME_VIDEO_SETTINGS);
 
     Remove(WINDOW_SETTINGS_SERVICE);
     Remove(WINDOW_SETTINGS_MYPVR);
@@ -682,15 +689,6 @@ void CGUIWindowManager::PreviousWindow()
   }
 
   // ok to go to the previous window now
-
-  // pause game when leaving fullscreen or resume game when entering fullscreen
-  if (g_application.m_pPlayer->IsPlayingGame())
-  {
-    if (previousWindow == WINDOW_FULLSCREEN_VIDEO && g_application.m_pPlayer->IsPaused())
-      g_application.OnAction(ACTION_PAUSE);
-    else if (currentWindow == WINDOW_FULLSCREEN_VIDEO && !g_application.m_pPlayer->IsPaused())
-      g_application.OnAction(ACTION_PAUSE);
-  }
 
   // tell our info manager which window we are going to
   g_infoManager.SetNextWindow(previousWindow);

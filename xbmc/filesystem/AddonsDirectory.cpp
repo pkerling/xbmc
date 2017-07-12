@@ -26,6 +26,7 @@
 #include "ServiceBroker.h"
 #include "addons/AddonDatabase.h"
 #include "addons/AddonSystemSettings.h"
+#include "guilib/LocalizeStrings.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
 #include "FileItem.h"
 #include "addons/AddonInstaller.h"
@@ -49,9 +50,9 @@ using namespace ADDON;
 namespace XFILE
 {
 
-CAddonsDirectory::CAddonsDirectory(void) {}
+CAddonsDirectory::CAddonsDirectory(void) = default;
 
-CAddonsDirectory::~CAddonsDirectory(void) {}
+CAddonsDirectory::~CAddonsDirectory(void) = default;
 
 const auto CATEGORY_INFO_PROVIDERS = "category.infoproviders";
 const auto CATEGORY_LOOK_AND_FEEL = "category.lookandfeel";
@@ -552,8 +553,8 @@ static bool Browse(const CURL& path, CFileItemList &items)
     if (!database.GetRepositoryContent(addon->ID(), addons))
     {
       //Repo content is invalid. Ask for update and wait.
-      CRepositoryUpdater::GetInstance().CheckForUpdates(std::static_pointer_cast<CRepository>(addon));
-      CRepositoryUpdater::GetInstance().Await();
+      CServiceBroker::GetRepositoryUpdater().CheckForUpdates(std::static_pointer_cast<CRepository>(addon));
+      CServiceBroker::GetRepositoryUpdater().Await();
 
       if (!database.GetRepositoryContent(addon->ID(), addons))
       {

@@ -114,21 +114,22 @@ namespace RETRO
     //virtual bool HasMenu() const override { return false; }
     //virtual void DoAudioWork() override { }
     //virtual bool OnAction(const CAction &action) override { return false; }
+    bool OnAction(const CAction &action) override;
     std::string GetPlayerState() override;
     bool SetPlayerState(const std::string& state) override;
     //virtual std::string GetPlayingTitle() override { return ""; }
     //virtual bool SwitchChannel(const PVR::CPVRChannelPtr &channel) override { return false; }
     //virtual void GetAudioCapabilities(std::vector<int> &audioCaps) override { audioCaps.assign(1,IPC_AUD_ALL); }
     //virtual void GetSubtitleCapabilities(std::vector<int> &subCaps) override { subCaps.assign(1,IPC_SUBS_ALL); }
-    void FrameMove() override { m_renderManager.FrameMove(); }
+    void FrameMove() override;
     void Render(bool clear, uint32_t alpha = 255, bool gui = true) override { m_renderManager.Render(clear, 0, alpha, gui); }
     void FlushRenderer() override { m_renderManager.Flush(); }
     void SetRenderViewMode(int mode) override { m_renderManager.SetViewMode(mode); }
     float GetRenderAspectRatio() override { return m_renderManager.GetAspectRatio(); }
     void TriggerUpdateResolution() override { m_renderManager.TriggerUpdateResolution(0.0f, 0, 0); }
     bool IsRenderingVideo() override { return m_renderManager.IsConfigured(); }
-    bool IsRenderingGuiLayer() override { return m_renderManager.IsGuiLayer(); }
-    bool IsRenderingVideoLayer() override { return m_renderManager.IsVideoLayer(); }
+//    bool IsRenderingGuiLayer() { return m_renderManager.IsGuiLayer(); }
+//    bool IsRenderingVideoLayer() override { return m_renderManager.IsVideoLayer(); }
     bool Supports(EINTERLACEMETHOD method) override;
     EINTERLACEMETHOD GetDeinterlacingMethodDefault() override;
     bool Supports(ESCALINGMETHOD method) override { return m_renderManager.Supports(method); }
@@ -139,18 +140,34 @@ namespace RETRO
     bool RenderCaptureGetPixels(unsigned int captureId, unsigned int millis, uint8_t *buffer, unsigned int size) override { return m_renderManager.RenderCaptureGetPixels(captureId, millis, buffer, size); }
 
     // implementation of IRenderMsg
-    void VideoParamsChange() override { }
-    void GetDebugInfo(std::string &audio, std::string &video, std::string &general) override { }
-    void UpdateClockSync(bool enabled) override;
-    void UpdateRenderInfo(CRenderInfo &info) override;
-    void UpdateRenderBuffers(int queued, int discard, int free) override {}
+    virtual void VideoParamsChange() override { }
+    virtual void GetDebugInfo(std::string &audio, std::string &video, std::string &general) override { }
+    virtual void UpdateClockSync(bool enabled) override;
+    virtual void UpdateRenderInfo(CRenderInfo &info) override;
+    virtual void UpdateRenderBuffers(int queued, int discard, int free) override {}
+    virtual void UpdateGuiRender(bool gui) override;
+    virtual void UpdateVideoRender(bool video) override;
 
   private:
+    /*!
+     * \brief Closes the OSD and shows the FullscreenGame window
+     */
+    void CloseOSD();
+
     /**
      * \brief Dump game information (if any) to the debug log.
      */
     void PrintGameInfo(const CFileItem &file) const;
 
+    enum class State
+    {
+      STARTING,
+      FULLSCREEN,
+      BACKGROUND,
+    };
+
+    State                              m_state = State::STARTING;
+    double                             m_priorSpeed = 0.0f; // Speed of gameplay before entering OSD
     CDVDClock                          m_clock;
     CRenderManager                     m_renderManager;
     std::unique_ptr<CProcessInfo>      m_processInfo;

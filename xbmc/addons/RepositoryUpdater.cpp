@@ -29,6 +29,7 @@
 #include "events/AddonManagementEvent.h"
 #include "events/EventLog.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "settings/Settings.h"
 #include "threads/SingleLock.h"
 #include "utils/JobManager.h"
@@ -40,16 +41,11 @@
 namespace ADDON
 {
 
-CRepositoryUpdater::CRepositoryUpdater() :
+CRepositoryUpdater::CRepositoryUpdater(CAddonMgr& addonMgr) :
   m_timer(this),
-  m_doneEvent(true)
+  m_doneEvent(true),
+  m_addonMgr(addonMgr)
 {}
-
-CRepositoryUpdater &CRepositoryUpdater::GetInstance()
-{
-  static CRepositoryUpdater instance;
-  return instance;
-}
 
 void CRepositoryUpdater::Start()
 {

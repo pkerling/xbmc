@@ -23,6 +23,7 @@
 #include "filesystem/File.h"
 #include "filesystem/Directory.h"
 #include "filesystem/PluginDirectory.h"
+#include "guilib/LocalizeStrings.h"
 #include "AddonManager.h"
 #include "utils/ScraperParser.h"
 #include "utils/ScraperUrl.h"
@@ -718,6 +719,7 @@ void DetailsFromFileItem<CAlbum>(const CFileItem& item, CAlbum& album)
 {
   album.strAlbum = item.GetLabel();
   album.strMusicBrainzAlbumID = FromString(item, "album.musicbrainzid");
+  album.strReleaseGroupMBID = FromString(item, "album.releasegroupid");
 
   int nArtists = item.GetProperty("album.artists").asInteger();
   album.artistCredits.reserve(nArtists);

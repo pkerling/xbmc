@@ -44,9 +44,6 @@ public:
 
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
   EGLDisplay GetEGLDisplay() const;
-  EGLSurface GetEGLSurface() const;
-  EGLContext GetEGLContext() const;
-  EGLConfig GetEGLConfig() const;
 
 protected:
   /**

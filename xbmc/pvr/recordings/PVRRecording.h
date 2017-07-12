@@ -138,6 +138,13 @@ namespace PVR
      */
     bool IncrementPlayCount() override;
 
+    /*!
+     * @brief Set this recording's play count without transferring the value to the backend, even if it supports server-side play counts.
+     * @param count play count.
+     * @return True if play count was set successfully, false otherwise.
+     */
+    bool SetLocalPlayCount(int count) { return CVideoInfoTag::SetPlayCount(count); }
+
    /*!
      * @brief Get this recording's local play count. The value will not be obtained from the backend, even if it supports server-side play counts.
      * @return the play count.
@@ -215,6 +222,25 @@ namespace PVR
     CDateTime EndTimeAsLocalTime() const;
 
     /*!
+     * @brief Check whether this recording has an expiration time
+     * @return True if the recording has an expiration time, false otherwise
+     */
+    bool HasExpirationTime() const { return m_iLifetime > 0; }
+
+    /*!
+     * @brief Retrieve the recording expiration time as local time
+     * @return the recording expiration time
+     */
+    CDateTime ExpirationTimeAsLocalTime() const;
+
+    /*!
+     * @brief Check whether this recording will immediately expire if the given lifetime value would be set
+     * @param iLifetime The lifetime value to check
+     * @return True if the recording would immediately expire, false otherwiese
+     */
+    bool WillBeExpiredWithNewLifetime(int iLifetime) const;
+
+    /*!
      * @brief Retrieve the recording title from the URL path
      * @param url the URL for the recording
      * @return Title of the recording
@@ -266,6 +292,14 @@ namespace PVR
      * @return true if the recording is in progress, false otherwise
      */
     bool IsInProgress() const;
+
+    /*!
+    * @brief set the genre for this recording.
+    * @param iGenreType The genre type ID. If set to EPG_GENRE_USE_STRING, set genre to the value provided with strGenre. Otherwise, compile the genre string from the values given by iGenreType and iGenreSubType
+    * @param iGenreSubType The genre subtype ID
+    * @param strGenre The genre
+    */
+   void SetGenre(int iGenreType, int iGenreSubType, const std::string &strGenre);
 
   private:
     CDateTime    m_recordingTime; /*!< start time of the recording */

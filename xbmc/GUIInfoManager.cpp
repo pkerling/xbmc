@@ -127,7 +127,7 @@ class CSetCurrentItemJob : public CJob
   CFileItemPtr m_itemCurrentFile;
 public:
   CSetCurrentItemJob(const CFileItemPtr item) : m_itemCurrentFile(item) { }
-  ~CSetCurrentItemJob(void) override {}
+  ~CSetCurrentItemJob(void) override = default;
 
   bool DoWork(void) override
   {
@@ -3660,7 +3660,7 @@ const infomap container_str[]  = {{ "property",         CONTAINER_PROPERTY },
 ///   \table_row3{   <b>`ListItem.EpgEventTitle`</b>,
 ///                  \anchor ListItem_EpgEventTitle
 ///                  _string_,
-///     Returns the title of the epg event associated with the item, if any
+///     Returns the title of the epg event associated with the item\, if any
 ///   }
 ///   \table_row3{   <b>`ListItem.InProgress`</b>,
 ///                  \anchor ListItem_InProgress
@@ -3731,6 +3731,16 @@ const infomap container_str[]  = {{ "property",         CONTAINER_PROPERTY },
 ///                  \anchor ListItem_AddonOrigin
 ///                  _string_,
 ///     Name of the repository the add-on originates from.
+///   }
+///   \table_row3{   <b>`ListItem.ExpirationDate`</b>,
+///                  \anchor ListItem_ExpirationDate
+///                  _string_,
+///     Expiration date of the selected item in a container\, empty string if not supported
+///   }
+///   \table_row3{   <b>`ListItem.ExpirationTime`</b>,
+///                  \anchor ListItem_ExpirationTime
+///                  _string_,
+///     Expiration time of the selected item in a container\, empty string if not supported
 ///   }
 /// \table_end
 ///
@@ -3914,6 +3924,8 @@ const infomap listitem_labels[]= {{ "thumb",            LISTITEM_THUMB },
                                   { "addonlastused",    LISTITEM_ADDON_LAST_USED },
                                   { "addonorigin",      LISTITEM_ADDON_ORIGIN },
                                   { "addonsize",        LISTITEM_ADDON_SIZE },
+                                  { "expirationdate",   LISTITEM_EXPIRATION_DATE },
+                                  { "expirationtime",   LISTITEM_EXPIRATION_TIME },
 };
 
 /// \page modules__General__List_of_gui_access
@@ -7264,22 +7276,22 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       {
         // requires current playlist be PLAYLIST_MUSIC
         bReturn = false;
-        if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
-          bReturn = (g_playlistPlayer.GetCurrentSong() > 0); // not first song
+        if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_MUSIC)
+          bReturn = (CServiceBroker::GetPlaylistPlayer().GetCurrentSong() > 0); // not first song
       }
       break;
     case MUSICPLAYER_HASNEXT:
       {
         // requires current playlist be PLAYLIST_MUSIC
         bReturn = false;
-        if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
-          bReturn = (g_playlistPlayer.GetCurrentSong() < (g_playlistPlayer.GetPlaylist(PLAYLIST_MUSIC).size() - 1)); // not last song
+        if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_MUSIC)
+          bReturn = (CServiceBroker::GetPlaylistPlayer().GetCurrentSong() < (CServiceBroker::GetPlaylistPlayer().GetPlaylist(PLAYLIST_MUSIC).size() - 1)); // not last song
       }
       break;
     case MUSICPLAYER_PLAYLISTPLAYING:
       {
         bReturn = false;
-        if (g_application.m_pPlayer->IsPlayingAudio() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
+        if (g_application.m_pPlayer->IsPlayingAudio() && CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_MUSIC)
           bReturn = true;
       }
       break;
@@ -7293,13 +7305,13 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       bReturn = g_application.m_pPlayer->HasMenu();
     break;
     case PLAYLIST_ISRANDOM:
-      bReturn = g_playlistPlayer.IsShuffled(g_playlistPlayer.GetCurrentPlaylist());
+      bReturn = CServiceBroker::GetPlaylistPlayer().IsShuffled(CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist());
     break;
     case PLAYLIST_ISREPEAT:
-      bReturn = g_playlistPlayer.GetRepeat(g_playlistPlayer.GetCurrentPlaylist()) == PLAYLIST::REPEAT_ALL;
+      bReturn = CServiceBroker::GetPlaylistPlayer().GetRepeat(CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist()) == PLAYLIST::REPEAT_ALL;
     break;
     case PLAYLIST_ISREPEATONE:
-      bReturn = g_playlistPlayer.GetRepeat(g_playlistPlayer.GetCurrentPlaylist()) == PLAYLIST::REPEAT_ONE;
+      bReturn = CServiceBroker::GetPlaylistPlayer().GetRepeat(CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist()) == PLAYLIST::REPEAT_ONE;
     break;
     case PLAYER_HASDURATION:
       bReturn = g_application.GetTotalTime() > 0;
@@ -7802,14 +7814,14 @@ bool CGUIInfoManager::GetMultiInfoBool(const GUIInfo &info, int contextWindow, c
           int index = info.GetData2();
           if (info.GetData1() == 1)
           { // relative index
-            if (g_playlistPlayer.GetCurrentPlaylist() != PLAYLIST_MUSIC)
+            if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() != PLAYLIST_MUSIC)
             {
               bReturn = false;
               break;
             }
-            index += g_playlistPlayer.GetCurrentSong();
+            index += CServiceBroker::GetPlaylistPlayer().GetCurrentSong();
           }
-          bReturn = (index >= 0 && index < g_playlistPlayer.GetPlaylist(PLAYLIST_MUSIC).size());
+          bReturn = (index >= 0 && index < CServiceBroker::GetPlaylistPlayer().GetPlaylist(PLAYLIST_MUSIC).size());
         }
         break;
 
@@ -7817,7 +7829,7 @@ bool CGUIInfoManager::GetMultiInfoBool(const GUIInfo &info, int contextWindow, c
         {
           int playlistid = info.GetData1();
           if (playlistid > PLAYLIST_NONE)
-            bReturn = g_playlistPlayer.IsShuffled(playlistid);
+            bReturn = CServiceBroker::GetPlaylistPlayer().IsShuffled(playlistid);
         }
         break;
 
@@ -7825,7 +7837,7 @@ bool CGUIInfoManager::GetMultiInfoBool(const GUIInfo &info, int contextWindow, c
         {
           int playlistid = info.GetData1();
           if (playlistid > PLAYLIST_NONE)
-            bReturn = g_playlistPlayer.GetRepeat(playlistid) == PLAYLIST::REPEAT_ALL;
+            bReturn = CServiceBroker::GetPlaylistPlayer().GetRepeat(playlistid) == PLAYLIST::REPEAT_ALL;
         }
         break;
 
@@ -7833,7 +7845,7 @@ bool CGUIInfoManager::GetMultiInfoBool(const GUIInfo &info, int contextWindow, c
         {
           int playlistid = info.GetData1();
           if (playlistid > PLAYLIST_NONE)
-            bReturn = g_playlistPlayer.GetRepeat(playlistid) == PLAYLIST::REPEAT_ONE;
+            bReturn = CServiceBroker::GetPlaylistPlayer().GetRepeat(playlistid) == PLAYLIST::REPEAT_ONE;
         }
         break;
       case LIBRARY_HAS_ROLE:
@@ -8299,15 +8311,15 @@ std::string CGUIInfoManager::GetMusicPartyModeLabel(int item)
 
 const std::string CGUIInfoManager::GetMusicPlaylistInfo(const GUIInfo& info)
 {
-  PLAYLIST::CPlayList& playlist = g_playlistPlayer.GetPlaylist(PLAYLIST_MUSIC);
+  PLAYLIST::CPlayList& playlist = CServiceBroker::GetPlaylistPlayer().GetPlaylist(PLAYLIST_MUSIC);
   if (playlist.size() < 1)
     return "";
   int index = info.GetData2();
   if (info.GetData1() == 1)
   { // relative index (requires current playlist is PLAYLIST_MUSIC)
-    if (g_playlistPlayer.GetCurrentPlaylist() != PLAYLIST_MUSIC)
+    if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() != PLAYLIST_MUSIC)
       return "";
-    index = g_playlistPlayer.GetNextSong(index);
+    index = CServiceBroker::GetPlaylistPlayer().GetNextSong(index);
   }
   if (index < 0 || index >= playlist.size())
     return "";
@@ -8341,30 +8353,30 @@ std::string CGUIInfoManager::GetPlaylistLabel(int item, int playlistid /* = PLAY
   if (playlistid <= PLAYLIST_NONE && !g_application.m_pPlayer->IsPlaying())
     return "";
 
-  int iPlaylist = playlistid == PLAYLIST_NONE ? g_playlistPlayer.GetCurrentPlaylist() : playlistid;
+  int iPlaylist = playlistid == PLAYLIST_NONE ? CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() : playlistid;
   switch (item)
   {
   case PLAYLIST_LENGTH:
     {
-      return StringUtils::Format("%i", g_playlistPlayer.GetPlaylist(iPlaylist).size());
+      return StringUtils::Format("%i", CServiceBroker::GetPlaylistPlayer().GetPlaylist(iPlaylist).size());
     }
   case PLAYLIST_POSITION:
     {
-      int currentSong = g_playlistPlayer.GetCurrentSong();
+      int currentSong = CServiceBroker::GetPlaylistPlayer().GetCurrentSong();
       if (currentSong > -1)
         return StringUtils::Format("%i", currentSong + 1);
       break;
     }
   case PLAYLIST_RANDOM:
     {
-      if (g_playlistPlayer.IsShuffled(iPlaylist))
+      if (CServiceBroker::GetPlaylistPlayer().IsShuffled(iPlaylist))
         return g_localizeStrings.Get(16041); // 16041: On
       else
         return g_localizeStrings.Get(591); // 591: Off
     }
   case PLAYLIST_REPEAT:
     {
-      PLAYLIST::REPEAT_STATE state = g_playlistPlayer.GetRepeat(iPlaylist);
+      PLAYLIST::REPEAT_STATE state = CServiceBroker::GetPlaylistPlayer().GetRepeat(iPlaylist);
       if (state == PLAYLIST::REPEAT_ONE)
         return g_localizeStrings.Get(592); // 592: One
       else if (state == PLAYLIST::REPEAT_ALL)
@@ -8552,13 +8564,13 @@ std::string CGUIInfoManager::GetMusicLabel(int item)
   {
   case MUSICPLAYER_PLAYLISTLEN:
     {
-      if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
+      if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_MUSIC)
         return GetPlaylistLabel(PLAYLIST_LENGTH);
     }
     break;
   case MUSICPLAYER_PLAYLISTPOS:
     {
-      if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_MUSIC)
+      if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_MUSIC)
         return GetPlaylistLabel(PLAYLIST_POSITION);
     }
     break;
@@ -9043,7 +9055,7 @@ std::string CGUIInfoManager::GetVideoLabel(int item)
       }
     }
   }
-  else if (g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_VIDEO)
+  else if (CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() == PLAYLIST_VIDEO)
   {
     switch (item)
     {
@@ -10295,6 +10307,14 @@ std::string CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, std::
     if (item->HasPVRTimerInfoTag())
       return item->GetPVRTimerInfoTag()->EndAsLocalTime().GetAsLocalizedDate(true);
     break;
+  case LISTITEM_EXPIRATION_DATE:
+    if (item->HasPVRRecordingInfoTag() && item->GetPVRRecordingInfoTag()->HasExpirationTime())
+      return item->GetPVRRecordingInfoTag()->ExpirationTimeAsLocalTime().GetAsLocalizedDate(false);
+    break;
+  case LISTITEM_EXPIRATION_TIME:
+    if (item->HasPVRRecordingInfoTag() && item->GetPVRRecordingInfoTag()->HasExpirationTime())
+      return item->GetPVRRecordingInfoTag()->ExpirationTimeAsLocalTime().GetAsLocalizedTime("", false);;
+    break;
   case LISTITEM_CHANNEL_NUMBER:
     {
       std::string number;
@@ -10601,7 +10621,7 @@ bool CGUIInfoManager::GetItemBool(const CGUIListItem *item, int condition) const
   else if (condition == LISTITEM_ISPLAYING)
   {
     if (item->HasProperty("playlistposition"))
-      return (int)item->GetProperty("playlisttype").asInteger() == g_playlistPlayer.GetCurrentPlaylist() && (int)item->GetProperty("playlistposition").asInteger() == g_playlistPlayer.GetCurrentSong();
+      return (int)item->GetProperty("playlisttype").asInteger() == CServiceBroker::GetPlaylistPlayer().GetCurrentPlaylist() && (int)item->GetProperty("playlistposition").asInteger() == CServiceBroker::GetPlaylistPlayer().GetCurrentSong();
     else if (item->IsFileItem() && !m_currentFile->GetPath().empty())
     {
       if (!g_application.m_strPlayListFile.empty())
