@@ -29,12 +29,12 @@
 
 #include "Application.h"
 #include "Connection.h"
+#include "cores/VideoPlayer/Process/wayland/ProcessInfoWayland.h"
 #include "guilib/DispResource.h"
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
 #include "linux/PlatformConstants.h"
-#include "../linux/OSScreenSaverFreedesktop.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
@@ -46,6 +46,7 @@
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
 #include "WinEventsWayland.h"
+#include "windowing/linux/OSScreenSaverFreedesktop.h"
 
 using namespace KODI::WINDOWING;
 using namespace KODI::WINDOWING::LINUX;
@@ -105,6 +106,8 @@ bool CWinSystemWayland::InitWindowSystem()
   wayland::set_log_handler([](std::string message)
   {
     CLog::Log(LOGWARNING, "wayland-client log message: %s", message.c_str()); });
+
+  VIDEOPLAYER::CProcessInfoWayland::Register();
 
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
   m_connection.reset(new CConnection(this));
