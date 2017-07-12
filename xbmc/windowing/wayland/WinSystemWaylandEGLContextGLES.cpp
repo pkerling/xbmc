@@ -23,7 +23,7 @@
 #include <EGL/egl.h>
 
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
-#include "cores/VideoPlayer/VideoRenderers/LinuxRendererGL.h"
+#include "cores/VideoPlayer/VideoRenderers/LinuxRendererGLES.h"
 #include "utils/log.h"
 
 #if defined(HAVE_LIBVA)
