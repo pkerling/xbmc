@@ -63,6 +63,8 @@ public:
   void SetDeinterlacingMethodDefault(EINTERLACEMETHOD method);
   EINTERLACEMETHOD GetDeinterlacingMethodDefault();
   CVideoBufferManager& GetVideoBufferManager();
+  std::vector<AVPixelFormat> GetPixFormats();
+  void SetPixFormats(std::vector<AVPixelFormat> &formats);
 
   // player audio info
   void ResetAudioCodecInfo();
@@ -87,6 +89,13 @@ public:
   // player states
   void SetStateSeeking(bool active);
   bool IsSeeking();
+  void SetSpeed(float speed);
+  void SetNewSpeed(float speed);
+  float GetNewSpeed();
+  void SetTempo(float tempo);
+  void SetNewTempo(float tempo);
+  float GetNewTempo();
+  virtual bool IsTempoAllowed(float tempo);
 
   void SetLevelVQ(int level);
   int GetLevelVQ();
@@ -113,6 +122,7 @@ protected:
   EINTERLACEMETHOD m_deintMethodDefault;
   CCriticalSection m_videoCodecSection;
   CVideoBufferManager m_videoBufferManager;
+  std::vector<AVPixelFormat> m_pixFormats;
 
   // player audio info
   std::string m_audioDecoderName;
@@ -135,4 +145,8 @@ protected:
   std::atomic_int m_levelVQ;
   std::atomic_bool m_renderGuiLayer;
   std::atomic_bool m_renderVideoLayer;
+  float m_tempo;
+  float m_newTempo;
+  float m_speed;
+  float m_newSpeed;
 };
