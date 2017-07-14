@@ -79,8 +79,8 @@ void HandleCapabilityChange(CSeat* handler,
 
 }
 
-CSeat::CSeat(std::uint32_t globalName, const wayland::seat_t& seat, IInputHandler& handler)
-: m_globalName(globalName), m_seat(seat), m_handler(handler)
+CSeat::CSeat(std::uint32_t globalName, wayland::seat_t const& seat, wayland::data_device_t const& dataDevice, IInputHandler& handler)
+: m_globalName{globalName}, m_seat{seat}, m_handler{handler}, m_selection{dataDevice}
 {
   m_seat.on_name() = [this](std::string name)
   {

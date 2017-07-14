@@ -744,7 +744,15 @@ void CWinSystemWayland::Unregister(IDispResource* resource)
 void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 {
   CSingleLock lock(m_seatProcessorsMutex);
-  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, *this));
+  wayland::data_device_t dataDevice;
+  if (m_connection->GetDataDeviceManager())
+  {
+    dataDevice = m_connection->GetDataDeviceManager().get_data_device(seat);
+  }
+
+  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct,
+                                                 std::forward_as_tuple(name),
+                                                 std::forward_as_tuple(name, seat, dataDevice, *this));
   newSeatEmplace.first->second.SetCoordinateScale(m_scale);
 }
 

@@ -11,6 +11,7 @@ set(SOURCES Connection.cpp
             InputProcessorTouch.h
             OSScreenSaverIdleInhibitUnstableV1.cpp
             Seat.cpp
+            SeatSelection.cpp
             ShellSurface.cpp
             ShellSurfaceWlShell.cpp
             ShellSurfaceXdgShellUnstableV6.cpp
@@ -27,6 +28,7 @@ set(HEADERS Connection.h
             InputProcessorTouch.cpp
             OSScreenSaverIdleInhibitUnstableV1.h
             Seat.h
+            SeatSelection.h
             ShellSurface.h
             ShellSurfaceWlShell.h
             ShellSurfaceXdgShellUnstableV6.h
