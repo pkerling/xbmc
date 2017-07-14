@@ -47,38 +47,52 @@ void Bind(wayland::registry_t& registry, wayland::proxy_t& target, std::uint32_t
 CConnection::CConnection(IConnectionHandler* handler)
 : m_handler(handler)
 {
-  m_display.reset(new wayland::display_t);
-  m_registry = m_display->get_registry();
-  
+  m_display.reset(new wayland::display_t); 
+}
+
+void CConnection::BindGlobals()
+{
+  // Do two rounds: First get global singleton interfaces, then seats and outputs
+  // Processing for seats depends on the data device manager being available,
+  // so making sure it is there first simplifies processing
+
   m_binds = {
     // version 3 adds wl_surface::set_buffer_scale
     // version 4 adds wl_surface::damage_buffer
     { wayland::compositor_t::interface_name, { m_compositor, 1, 4 } },
     { wayland::shell_t::interface_name, { m_shell, 1, 1 } },
     { wayland::shm_t::interface_name, { m_shm, 1, 1 } },
+    { wayland::data_device_manager_t::interface_name, { m_dataDeviceManager, 1, 3, false } },
     { wayland::zxdg_shell_v6_t::interface_name, { m_xdgShellUnstableV6, 1, 1, false } },
-    { wayland::zwp_idle_inhibit_manager_v1_t::interface_name, { m_idleInhibitManagerUnstableV1, 1, 1, false } },
+    { wayland::zwp_idle_inhibit_manager_v1_t::interface_name, { m_idleInhibitManagerUnstableV1, 1, 1, false } }
   };
 
-  HandleRegistry();
+  m_registry = m_display->get_registry();
+  HandleRegistry(true, false);
   
-  CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global interfaces");
+  CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global singleton interfaces");
   m_display->roundtrip();
-  CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrip complete");
-  
   CheckRequiredGlobals();
+
+  m_registry = m_display->get_registry();
+  HandleRegistry(false, true);
+  CLog::Log(LOGDEBUG, "Wayland connection: Waiting for global seats and outputs");
+  m_display->roundtrip();
+
+  CLog::Log(LOGDEBUG, "Wayland connection: Initial roundtrips complete");
+  
 }
 
-void CConnection::HandleRegistry()
+void CConnection::HandleRegistry(bool bindSingletons, bool bindNonSingletons)
 {
-  m_registry.on_global() = [this] (std::uint32_t name, std::string interface, std::uint32_t version)
+  m_registry.on_global() = [=] (std::uint32_t name, std::string interface, std::uint32_t version)
   { 
     auto it = m_binds.find(interface);
-    if (it != m_binds.end())
+    if (bindSingletons && it != m_binds.end())
     {
       Bind(m_registry, it->second.target, name, interface, it->second.minVersion, it->second.maxVersion, version);
     }
-    else if (interface == wayland::seat_t::interface_name)
+    else if (bindNonSingletons && interface == wayland::seat_t::interface_name)
     {
       wayland::seat_t seat;
       // version 2 adds name event, optional
@@ -87,7 +101,7 @@ void CConnection::HandleRegistry()
       Bind(m_registry, seat, name, interface, 1, 5, version);
       m_handler->OnSeatAdded(name, seat);
     }
-    else if (interface == wayland::output_t::interface_name)
+    else if (bindNonSingletons && interface == wayland::output_t::interface_name)
     {
       wayland::output_t output;
       // version 2 adds done(), required
@@ -135,6 +149,11 @@ wayland::shm_t CConnection::GetShm()
 {
   assert(m_shm);
   return m_shm;
+}
+
+wayland::data_device_manager_t CConnection::GetDataDeviceManager()
+{
+  return m_dataDeviceManager;
 }
 
 wayland::zxdg_shell_v6_t CConnection::GetXdgShellUnstableV6()

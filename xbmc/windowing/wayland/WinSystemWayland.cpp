@@ -115,6 +115,7 @@ bool CWinSystemWayland::InitWindowSystem()
 
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
   m_connection.reset(new CConnection(this));
+  m_connection->BindGlobals();
   if (m_seatProcessors.empty())
   {
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
