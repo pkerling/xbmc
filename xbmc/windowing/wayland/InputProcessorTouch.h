@@ -42,6 +42,7 @@ class CInputProcessorTouch
 {
 public:
   CInputProcessorTouch(wayland::touch_t const& touch);
+  ~CInputProcessorTouch();
   void SetCoordinateScale(std::int32_t scale) { m_coordinateScale = scale; }
 
 private:
@@ -65,6 +66,7 @@ private:
 
   void SendTouchPointEvent(TouchInput event, TouchPoint const& point);
   void UpdateTouchPoint(TouchPoint const& point);
+  void AbortTouches();
 
   wayland::touch_t m_touch;
   std::int32_t m_coordinateScale{1};

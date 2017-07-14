@@ -76,12 +76,7 @@ CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch)
   };
   m_touch.on_cancel() = [this]()
   {
-    // TouchInputAbort aborts for all pointers, so it does not matter which is specified
-    if (!m_touchPoints.empty())
-    {
-      SendTouchPointEvent(TouchInputAbort, m_touchPoints.begin()->second);
-    }
-    m_touchPoints.clear();
+    AbortTouches();
   };
   m_touch.on_shape() = [this](std::int32_t id, double major, double minor)
   {
@@ -94,6 +89,21 @@ CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch)
       UpdateTouchPoint(point);
     }
   };
+}
+
+CInputProcessorTouch::~CInputProcessorTouch()
+{
+  AbortTouches();
+}
+
+void CInputProcessorTouch::AbortTouches()
+{
+  // TouchInputAbort aborts for all pointers, so it does not matter which is specified
+  if (!m_touchPoints.empty())
+  {
+    SendTouchPointEvent(TouchInputAbort, m_touchPoints.begin()->second);
+  }
+  m_touchPoints.clear();
 }
 
 void CInputProcessorTouch::SendTouchPointEvent(TouchInput event, const TouchPoint& point)
