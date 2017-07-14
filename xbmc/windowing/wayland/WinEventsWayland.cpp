@@ -31,7 +31,9 @@
 #include "threads/SingleLock.h"
 #include "threads/Thread.h"
 #include "utils/log.h"
+#include "utils/posix/FileHandle.h"
 
+using namespace KODI::UTILS::POSIX;
 using namespace KODI::WINDOWING::WAYLAND;
 
 namespace
@@ -48,31 +50,29 @@ class CWinEventsWaylandThread : CThread
 {
   wayland::display_t* m_display;
   // Pipe used for cancelling poll() on shutdown
-  int m_pipe[2];
+  CFileHandle m_pipeRead;
+  CFileHandle m_pipeWrite;
 
 public:
 
   CWinEventsWaylandThread(wayland::display_t* display)
   : CThread("Wayland message pump"), m_display(display)
   {
-    if (pipe(m_pipe) < 0)
+    std::array<int, 2> fds;
+    if (pipe(fds.data()) < 0)
     {
       throw std::system_error(errno, std::generic_category(), "Error creating pipe for Wayland message pump cancellation");
     }
+    m_pipeRead.attach(fds[0]);
+    m_pipeWrite.attach(fds[1]);
     Create();
-  }
-
-  virtual ~CWinEventsWaylandThread()
-  {
-    close(m_pipe[0]);
-    close(m_pipe[1]);
   }
 
   void Stop()
   {
     CLog::Log(LOGDEBUG, "Stopping Wayland message pump");
     char c = 0;
-    write(m_pipe[1], &c, 1);
+    write(m_pipeWrite, &c, 1);
     WaitForThreadExit(0);
   }
 
@@ -90,7 +90,7 @@ private:
       waylandPoll.events = POLLIN;
       waylandPoll.revents = 0;
       // Read end of the cancellation pipe
-      cancelPoll.fd = m_pipe[0];
+      cancelPoll.fd = m_pipeRead;
       cancelPoll.events = POLLIN;
       cancelPoll.revents = 0;
 
