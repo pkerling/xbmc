@@ -18,7 +18,7 @@
  *
  */
 
-#include "SeatInputProcessor.h"
+#include "Seat.h"
 
 #include "utils/log.h"
 
@@ -36,7 +36,7 @@ namespace
  * these two, the processor is destroyed if a capability was removed or created
  * if a capability was added.
  * 
- * \param handler CSeatInputProcessor instance
+ * \param handler CSeat instance
  * \param caps new capabilities
  * \param cap capability to check for
  * \param capName human-readable name of the capability for log messages
@@ -48,7 +48,7 @@ namespace
  *                        instance when it was added
  */
 template<typename T, typename ProcessorPtrT, typename InstanceProviderT, typename OnNewCapabilityT>
-void HandleCapabilityChange(CSeatInputProcessor* handler,
+void HandleCapabilityChange(CSeat* handler,
                             wayland::seat_capability caps,
                             wayland::seat_capability cap,
                             std::string const & capName,
@@ -79,19 +79,19 @@ void HandleCapabilityChange(CSeatInputProcessor* handler,
 
 }
 
-CSeatInputProcessor::CSeatInputProcessor(std::uint32_t globalName, const wayland::seat_t& seat, IInputHandler& handler)
+CSeat::CSeat(std::uint32_t globalName, const wayland::seat_t& seat, IInputHandler& handler)
 : m_globalName(globalName), m_seat(seat), m_handler(handler)
 {
   m_seat.on_name() = [this](std::string name)
   {
     m_name = name;
   };
-  m_seat.on_capabilities() = std::bind(&CSeatInputProcessor::HandleOnCapabilities, this, std::placeholders::_1);
+  m_seat.on_capabilities() = std::bind(&CSeat::HandleOnCapabilities, this, std::placeholders::_1);
 }
 
-CSeatInputProcessor::~CSeatInputProcessor() = default;
+CSeat::~CSeat() = default;
 
-void CSeatInputProcessor::HandleOnCapabilities(wayland::seat_capability caps)
+void CSeat::HandleOnCapabilities(wayland::seat_capability caps)
 {
   HandleCapabilityChange<wayland::pointer_t>
     (this,
@@ -100,7 +100,7 @@ void CSeatInputProcessor::HandleOnCapabilities(wayland::seat_capability caps)
      "pointer",
      m_pointer,
      std::bind(&wayland::seat_t::get_pointer, &m_seat),
-     std::bind(&CSeatInputProcessor::HandlePointerCapability, this, _1));
+     std::bind(&CSeat::HandlePointerCapability, this, _1));
   HandleCapabilityChange<wayland::keyboard_t>
     (this,
      caps,
@@ -108,7 +108,7 @@ void CSeatInputProcessor::HandleOnCapabilities(wayland::seat_capability caps)
      "keyboard",
      m_keyboard,
      std::bind(&wayland::seat_t::get_keyboard, &m_seat),
-     std::bind(&CSeatInputProcessor::HandleKeyboardCapability, this, _1));
+     std::bind(&CSeat::HandleKeyboardCapability, this, _1));
   HandleCapabilityChange<wayland::touch_t>
     (this,
      caps,
@@ -116,64 +116,64 @@ void CSeatInputProcessor::HandleOnCapabilities(wayland::seat_capability caps)
      "touch",
      m_touch,
      std::bind(&wayland::seat_t::get_touch, &m_seat),
-     std::bind(&CSeatInputProcessor::HandleTouchCapability, this, _1));
+     std::bind(&CSeat::HandleTouchCapability, this, _1));
 }
 
-void CSeatInputProcessor::HandlePointerCapability(wayland::pointer_t const& pointer)
+void CSeat::HandlePointerCapability(wayland::pointer_t const& pointer)
 {
   m_pointer.reset(new CInputProcessorPointer(pointer, static_cast<IInputHandlerPointer&> (*this)));
   UpdateCoordinateScale();
 }
 
-void CSeatInputProcessor::OnPointerEnter(wayland::pointer_t& pointer, std::uint32_t serial)
+void CSeat::OnPointerEnter(wayland::pointer_t& pointer, std::uint32_t serial)
 {
   m_handler.OnSetCursor(pointer, serial);
   m_handler.OnEnter(m_globalName, InputType::POINTER);
 }
 
-void CSeatInputProcessor::OnPointerLeave()
+void CSeat::OnPointerLeave()
 {
   m_handler.OnLeave(m_globalName, InputType::POINTER);
 }
 
-void CSeatInputProcessor::OnPointerEvent(XBMC_Event& event)
+void CSeat::OnPointerEvent(XBMC_Event& event)
 {
   m_handler.OnEvent(m_globalName, InputType::POINTER, event);
 }
 
-void CSeatInputProcessor::HandleKeyboardCapability(wayland::keyboard_t const& keyboard)
+void CSeat::HandleKeyboardCapability(wayland::keyboard_t const& keyboard)
 {
   m_keyboard.reset(new CInputProcessorKeyboard(keyboard, static_cast<IInputHandlerKeyboard&> (*this)));
 }
 
-void CSeatInputProcessor::OnKeyboardEnter()
+void CSeat::OnKeyboardEnter()
 {
   m_handler.OnEnter(m_globalName, InputType::KEYBOARD);
 }
 
-void CSeatInputProcessor::OnKeyboardLeave()
+void CSeat::OnKeyboardLeave()
 {
   m_handler.OnLeave(m_globalName, InputType::KEYBOARD);
 }
 
-void CSeatInputProcessor::OnKeyboardEvent(XBMC_Event& event)
+void CSeat::OnKeyboardEvent(XBMC_Event& event)
 {
   m_handler.OnEvent(m_globalName, InputType::KEYBOARD, event);
 }
 
-void CSeatInputProcessor::HandleTouchCapability(wayland::touch_t const& touch)
+void CSeat::HandleTouchCapability(wayland::touch_t const& touch)
 {
   m_touch.reset(new CInputProcessorTouch(touch));
   UpdateCoordinateScale();
 }
 
-void CSeatInputProcessor::SetCoordinateScale(std::int32_t scale)
+void CSeat::SetCoordinateScale(std::int32_t scale)
 {
   m_coordinateScale = scale;
   UpdateCoordinateScale();
 }
 
-void CSeatInputProcessor::UpdateCoordinateScale()
+void CSeat::UpdateCoordinateScale()
 {
   if (m_pointer)
   {

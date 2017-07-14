@@ -10,7 +10,7 @@ set(SOURCES Connection.cpp
             InputProcessorPointer.h
             InputProcessorTouch.h
             OSScreenSaverIdleInhibitUnstableV1.cpp
-            SeatInputProcessor.cpp
+            Seat.cpp
             ShellSurface.cpp
             ShellSurfaceWlShell.cpp
             ShellSurfaceXdgShellUnstableV6.cpp
@@ -26,7 +26,7 @@ set(HEADERS Connection.h
             InputProcessorPointer.cpp
             InputProcessorTouch.cpp
             OSScreenSaverIdleInhibitUnstableV1.h
-            SeatInputProcessor.h
+            Seat.h
             ShellSurface.h
             ShellSurfaceWlShell.h
             ShellSurfaceXdgShellUnstableV6.h

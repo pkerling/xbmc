@@ -90,7 +90,7 @@ public:
 /**
  * Handle all wl_seat-related events and process them into Kodi events
  */
-class CSeatInputProcessor : IInputHandlerPointer, IInputHandlerKeyboard
+class CSeat : IInputHandlerPointer, IInputHandlerKeyboard
 {
 public:
   /**
@@ -99,8 +99,8 @@ public:
    * \param seat bound seat_t instance
    * \param handler handler that receives events from this seat, must not be null
    */
-  CSeatInputProcessor(std::uint32_t globalName, wayland::seat_t const & seat, IInputHandler& handler);
-  ~CSeatInputProcessor();
+  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, IInputHandler& handler);
+  ~CSeat();
   std::uint32_t GetGlobalName() const
   {
     return m_globalName;
@@ -124,8 +124,8 @@ public:
   void SetCoordinateScale(std::int32_t scale);
 
 private:
-  CSeatInputProcessor(CSeatInputProcessor const& other) = delete;
-  CSeatInputProcessor& operator=(CSeatInputProcessor const& other) = delete;
+  CSeat(CSeat const& other) = delete;
+  CSeat& operator=(CSeat const& other) = delete;
   
   void HandleOnCapabilities(wayland::seat_capability caps);
   void HandlePointerCapability(wayland::pointer_t const& pointer);
