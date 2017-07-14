@@ -936,3 +936,21 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
     return nullptr;
   }
 }
+
+std::string CWinSystemWayland::GetClipboardText()
+{
+  CSingleLock lock(m_seatProcessorsMutex);
+  // Get text of first seat with non-empty selection
+  // Actually, the value of the seat that received the Ctrl+V keypress should be used,
+  // but this would need a workaround or proper multi-seat support in Kodi - it's
+  // probably just not that relevant in practice
+  for (auto const& seat : m_seatProcessors)
+  {
+    auto text = seat.second.GetSelectionText();
+    if (text != "")
+    {
+      return text;
+    }
+  }
+  return "";
+}
