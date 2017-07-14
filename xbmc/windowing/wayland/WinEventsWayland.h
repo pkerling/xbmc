@@ -38,6 +38,7 @@ class CWinEventsWayland : public IWinEvents
 public:
   virtual bool MessagePump() override;
   virtual void MessagePush(XBMC_Event* ev) override;
+  static void Flush();
   
 private:
   friend class CWinSystemWayland;
