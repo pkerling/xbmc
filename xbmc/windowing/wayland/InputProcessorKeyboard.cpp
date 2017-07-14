@@ -46,6 +46,7 @@ CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyb
   };
   m_keyboard.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
   {
+    m_keyRepeatTimer.Stop();
     m_handler.OnKeyboardLeave();
   };
   m_keyboard.on_repeat_info() = [this](std::int32_t rate, std::int32_t delay)
