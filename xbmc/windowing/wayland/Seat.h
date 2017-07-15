@@ -19,10 +19,15 @@
  */
 #pragma once
 
+#include <map>
 #include <memory>
 
 #include <wayland-client-protocol.hpp>
 
+#include "input/touch/ITouchInputHandler.h"
+#include "InputProcessorPointer.h"
+#include "InputProcessorKeyboard.h"
+#include "InputProcessorTouch.h"
 #include "threads/Timer.h"
 #include "windowing/XBMC_events.h"
 #include "windowing/XkbcommonKeymap.h"
@@ -85,7 +90,7 @@ public:
 /**
  * Handle all wl_seat-related events and process them into Kodi events
  */
-class CSeatInputProcessor
+class CSeat : IInputHandlerPointer, IInputHandlerKeyboard
 {
 public:
   /**
@@ -94,7 +99,8 @@ public:
    * \param seat bound seat_t instance
    * \param handler handler that receives events from this seat, must not be null
    */
-  CSeatInputProcessor(std::uint32_t globalName, wayland::seat_t const & seat, IInputHandler* handler);
+  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, IInputHandler& handler);
+  ~CSeat();
   std::uint32_t GetGlobalName() const
   {
     return m_globalName;
@@ -105,71 +111,47 @@ public:
   }
   bool HasPointerCapability() const
   {
-    return m_pointer;
+    return !!m_pointer;
   }
   bool HasKeyboardCapability() const
   {
-    return m_keyboard;
+    return !!m_keyboard;
   }
   bool HasTouchCapability() const
   {
-    return m_touch;
+    return !!m_touch;
   }
-  void SetCoordinateScale(std::int32_t scale)
-  {
-    m_coordinateScale = scale;
-  }
+  void SetCoordinateScale(std::int32_t scale);
 
 private:
-  CSeatInputProcessor(CSeatInputProcessor const& other) = delete;
-  CSeatInputProcessor& operator=(CSeatInputProcessor const& other) = delete;
+  CSeat(CSeat const& other) = delete;
+  CSeat& operator=(CSeat const& other) = delete;
   
   void HandleOnCapabilities(wayland::seat_capability caps);
-  void HandlePointerCapability();
-  void HandleKeyboardCapability();
-  void HandleTouchCapability();
+  void HandlePointerCapability(wayland::pointer_t const& pointer);
+  void HandleKeyboardCapability(wayland::keyboard_t const& keyboard);
+  void HandleTouchCapability(wayland::touch_t const& touch);
 
-  std::uint16_t ConvertMouseCoordinate(double coord);
-  void SetMousePosFromSurface(double x, double y);
-  void SendMouseMotion();
-  void SendMouseButton(unsigned char button, bool pressed);
-  
-  void ConvertAndSendKey(std::uint32_t scancode, bool pressed);
-  XBMC_Event SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed);
+  void OnKeyboardEnter() override;
+  void OnKeyboardLeave() override;
+  void OnKeyboardEvent(XBMC_Event& event) override;
+
+  void OnPointerEnter(wayland::pointer_t& pointer, std::uint32_t serial) override;
+  void OnPointerLeave() override;
+  void OnPointerEvent(XBMC_Event& event) override;
+
+  void UpdateCoordinateScale();
   
   std::uint32_t m_globalName;
   wayland::seat_t m_seat;
-  std::string m_name = "<unknown>";
+  std::string m_name{"<unknown>"};
+  std::int32_t m_coordinateScale{1};
 
-  IInputHandler* m_handler = nullptr;
+  IInputHandler& m_handler;
   
-  wayland::pointer_t m_pointer;
-  wayland::keyboard_t m_keyboard;
-  wayland::touch_t m_touch;
-  
-  std::int32_t m_coordinateScale = 1;
-  // Pointer position in *scaled* coordinates
-  std::uint16_t m_pointerX = 0;
-  std::uint16_t m_pointerY = 0;
-  
-  std::unique_ptr<CXkbcommonContext> m_xkbContext;
-  std::unique_ptr<CXkbcommonKeymap> m_keymap;
-  // Default values are used if compositor does not send any
-  std::atomic<int> m_keyRepeatDelay = {1000};
-  std::atomic<int> m_keyRepeatInterval = {50};
-  // Save complete XBMC_Event so no keymap lookups which might not be thread-safe
-  // are needed in the repeat callback
-  XBMC_Event m_keyToRepeat;
-  
-  class CKeyRepeatCallback : public ITimerCallback
-  {
-    CSeatInputProcessor* m_processor;
-  public:
-    CKeyRepeatCallback(CSeatInputProcessor* processor);
-    void OnTimeout() override;
-  };
-  CKeyRepeatCallback m_keyRepeatCallback;
-  CTimer m_keyRepeatTimer;
+  std::unique_ptr<CInputProcessorPointer> m_pointer;
+  std::unique_ptr<CInputProcessorKeyboard> m_keyboard;
+  std::unique_ptr<CInputProcessorTouch> m_touch;
 };
 
 }

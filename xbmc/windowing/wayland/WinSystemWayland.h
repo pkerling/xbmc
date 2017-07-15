@@ -27,7 +27,7 @@
 
 #include "Connection.h"
 #include "Output.h"
-#include "SeatInputProcessor.h"
+#include "Seat.h"
 #include "ShellSurface.h"
 #include "threads/CriticalSection.h"
 #include "windowing/WinSystem.h"
@@ -109,6 +109,7 @@ protected:
   void OnOutputDone(std::uint32_t name);
   void UpdateBufferScale();
   void ApplyBufferScale(std::int32_t scale);
+  void UpdateTouchDpi();
 
   void AckConfigure(std::uint32_t serial);
   
@@ -116,7 +117,7 @@ protected:
   wayland::surface_t m_surface;
   std::unique_ptr<IShellSurface> m_shellSurface;
   
-  std::map<std::uint32_t, CSeatInputProcessor> m_seatProcessors;
+  std::map<std::uint32_t, CSeat> m_seatProcessors;
   CCriticalSection m_seatProcessorsMutex;
   // m_outputsInPreparation did not receive their done event yet
   std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputs, m_outputsInPreparation;

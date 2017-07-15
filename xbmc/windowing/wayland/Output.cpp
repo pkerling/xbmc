@@ -21,6 +21,7 @@
 #include "Output.h"
 
 #include <cassert>
+#include <cmath>
 #include <set>
 
 using namespace KODI::WINDOWING::WAYLAND;
@@ -114,4 +115,20 @@ float COutput::GetPixelRatioForMode(const Mode& mode) const
             (static_cast<float> (m_physicalHeight) / static_cast<float> (mode.height))
             );
   }
+}
+
+float COutput::GetDpiForMode(const Mode& mode) const
+{
+  constexpr float INCH_MM_RATIO{25.4f};
+
+  float diagonalPixels = std::sqrt(mode.width * mode.width + mode.height * mode.height);
+  // physicalWidth/physicalHeight is in millimeters
+  float diagonalInches = std::sqrt(m_physicalWidth * m_physicalWidth + m_physicalHeight * m_physicalHeight) / INCH_MM_RATIO;
+
+  return diagonalPixels / diagonalInches;
+}
+
+float COutput::GetCurrentDpi() const
+{
+  return GetDpiForMode(GetCurrentMode());
 }

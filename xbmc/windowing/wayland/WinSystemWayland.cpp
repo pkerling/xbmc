@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <numeric>
 
 #if defined(HAVE_LIBVA)
 #include <va/va_wayland.h>
@@ -34,6 +35,8 @@
 #include "guilib/GraphicContext.h"
 #include "guilib/LocalizeStrings.h"
 #include "input/InputManager.h"
+#include "input/touch/generic/GenericTouchActionHandler.h"
+#include "input/touch/generic/GenericTouchInputHandler.h"
 #include "linux/PlatformConstants.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "ServiceBroker.h"
@@ -45,6 +48,7 @@
 #include "utils/log.h"
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
+#include "windowing/linux/OSScreenSaverFreedesktop.h"
 #include "WinEventsWayland.h"
 #include "windowing/linux/OSScreenSaverFreedesktop.h"
 
@@ -127,6 +131,8 @@ bool CWinSystemWayland::InitWindowSystem()
   // pointer is by default not on this window, will be immediately rectified
   // by the enter() events if it is
   CServiceBroker::GetInputManager().SetMouseActive(false);
+  // Always use the generic touch action handler
+  CGenericTouchInputHandler::GetInstance().RegisterHandler(&CGenericTouchActionHandler::GetInstance());
 
   return CWinSystemBase::InitWindowSystem();
 }
@@ -149,6 +155,9 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_surfaceOutputs.clear();
 
   m_connection.reset();
+
+  CGenericTouchInputHandler::GetInstance().UnregisterHandler();
+
   return CWinSystemBase::DestroyWindowSystem();
 }
 
@@ -161,9 +170,10 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   {
     if (auto output = FindOutputByWaylandOutput(wloutput))
     {
-      CLog::Log(LOGDEBUG, "Entering output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
+      CLog::Log(LOGDEBUG, "Entering output \"%s\" with scale %d and %.3f dpi", UserFriendlyOutputName(output).c_str(), output->GetScale(), output->GetCurrentDpi());
       m_surfaceOutputs.emplace(output);
       UpdateBufferScale();
+      UpdateTouchDpi();
     }
     else
     {
@@ -177,6 +187,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
       CLog::Log(LOGDEBUG, "Leaving output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
       m_surfaceOutputs.erase(output);
       UpdateBufferScale();
+      UpdateTouchDpi();
     }
     else
     {
@@ -732,7 +743,7 @@ void CWinSystemWayland::Unregister(IDispResource* resource)
 void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 {
   CSingleLock lock(m_seatProcessorsMutex);
-  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, this));
+  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, *this));
   newSeatEmplace.first->second.SetCoordinateScale(m_scale);
 }
 
@@ -875,6 +886,20 @@ void CWinSystemWayland::ApplyBufferScale(std::int32_t scale)
   {
     seatProcessor.second.SetCoordinateScale(scale);
   }
+}
+
+void CWinSystemWayland::UpdateTouchDpi()
+{
+  // If we have multiple outputs with wildly different DPI, this is really just
+  // guesswork to get a halfway reasonable value. min/max would probably also be OK.
+  float dpiSum = std::accumulate(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(),  0.0f,
+                                 [](float acc, std::shared_ptr<COutput> const& output)
+                                 {
+                                   return acc + output->GetCurrentDpi();
+                                 });
+  float dpi = dpiSum / m_surfaceOutputs.size();
+  CLog::LogF(LOGDEBUG, "Computed average dpi of %.3f for touch handler", dpi);
+  CGenericTouchInputHandler::GetInstance().SetScreenDPI(dpi);
 }
 
 #if defined(HAVE_LIBVA)

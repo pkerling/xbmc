@@ -6,8 +6,11 @@ set_source_files_properties(${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extr
 set(SOURCES Connection.cpp
             Output.cpp
             GLContextEGL.cpp
+            InputProcessorKeyboard.h
+            InputProcessorPointer.h
+            InputProcessorTouch.h
             OSScreenSaverIdleInhibitUnstableV1.cpp
-            SeatInputProcessor.cpp
+            Seat.cpp
             ShellSurface.cpp
             ShellSurfaceWlShell.cpp
             ShellSurfaceXdgShellUnstableV6.cpp
@@ -19,8 +22,11 @@ set(SOURCES Connection.cpp
 set(HEADERS Connection.h
             Output.h
             GLContextEGL.h
+            InputProcessorKeyboard.cpp
+            InputProcessorPointer.cpp
+            InputProcessorTouch.cpp
             OSScreenSaverIdleInhibitUnstableV1.h
-            SeatInputProcessor.h
+            Seat.h
             ShellSurface.h
             ShellSurfaceWlShell.h
             ShellSurfaceXdgShellUnstableV6.h
