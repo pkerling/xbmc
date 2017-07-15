@@ -2086,8 +2086,10 @@ void CVideoPlayer::HandlePlaySpeed()
       if (m_CurrentAudio.id >= 0 && m_CurrentVideo.id >= 0 &&
           !m_VideoPlayerAudio->AcceptsData() &&
           m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_STARTING &&
-          m_VideoPlayerVideo->IsStalled())
+          m_VideoPlayerVideo->IsStalled() &&
+          m_CurrentVideo.packets > 10)
       {
+        m_VideoPlayerAudio->AcceptsData();
         CLog::Log(LOGWARNING, "VideoPlayer::Sync - stream player video does not start, flushing buffers");
         FlushBuffers(DVD_NOPTS_VALUE, true, true);
       }
@@ -2872,6 +2874,7 @@ void CVideoPlayer::HandleMessages()
              m_messenger.GetPacketCount(CDVDMsg::PLAYER_CHANNEL_SELECT_NUMBER) == 0)
     {
       FlushBuffers(DVD_NOPTS_VALUE, true, true);
+      m_renderManager.Flush();
       CDVDInputStreamPVRManager* input = dynamic_cast<CDVDInputStreamPVRManager*>(m_pInputStream);
       //! @todo find a better solution for the "otherStreamHack"
       //! a stream is not supposed to be terminated before demuxer
@@ -2901,6 +2904,7 @@ void CVideoPlayer::HandleMessages()
              m_messenger.GetPacketCount(CDVDMsg::PLAYER_CHANNEL_SELECT) == 0)
     {
       FlushBuffers(DVD_NOPTS_VALUE, true, true);
+      m_renderManager.Flush();
       CDVDInputStreamPVRManager* input = dynamic_cast<CDVDInputStreamPVRManager*>(m_pInputStream);
       if (input && input->IsOtherStreamHack())
       {
@@ -2936,6 +2940,7 @@ void CVideoPlayer::HandleMessages()
         {
           g_infoManager.SetDisplayAfterSeek(100000);
           FlushBuffers(DVD_NOPTS_VALUE, true, true);
+          m_renderManager.Flush();
           if (input->IsOtherStreamHack())
           {
             CloseDemuxer();
