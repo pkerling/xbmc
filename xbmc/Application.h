@@ -413,6 +413,7 @@ protected:
   bool OnSettingUpdate(std::shared_ptr<CSetting> setting, const char *oldSettingId, const TiXmlNode *oldSettingNode) override;
 
   bool LoadSkin(const std::string& skinID);
+  void ReloadSkinInternal(bool confirm);
 
   void CheckOSScreenSaverInhibitionSetting();
 
@@ -425,6 +426,14 @@ protected:
 
   bool m_confirmSkinChange;
   bool m_ignoreSkinSettingChanges;
+
+  enum class ReloadSkinFlag
+  {
+    NO_RELOAD,
+    RELOAD_CONFIRM,
+    RELOAD_NO_CONFIRM
+  };
+  ReloadSkinFlag m_reloadSkinFlag{ReloadSkinFlag::NO_RELOAD};
 
   bool m_saveSkinOnUnloading;
   bool m_autoExecScriptExecuted;
