@@ -63,6 +63,7 @@ void CConnection::BindSingletons()
     { wayland::shell_t::interface_name, { m_shell, 1, 1 } },
     { wayland::shm_t::interface_name, { m_shm, 1, 1 } },
     { wayland::data_device_manager_t::interface_name, { m_dataDeviceManager, 1, 3, false } },
+    { wayland::subcompositor_t::interface_name, { m_subcompositor, 1, 1, false } },
     { wayland::zxdg_shell_v6_t::interface_name, { m_xdgShellUnstableV6, 1, 1, false } },
     { wayland::zwp_idle_inhibit_manager_v1_t::interface_name, { m_idleInhibitManagerUnstableV1, 1, 1, false } },
     { wayland::presentation_t::interface_name, { m_presentation, 1, 1, false } }
@@ -157,6 +158,11 @@ wayland::shm_t CConnection::GetShm()
 wayland::data_device_manager_t CConnection::GetDataDeviceManager()
 {
   return m_dataDeviceManager;
+}
+
+wayland::subcompositor_t CConnection::GetSubcompositor()
+{
+  return m_subcompositor;
 }
 
 wayland::zxdg_shell_v6_t CConnection::GetXdgShellUnstableV6()

@@ -65,6 +65,7 @@ public:
   wayland::shell_t GetShell();
   wayland::shm_t GetShm();
   wayland::data_device_manager_t GetDataDeviceManager();
+  wayland::subcompositor_t GetSubcompositor();
   wayland::zxdg_shell_v6_t GetXdgShellUnstableV6();
   wayland::zwp_idle_inhibit_manager_v1_t GetIdleInhibitManagerUnstableV1();
   wayland::presentation_t GetPresentation();
@@ -95,6 +96,7 @@ private:
   wayland::shell_t m_shell;
   wayland::shm_t m_shm;
   wayland::data_device_manager_t m_dataDeviceManager;
+  wayland::subcompositor_t m_subcompositor;
   wayland::zxdg_shell_v6_t m_xdgShellUnstableV6;
   wayland::zwp_idle_inhibit_manager_v1_t m_idleInhibitManagerUnstableV1;
   wayland::presentation_t m_presentation;
