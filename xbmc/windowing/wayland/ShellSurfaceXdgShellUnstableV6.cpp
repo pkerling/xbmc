@@ -18,10 +18,35 @@
  *
  */
 
-#include "messaging/ApplicationMessenger.h"
 #include "ShellSurfaceXdgShellUnstableV6.h"
 
+#include <type_traits>
+
+#include "messaging/ApplicationMessenger.h"
+
 using namespace KODI::WINDOWING::WAYLAND;
+
+namespace
+{
+
+IShellSurface::State ConvertStateFlag(wayland::zxdg_toplevel_v6_state flag)
+{
+  switch(flag)
+  {
+    case wayland::zxdg_toplevel_v6_state::activated:
+      return IShellSurface::STATE_ACTIVATED;
+    case wayland::zxdg_toplevel_v6_state::fullscreen:
+      return IShellSurface::STATE_FULLSCREEN;
+    case wayland::zxdg_toplevel_v6_state::maximized:
+      return IShellSurface::STATE_MAXIMIZED;
+    case wayland::zxdg_toplevel_v6_state::resizing:
+      return IShellSurface::STATE_RESIZING;
+    default:
+      throw std::runtime_error(std::string("Unknown xdg_toplevel state flag") + std::to_string(static_cast<std::underlying_type<decltype(flag)>::type> (flag)));
+  }
+}
+
+}
 
 CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::display_t& display, const wayland::zxdg_shell_v6_t& shell, const wayland::surface_t& surface, std::string title, std::string app_id)
 : m_display(&display), m_shell(shell), m_surface(surface), m_xdgSurface(m_shell.get_xdg_surface(m_surface)), m_xdgToplevel(m_xdgSurface.get_toplevel())
@@ -41,6 +66,11 @@ CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::displa
   m_xdgToplevel.on_configure() = [this](std::int32_t width, std::int32_t height, std::vector<wayland::zxdg_toplevel_v6_state> states)
   {
     m_configuredSize.Set(width, height);
+    m_configuredState.reset();
+    for (auto state : states)
+    {
+      m_configuredState.set(ConvertStateFlag(state));
+    }
   };
   m_xdgToplevel.set_app_id(app_id);
   m_xdgToplevel.set_title(title);

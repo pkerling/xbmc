@@ -28,6 +28,7 @@ using namespace std::placeholders;
 CShellSurfaceWlShell::CShellSurfaceWlShell(const wayland::shell_t& shell, const wayland::surface_t& surface, std::string title, std::string class_)
 : m_shell(shell), m_shellSurface(m_shell.get_shell_surface(surface))
 {
+  m_surfaceState.set(STATE_ACTIVATED);
   m_shellSurface.set_class(class_);
   m_shellSurface.set_title(title);
   m_shellSurface.on_ping() = [this](std::uint32_t serial)
@@ -55,9 +56,11 @@ void CShellSurfaceWlShell::Initialize()
 void CShellSurfaceWlShell::SetFullScreen(const wayland::output_t& output, float refreshRate)
 {
   m_shellSurface.set_fullscreen(wayland::shell_surface_fullscreen_method::driver, std::round(refreshRate * 1000.0f), output);
+  m_surfaceState.set(STATE_FULLSCREEN);
 }
 
 void CShellSurfaceWlShell::SetWindowed()
 {
   m_shellSurface.set_toplevel();
+  m_surfaceState.reset(STATE_FULLSCREEN);
 }
