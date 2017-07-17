@@ -27,8 +27,9 @@
 #define XBMC_FORCE_INLINE
 #endif
 
-#include <vector>
 #include <algorithm>
+#include <stdexcept>
+#include <vector>
 
 template <typename T> class CPointGen
 {
@@ -90,6 +91,139 @@ public:
   };
 
   T x, y;
+};
+
+/**
+ * Generic two-dimensional size representation
+ *
+ * Class invariant: width and height are both non-negative
+ * Throws std::out_of_range if invariant would be violated. The class
+ * is exception-safe. If modification would violate the invariant, the size
+ * is not changed.
+ */
+template <typename T> class CSizeGen
+{
+  T m_w, m_h;
+
+  void CheckSet(T width, T height)
+  {
+    if (width < 0)
+    {
+      throw std::out_of_range("Size may not have negative width");
+    }
+    if (height < 0)
+    {
+      throw std::out_of_range("Size may not have negative height");
+    }
+    m_w = width;
+    m_h = height;
+  }
+
+public:
+  typedef CSizeGen<T> this_type;
+
+  T Width() const
+  {
+    return m_w;
+  }
+
+  T Height() const
+  {
+    return m_h;
+  }
+
+  void SetWidth(T width)
+  {
+    CheckSet(width, m_h);
+  }
+
+  void SetHeight(T height)
+  {
+    CheckSet(m_w, height);
+  }
+
+  void Set(T width, T height)
+  {
+    CheckSet(width, height);
+  }
+
+  CSizeGen()
+  : m_w{}, m_h{}
+  {}
+
+  CSizeGen(T width, T height)
+  {
+    CheckSet(width, height);
+  }
+
+  bool IsZero() const
+  {
+    return (m_w == static_cast<T> (0) && m_h == static_cast<T> (0));
+  }
+
+  unsigned int Area() const
+  {
+    return m_w * m_h;
+  }
+
+  template <class U> CSizeGen<T>(const CSizeGen<U>& rhs)
+  {
+    CheckSet(rhs.m_w, rhs.m_h);
+  }
+
+  this_type operator+(const this_type& size) const
+  {
+    return {m_w + size.m_w, m_h + size.m_h};
+  };
+
+  this_type& operator+=(const this_type& size)
+  {
+    CheckSet(m_w + size.m_w, m_h + size.m_h);
+    return *this;
+  };
+
+  this_type operator-(const this_type& size) const
+  {
+    return {m_w - size.m_w, m_h - size.m_h};
+  };
+
+  this_type& operator-=(const this_type& size)
+  {
+    CheckSet(m_w - size.m_w, m_h - size.m_h);
+    return *this;
+  };
+
+  this_type operator*(T factor) const
+  {
+    return {m_w * factor, m_h * factor};
+  }
+
+  this_type& operator*=(T factor)
+  {
+    CheckSet(m_w * factor, m_h * factor);
+    return *this;
+  }
+
+  this_type operator/(T factor) const
+  {
+    return {m_w / factor, m_h / factor};
+  }
+
+  CSizeGen<T>& operator/=(T factor)
+  {
+    CheckSet(m_w / factor, m_h / factor);
+    return *this;
+  }
+
+  bool operator==(const this_type& size) const
+  {
+    return (m_w == size.m_w && m_h == size.m_h);
+  }
+
+  bool operator!=(const this_type& size) const
+  {
+    return !(*this == size);
+  }
 };
 
 template <typename T> class CRectGen
@@ -275,6 +409,9 @@ private:
 
 typedef CPointGen<float> CPoint;
 typedef CPointGen<int>   CPointInt;
+
+typedef CSizeGen<float> CSize;
+typedef CSizeGen<int> CSizeInt;
 
 typedef CRectGen<float>  CRect;
 typedef CRectGen<int>    CRectInt;
