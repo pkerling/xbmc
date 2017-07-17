@@ -34,9 +34,6 @@ namespace WAYLAND
  */
 class CShellSurfaceWlShell : public IShellSurface
 {
-  wayland::shell_t m_shell;
-  wayland::shell_surface_t m_shellSurface;
-  
 public:
   /**
    * Construct wl_shell_surface for given surface
@@ -54,6 +51,11 @@ public:
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
   void AckConfigure(std::uint32_t serial) override;
+
+private:
+  wayland::shell_t m_shell;
+  wayland::shell_surface_t m_shellSurface;
+  StateBitset m_surfaceState;
 };
 
 }

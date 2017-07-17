@@ -27,6 +27,7 @@
 
 #include <wayland-client-protocol.hpp>
 
+#include "guilib/Geometry.h"
 #include "threads/CriticalSection.h"
 #include "threads/SingleLock.h"
 
@@ -59,19 +60,19 @@ public:
    * Get output position in compositor coordinate space
    * \return (x, y) tuple of output position
    */
-  std::tuple<std::int32_t, std::int32_t> GetPosition() const
+  CPointInt GetPosition() const
   {
     CSingleLock lock(m_geometryCriticalSection);
-    return std::make_tuple(m_x, m_y);
+    return m_position;
   }
   /**
    * Get output physical size in millimeters
    * \return (width, height) tuple of output physical size in millimeters
    */
-  std::tuple<std::int32_t, std::int32_t> GetPhysicalSize() const
+  CSizeInt GetPhysicalSize() const
   {
     CSingleLock lock(m_geometryCriticalSection);
-    return std::make_tuple(m_physicalWidth, m_physicalHeight);
+    return m_physicalSize;
   }
   std::string const& GetMake() const
   {
@@ -90,10 +91,10 @@ public:
   
   struct Mode
   {
-    std::int32_t width, height;
+    CSizeInt size;
     std::int32_t refreshMilliHz;
-    Mode(std::int32_t width, std::int32_t height, std::int32_t refreshMilliHz)
-      : width(width), height(height), refreshMilliHz(refreshMilliHz) {}
+    Mode(CSizeInt size, std::int32_t refreshMilliHz)
+      : size{size}, refreshMilliHz(refreshMilliHz) {}
 
     float GetRefreshInHz() const
     {
@@ -102,7 +103,7 @@ public:
     
     std::tuple<std::int32_t, std::int32_t, std::int32_t> AsTuple() const
     {
-      return std::make_tuple(width, height, refreshMilliHz);
+      return std::make_tuple(size.Width(), size.Height(), refreshMilliHz);
     }
     
     // Comparison operator needed for std::set
@@ -144,10 +145,10 @@ private:
   CCriticalSection m_geometryCriticalSection;
   CCriticalSection m_iteratorCriticalSection;
 
-  std::int32_t m_x = 0, m_y = 0;
-  std::int32_t m_physicalWidth = 0, m_physicalHeight = 0;
+  CPointInt m_position;
+  CSizeInt m_physicalSize;
   std::string m_make, m_model;
-  std::atomic<std::int32_t> m_scale = {1}; // default scale of 1 if no wl_output::scale is sent
+  std::atomic<std::int32_t> m_scale{1}; // default scale of 1 if no wl_output::scale is sent
 
   std::set<Mode> m_modes;
   // For std::set, insertion never invalidates existing iterators, and modes are

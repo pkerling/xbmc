@@ -36,16 +36,6 @@ namespace WAYLAND
  */
 class CShellSurfaceXdgShellUnstableV6 : public IShellSurface
 {
-  wayland::display_t* m_display;
-  wayland::zxdg_shell_v6_t m_shell;
-  wayland::surface_t m_surface;
-  wayland::zxdg_surface_v6_t m_xdgSurface;
-  wayland::zxdg_toplevel_v6_t m_xdgToplevel;
-  
-  wayland::output_t m_currentOutput;
-  
-  std::int32_t m_configuredWidth = 0, m_configuredHeight = 0;
-  
 public:
   /**
    * Construct wl_shell_surface for given surface
@@ -65,6 +55,18 @@ public:
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
   void AckConfigure(std::uint32_t serial) override;
+
+private:
+  wayland::display_t* m_display;
+  wayland::zxdg_shell_v6_t m_shell;
+  wayland::surface_t m_surface;
+  wayland::zxdg_surface_v6_t m_xdgSurface;
+  wayland::zxdg_toplevel_v6_t m_xdgToplevel;
+
+  wayland::output_t m_currentOutput;
+
+  CSizeInt m_configuredSize;
+  StateBitset m_configuredState;
 };
 
 }

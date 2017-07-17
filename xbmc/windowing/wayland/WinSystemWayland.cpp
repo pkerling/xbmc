@@ -65,13 +65,13 @@ using namespace std::placeholders;
 namespace
 {
 
-RESOLUTION FindMatchingCustomResolution(int width, int height, float refreshRate)
+RESOLUTION FindMatchingCustomResolution(CSizeInt size, float refreshRate)
 {
   CSingleLock lock(g_graphicsContext);
   for (size_t res = RES_DESKTOP; res < CDisplaySettings::GetInstance().ResolutionInfoSize(); ++res)
   {
     auto const& resInfo = CDisplaySettings::GetInstance().GetResolutionInfo(res);
-    if (resInfo.iWidth == width && resInfo.iHeight == height && MathUtils::FloatEquals(resInfo.fRefreshRate, refreshRate, 0.0005f))
+    if (resInfo.iWidth == size.Width() && resInfo.iHeight == size.Height() && MathUtils::FloatEquals(resInfo.fRefreshRate, refreshRate, 0.0005f))
     {
       return static_cast<RESOLUTION> (res);
     }
@@ -216,7 +216,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   };
 
   // Try with this resolution if compositor does not say otherwise
-  SetSizeFromSurfaceSize(res.iWidth, res.iHeight);
+  SetSizeFromSurfaceSize({res.iWidth, res.iHeight});
 
   auto xdgShell = m_connection->GetXdgShellUnstableV6();
   if (xdgShell)
@@ -231,11 +231,14 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
   // Just remember initial width/height for context creation
   // This is used for sizing the EGLSurface
-  m_shellSurface->OnConfigure() = [this](std::uint32_t serial, std::int32_t width, std::int32_t height)
+  m_shellSurface->OnConfigure() = [this](std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
   {
-    CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", width, height);
-    SetSizeFromSurfaceSize(width, height);
-    AckConfigure(serial);
+    if (!size.IsZero())
+    {
+      CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", size.Width(), size.Height());
+      SetSizeFromSurfaceSize(size);
+      AckConfigure(serial);
+    }
   };
 
   if (fullScreen)
@@ -361,16 +364,16 @@ void CWinSystemWayland::UpdateResolutions()
   auto const& modes = output->GetModes();
   auto const& currentMode = output->GetCurrentMode();
   auto physicalSize = output->GetPhysicalSize();
-  CLog::LogF(LOGINFO, "User wanted output \"%s\", we now have \"%s\" size %dx%d mm with %zu mode(s):", userOutput.c_str(), outputName.c_str(), std::get<0>(physicalSize), std::get<1>(physicalSize), modes.size());
+  CLog::LogF(LOGINFO, "User wanted output \"%s\", we now have \"%s\" size %dx%d mm with %zu mode(s):", userOutput.c_str(), outputName.c_str(), physicalSize.Width(), physicalSize.Height(), modes.size());
 
   for (auto const& mode : modes)
   {
     bool isCurrent = (mode == currentMode);
     float pixelRatio = output->GetPixelRatioForMode(mode);
-    CLog::LogF(LOGINFO, "- %dx%d @%.3f Hz pixel ratio %.3f%s", mode.width, mode.height, mode.refreshMilliHz / 1000.0f, pixelRatio, isCurrent ? " current" : "");
+    CLog::LogF(LOGINFO, "- %dx%d @%.3f Hz pixel ratio %.3f%s", mode.size.Width(), mode.size.Height(), mode.refreshMilliHz / 1000.0f, pixelRatio, isCurrent ? " current" : "");
 
     RESOLUTION_INFO res;
-    UpdateDesktopResolution(res, 0, mode.width, mode.height, mode.GetRefreshInHz());
+    UpdateDesktopResolution(res, 0, mode.size.Width(), mode.size.Height(), mode.GetRefreshInHz());
     res.strOutput = outputName;
     res.fPixelRatio = pixelRatio;
 
@@ -488,9 +491,9 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   {
     // Mark everything opaque so the compositor can render it faster
     // Do it here so size always matches the configured egl surface
-    CLog::LogF(LOGDEBUG, "Setting opaque region size %dx%d", m_surfaceWidth, m_surfaceHeight);
+    CLog::LogF(LOGDEBUG, "Setting opaque region size %dx%d", m_surfaceSize.Width(), m_surfaceSize.Height());
     wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
-    opaqueRegion.add(0, 0, m_surfaceWidth, m_surfaceHeight);
+    opaqueRegion.add(0, 0, m_surfaceSize.Width(), m_surfaceSize.Height());
     m_surface.set_opaque_region(opaqueRegion);
     if (m_surface.can_set_buffer_scale())
     {
@@ -529,12 +532,12 @@ void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
     g_application.ReloadSkin();
   }
 }
-void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height)
+void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
 {
   CSingleLock lock(g_graphicsContext);
-  CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d", serial, width, height);
+  CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d", serial, size.Width(), size.Height());
   m_currentConfigureSerial = serial;
-  if (!ResetSurfaceSize(width, height, m_scale))
+  if (size.IsZero() || !ResetSurfaceSize(size, m_scale))
   {
     // nothing changed, ack immediately
     AckConfigure(serial);
@@ -565,7 +568,7 @@ void CWinSystemWayland::AckConfigure(std::uint32_t serial)
  * \return Whether surface parameters changed and video resolution change was
  *         performed
  */
-bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale)
+bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale)
 {
   // Wayland will tell us here the size of the surface that was actually created,
   // which might be different from what we expected e.g. when fullscreening
@@ -582,7 +585,7 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   // Now update actual resolution with configured one
   bool scaleChanged = (scale != m_scale);
   m_scale = scale;
-  bool sizeChanged = SetSizeFromSurfaceSize(width, height);
+  bool sizeChanged = SetSizeFromSurfaceSize(size);
  
   // Get actual frame rate from monitor, take highest frame rate if multiple
   // m_surfaceOutputs is only updated from event handling thread, so no lock
@@ -603,7 +606,7 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
   m_fRefreshRate = refreshRate;
 
   // Find matching Kodi resolution member
-  switchToRes = FindMatchingCustomResolution(m_nWidth, m_nHeight, m_fRefreshRate);
+  switchToRes = FindMatchingCustomResolution({m_nWidth, m_nHeight}, m_fRefreshRate);
 
   if (switchToRes == RES_INVALID)
   {
@@ -644,18 +647,16 @@ bool CWinSystemWayland::ResetSurfaceSize(std::int32_t width, std::int32_t height
  *
  * \return whether any size variable changed
  */
-bool CWinSystemWayland::SetSizeFromSurfaceSize(std::int32_t surfaceWidth, std::int32_t surfaceHeight)
+bool CWinSystemWayland::SetSizeFromSurfaceSize(CSizeInt surfaceSize)
 {
-  std::int32_t newWidth = surfaceWidth * m_scale;
-  std::int32_t newHeight = surfaceHeight * m_scale;
+  CSizeInt newSize{surfaceSize * m_scale};
 
-  if (surfaceWidth != m_surfaceWidth || surfaceHeight != m_surfaceHeight || newWidth != m_nWidth || newHeight != m_nHeight)
+  if (surfaceSize != m_surfaceSize || newSize.Width() != m_nWidth || newSize.Height() != m_nHeight)
   {
-    m_surfaceWidth = surfaceWidth;
-    m_surfaceHeight = surfaceHeight;
-    m_nWidth = newWidth;
-    m_nHeight = newHeight;
-    CLog::LogF(LOGINFO, "Set surface size %dx%d at scale %d -> resolution %dx%d", m_surfaceWidth, m_surfaceHeight, m_scale, m_nWidth, m_nHeight);
+    m_surfaceSize = surfaceSize;
+    m_nWidth = newSize.Width();
+    m_nHeight = newSize.Height();
+    CLog::LogF(LOGINFO, "Set surface size %dx%d at scale %d -> resolution %dx%d", m_surfaceSize.Width(), m_surfaceSize.Height(), m_scale, m_nWidth, m_nHeight);
     return true;
   }
   else
@@ -682,11 +683,10 @@ std::string CWinSystemWayland::UserFriendlyOutputName(std::shared_ptr<COutput> c
   }
 
   // Add position
-  std::int32_t x, y;
-  std::tie(x, y) = output->GetPosition();
-  if (x != 0 || y != 0)
+  auto pos = output->GetPosition();
+  if (pos.x != 0 || pos.y != 0)
   {
-    parts.emplace_back(StringUtils::Format("@{}x{}", x, y));
+    parts.emplace_back(StringUtils::Format("@{}x{}", pos.x, pos.y));
   }
 
   return StringUtils::Join(parts, " ");
@@ -903,7 +903,7 @@ void CWinSystemWayland::UpdateBufferScale()
   {
     auto const newScale = (*maxBufferScaleIt)->GetScale();
     // Recalculate resolution with new scale if it changed
-    ResetSurfaceSize(m_surfaceWidth, m_surfaceHeight, newScale);
+    ResetSurfaceSize(m_surfaceSize, newScale);
   }
 }
 

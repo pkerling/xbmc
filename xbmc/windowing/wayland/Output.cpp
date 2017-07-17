@@ -34,10 +34,8 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
   m_output.on_geometry() = [this](std::int32_t x, std::int32_t y, std::int32_t physWidth, std::int32_t physHeight, wayland::output_subpixel subpixel, std::string const& make, std::string const& model, wayland::output_transform transform)
   {
     CSingleLock lock(m_geometryCriticalSection);
-    m_x = x;
-    m_y = y;
-    m_physicalWidth = physWidth;
-    m_physicalHeight = physHeight;
+    m_position = {x, y};
+    m_physicalSize = {physWidth, physHeight};
     m_make = make;
     m_model = model;
   };
@@ -46,7 +44,7 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
     // std::set.emplace returns pair of iterator to the (possibly) inserted
     // element and boolean information whether the element was actually added
     // which we do not need
-    auto modeIterator = m_modes.emplace(width, height, refresh).first;
+    auto modeIterator = m_modes.emplace(CSizeInt{width, height}, refresh).first;
     CSingleLock lock(m_iteratorCriticalSection);
     // Remember current and preferred mode
     // Current mode is the last one that was sent with current flag set
@@ -103,16 +101,16 @@ const COutput::Mode& COutput::GetPreferredMode() const
 float COutput::GetPixelRatioForMode(const Mode& mode) const
 {
   CSingleLock lock(m_geometryCriticalSection);
-  if (m_physicalWidth == 0 || m_physicalHeight == 0 || mode.width == 0 || mode.height == 0)
+  if (m_physicalSize.IsZero() || mode.size.IsZero())
   {
     return 1.0f;
   }
   else
   {
     return (
-            (static_cast<float> (m_physicalWidth) / static_cast<float> (mode.width))
+            (static_cast<float> (m_physicalSize.Width()) / static_cast<float> (mode.size.Width()))
             /
-            (static_cast<float> (m_physicalHeight) / static_cast<float> (mode.height))
+            (static_cast<float> (m_physicalSize.Height()) / static_cast<float> (mode.size.Height()))
             );
   }
 }
@@ -121,9 +119,9 @@ float COutput::GetDpiForMode(const Mode& mode) const
 {
   constexpr float INCH_MM_RATIO{25.4f};
 
-  float diagonalPixels = std::sqrt(mode.width * mode.width + mode.height * mode.height);
+  float diagonalPixels = std::sqrt(mode.size.Width() * mode.size.Width() + mode.size.Height() * mode.size.Height());
   // physicalWidth/physicalHeight is in millimeters
-  float diagonalInches = std::sqrt(m_physicalWidth * m_physicalWidth + m_physicalHeight * m_physicalHeight) / INCH_MM_RATIO;
+  float diagonalInches = std::sqrt(m_physicalSize.Width() * m_physicalSize.Width() + m_physicalSize.Height() * m_physicalSize.Height()) / INCH_MM_RATIO;
 
   return diagonalPixels / diagonalInches;
 }

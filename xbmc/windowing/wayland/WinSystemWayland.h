@@ -118,9 +118,9 @@ private:
 
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
-  void HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
-  bool ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale);
-  bool SetSizeFromSurfaceSize(std::int32_t surfaceWidth, std::int32_t surfaceHeight);
+  void HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state);
+  bool ResetSurfaceSize(CSizeInt size, std::int32_t scale);
+  bool SetSizeFromSurfaceSize(CSizeInt surfaceSize);
   
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
   std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
@@ -189,7 +189,7 @@ private:
   /// compositor
   std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
   /// Size of our surface in "surface coordinates", i.e. without scaling applied
-  std::int32_t m_surfaceWidth, m_surfaceHeight;
+  CSizeInt m_surfaceSize;
   std::int32_t m_scale = 1;
 
   // Configure state

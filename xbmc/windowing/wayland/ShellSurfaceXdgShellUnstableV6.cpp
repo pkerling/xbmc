@@ -32,27 +32,15 @@ CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::displa
   };
   m_xdgSurface.on_configure() = [this](std::uint32_t serial)
   {
-    // xdg_toplevel may send width/height 0 if it has no idea how big it wants the
-    // surface to be
-    if (m_configuredWidth != 0 && m_configuredHeight != 0)
-    {
-      InvokeOnConfigure(serial, m_configuredWidth, m_configuredHeight);
-    }
-    else
-    {
-      // WinSystem does not get the configure notification, so ack must be sent
-      // here
-      AckConfigure(serial);
-    }
+    InvokeOnConfigure(serial, m_configuredSize, m_configuredState);
   };
   m_xdgToplevel.on_close() = [this]()
   {
     MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
   };
-  m_xdgToplevel.on_configure() = [this](std::int32_t width, std::int32_t height, wayland::array_t)
+  m_xdgToplevel.on_configure() = [this](std::int32_t width, std::int32_t height, std::vector<wayland::zxdg_toplevel_v6_state> states)
   {
-    m_configuredWidth = width;
-    m_configuredHeight = height;
+    m_configuredSize.Set(width, height);
   };
   m_xdgToplevel.set_app_id(app_id);
   m_xdgToplevel.set_title(title);

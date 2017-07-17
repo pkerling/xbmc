@@ -19,10 +19,13 @@
  */
 #pragma once
 
+#include <bitset>
 #include <cstdint>
 #include <functional>
 
 #include <wayland-client.hpp>
+
+#include "guilib/Geometry.h"
 
 namespace KODI
 {
@@ -34,12 +37,12 @@ namespace WAYLAND
 /**
  * Abstraction for shell surfaces to support multiple protocols
  * such as wl_shell (for compatibility) and xdg_shell (for features)
+ *
+ * The interface itself is modeled after xdg_shell, so see there for the meaning
+ * of e.g. the surface states
  */
 class IShellSurface
 {
-protected:
-  void InvokeOnConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
-  
 public:
   /**
    * Construct shell surface over normal surface
@@ -53,6 +56,17 @@ public:
    */
   IShellSurface() {}
   virtual ~IShellSurface() {}
+
+  // Not enum class since it must be used like a bitfield
+  enum State
+  {
+    STATE_MAXIMIZED = 0,
+    STATE_FULLSCREEN,
+    STATE_RESIZING,
+    STATE_ACTIVATED,
+    STATE_COUNT
+  };
+  using StateBitset = std::bitset<STATE_COUNT>;
   
   /**
    * Initialize shell surface
@@ -62,15 +76,19 @@ public:
    * already be called.
    */
   virtual void Initialize() = 0;
-  
-  using ConfigureHandler = std::function<void(std::uint32_t, std::int32_t, std::int32_t)>;
+
+  // size 0x0
+  using ConfigureHandler = std::function<void(std::uint32_t /* serial */, CSizeInt /* size */, StateBitset /* state */)>;
   
   virtual void SetFullScreen(wayland::output_t const& output, float refreshRate) = 0;
   virtual void SetWindowed() = 0;
   
   ConfigureHandler& OnConfigure();
   virtual void AckConfigure(std::uint32_t serial) = 0;
-  
+
+protected:
+  void InvokeOnConfigure(std::uint32_t serial, CSizeInt size, StateBitset state);
+
 private:
   ConfigureHandler m_onConfigure;
   

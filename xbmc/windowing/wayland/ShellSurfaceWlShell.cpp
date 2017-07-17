@@ -37,7 +37,7 @@ CShellSurfaceWlShell::CShellSurfaceWlShell(const wayland::shell_t& shell, const 
   m_shellSurface.on_configure() = [this](wayland::shell_surface_resize, std::int32_t width, std::int32_t height)
   {
     // wl_shell does not have serials
-    InvokeOnConfigure(0, width, height);
+    InvokeOnConfigure(0, {width, height}, m_surfaceState);
   };
 }
 
