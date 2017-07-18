@@ -41,7 +41,7 @@ namespace WAYLAND
 class CInputProcessorTouch
 {
 public:
-  CInputProcessorTouch(wayland::touch_t const& touch);
+  explicit CInputProcessorTouch(wayland::touch_t const& touch);
   ~CInputProcessorTouch();
   void SetCoordinateScale(std::int32_t scale) { m_coordinateScale = scale; }
 

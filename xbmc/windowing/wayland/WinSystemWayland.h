@@ -70,6 +70,8 @@ public:
   bool HasCursor() override;
   void ShowOSMouse(bool show) override;
 
+  std::string GetClipboardText() override;
+
   void SetInhibitSkinReload(bool inhibit);
   
   void* GetVaDisplay();

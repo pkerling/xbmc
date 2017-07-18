@@ -19,12 +19,12 @@
  */
 #pragma once
 
-#include <queue>
+#include <wayland-client-protocol.hpp>
 
-#include <wayland-client.hpp>
+#include <string>
+#include <vector>
 
 #include "threads/CriticalSection.h"
-#include "../WinEvents.h"
 
 namespace KODI
 {
@@ -33,19 +33,24 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CWinEventsWayland : public IWinEvents
+/**
+ * Retrieve and accept selection (clipboard) offers on the data device of a seat
+ */
+class CSeatSelection
 {
 public:
-  virtual bool MessagePump() override;
-  virtual void MessagePush(XBMC_Event* ev) override;
-  static void Flush();
-  
+  explicit CSeatSelection(wayland::data_device_t const& dataDevice);
+  std::string GetSelectionText() const;
+
 private:
-  friend class CWinSystemWayland;
-  static void SetDisplay(wayland::display_t* display);
-  
-  CCriticalSection m_queueMutex;
-  std::queue<XBMC_Event> m_queue;
+  wayland::data_device_t m_dataDevice;
+  wayland::data_offer_t m_currentOffer;
+  mutable wayland::data_offer_t m_currentSelection;
+
+  std::vector<std::string> m_mimeTypeOffers;
+  std::string m_matchedMimeType;
+
+  CCriticalSection m_currentSelectionMutex;
 };
 
 }

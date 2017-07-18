@@ -19,33 +19,22 @@
  */
 #pragma once
 
-#include <queue>
+#include <unistd.h>
 
-#include <wayland-client.hpp>
-
-#include "threads/CriticalSection.h"
-#include "../WinEvents.h"
+#include "utils/ScopeGuard.h"
 
 namespace KODI
 {
-namespace WINDOWING
+namespace UTILS
 {
-namespace WAYLAND
+namespace POSIX
 {
 
-class CWinEventsWayland : public IWinEvents
+class CFileHandle : public CScopeGuard<int, -1, decltype(close)>
 {
 public:
-  virtual bool MessagePump() override;
-  virtual void MessagePush(XBMC_Event* ev) override;
-  static void Flush();
-  
-private:
-  friend class CWinSystemWayland;
-  static void SetDisplay(wayland::display_t* display);
-  
-  CCriticalSection m_queueMutex;
-  std::queue<XBMC_Event> m_queue;
+  CFileHandle() : CScopeGuard(close, -1) {}
+  explicit CFileHandle(int fd) : CScopeGuard(close, fd) {}
 };
 
 }

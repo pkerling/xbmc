@@ -31,7 +31,9 @@
 #include "threads/SingleLock.h"
 #include "threads/Thread.h"
 #include "utils/log.h"
+#include "utils/posix/FileHandle.h"
 
+using namespace KODI::UTILS::POSIX;
 using namespace KODI::WINDOWING::WAYLAND;
 
 namespace
@@ -46,34 +48,37 @@ namespace
  */
 class CWinEventsWaylandThread : CThread
 {
-  wayland::display_t* m_display;
+  wayland::display_t& m_display;
   // Pipe used for cancelling poll() on shutdown
-  int m_pipe[2];
+  CFileHandle m_pipeRead;
+  CFileHandle m_pipeWrite;
 
 public:
 
-  CWinEventsWaylandThread(wayland::display_t* display)
+  CWinEventsWaylandThread(wayland::display_t& display)
   : CThread("Wayland message pump"), m_display(display)
   {
-    if (pipe(m_pipe) < 0)
+    std::array<int, 2> fds;
+    if (pipe(fds.data()) < 0)
     {
       throw std::system_error(errno, std::generic_category(), "Error creating pipe for Wayland message pump cancellation");
     }
+    m_pipeRead.attach(fds[0]);
+    m_pipeWrite.attach(fds[1]);
     Create();
-  }
-
-  virtual ~CWinEventsWaylandThread()
-  {
-    close(m_pipe[0]);
-    close(m_pipe[1]);
   }
 
   void Stop()
   {
     CLog::Log(LOGDEBUG, "Stopping Wayland message pump");
     char c = 0;
-    write(m_pipe[1], &c, 1);
+    write(m_pipeWrite, &c, 1);
     WaitForThreadExit(0);
+  }
+
+  wayland::display_t& GetDisplay()
+  {
+    return m_display;
   }
 
 private:
@@ -86,11 +91,11 @@ private:
       pollfd& waylandPoll = pollFds[0];
       pollfd& cancelPoll = pollFds[1];
       // Wayland filedescriptor
-      waylandPoll.fd = m_display->get_fd();
+      waylandPoll.fd = m_display.get_fd();
       waylandPoll.events = POLLIN;
       waylandPoll.revents = 0;
       // Read end of the cancellation pipe
-      cancelPoll.fd = m_pipe[0];
+      cancelPoll.fd = m_pipeRead;
       cancelPoll.events = POLLIN;
       cancelPoll.revents = 0;
 
@@ -105,12 +110,19 @@ private:
         // cancellation ourselves here
 
         // Acquire global read intent
-        wayland::read_intent readIntent = m_display->obtain_read_intent();
-        m_display->flush();
+        wayland::read_intent readIntent = m_display.obtain_read_intent();
+        m_display.flush();
 
         if (poll(pollFds.data(), pollFds.size(), -1) < 0)
         {
-          throw std::system_error(errno, std::generic_category(), "Error polling on Wayland socket");
+          if (errno == EINTR)
+          {
+            continue;
+          }
+          else
+          {
+            throw std::system_error(errno, std::generic_category(), "Error polling on Wayland socket");
+          }
         }
 
         if (cancelPoll.revents & POLLIN || cancelPoll.revents & POLLERR || cancelPoll.revents & POLLHUP || cancelPoll.revents & POLLNVAL)
@@ -127,7 +139,7 @@ private:
         // Read events and release intent; this does not block
         readIntent.read();
         // Dispatch default event queue
-        m_display->dispatch_pending();
+        m_display.dispatch_pending();
       }
 
       CLog::Log(LOGDEBUG, "Wayland message pump stopped");
@@ -156,13 +168,21 @@ void CWinEventsWayland::SetDisplay(wayland::display_t* display)
   if (display && !g_WlMessagePump)
   {
     // Start message processing as soon as we have a display
-    g_WlMessagePump.reset(new CWinEventsWaylandThread(display));
+    g_WlMessagePump.reset(new CWinEventsWaylandThread(*display));
   }
   else if (g_WlMessagePump)
   {
     // Stop if display is set to nullptr
     g_WlMessagePump->Stop();
     g_WlMessagePump.reset();
+  }
+}
+
+void CWinEventsWayland::Flush()
+{
+  if (g_WlMessagePump)
+  {
+    g_WlMessagePump->GetDisplay().flush();
   }
 }
 

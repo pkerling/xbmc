@@ -28,6 +28,7 @@
 #include "InputProcessorPointer.h"
 #include "InputProcessorKeyboard.h"
 #include "InputProcessorTouch.h"
+#include "SeatSelection.h"
 #include "threads/Timer.h"
 #include "windowing/XBMC_events.h"
 #include "windowing/XkbcommonKeymap.h"
@@ -99,7 +100,7 @@ public:
    * \param seat bound seat_t instance
    * \param handler handler that receives events from this seat, must not be null
    */
-  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, IInputHandler& handler);
+  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, wayland::data_device_t const & dataDevice, IInputHandler& handler);
   ~CSeat();
   std::uint32_t GetGlobalName() const
   {
@@ -120,6 +121,10 @@ public:
   bool HasTouchCapability() const
   {
     return !!m_touch;
+  }
+  std::string GetSelectionText() const
+  {
+    return m_selection.GetSelectionText();
   }
   void SetCoordinateScale(std::int32_t scale);
 
@@ -152,6 +157,7 @@ private:
   std::unique_ptr<CInputProcessorPointer> m_pointer;
   std::unique_ptr<CInputProcessorKeyboard> m_keyboard;
   std::unique_ptr<CInputProcessorTouch> m_touch;
+  CSeatSelection m_selection;
 };
 
 }

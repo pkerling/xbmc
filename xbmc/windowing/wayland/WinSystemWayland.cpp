@@ -115,6 +115,7 @@ bool CWinSystemWayland::InitWindowSystem()
 
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
   m_connection.reset(new CConnection(this));
+  m_connection->BindGlobals();
   if (m_seatProcessors.empty())
   {
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
@@ -743,7 +744,15 @@ void CWinSystemWayland::Unregister(IDispResource* resource)
 void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
 {
   CSingleLock lock(m_seatProcessorsMutex);
-  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(name, seat, *this));
+  wayland::data_device_t dataDevice;
+  if (m_connection->GetDataDeviceManager())
+  {
+    dataDevice = m_connection->GetDataDeviceManager().get_data_device(seat);
+  }
+
+  auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct,
+                                                 std::forward_as_tuple(name),
+                                                 std::forward_as_tuple(name, seat, dataDevice, *this));
   newSeatEmplace.first->second.SetCoordinateScale(m_scale);
 }
 
@@ -926,4 +935,22 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
     CLog::LogF(LOGINFO, "No supported method for screen saver inhibition found");
     return nullptr;
   }
+}
+
+std::string CWinSystemWayland::GetClipboardText()
+{
+  CSingleLock lock(m_seatProcessorsMutex);
+  // Get text of first seat with non-empty selection
+  // Actually, the value of the seat that received the Ctrl+V keypress should be used,
+  // but this would need a workaround or proper multi-seat support in Kodi - it's
+  // probably just not that relevant in practice
+  for (auto const& seat : m_seatProcessors)
+  {
+    auto text = seat.second.GetSelectionText();
+    if (text != "")
+    {
+      return text;
+    }
+  }
+  return "";
 }
