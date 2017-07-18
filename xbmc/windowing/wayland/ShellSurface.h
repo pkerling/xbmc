@@ -67,6 +67,7 @@ public:
     STATE_COUNT
   };
   using StateBitset = std::bitset<STATE_COUNT>;
+  static std::string StateToString(StateBitset state);
   
   /**
    * Initialize shell surface

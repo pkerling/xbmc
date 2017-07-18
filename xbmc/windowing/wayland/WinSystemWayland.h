@@ -119,7 +119,7 @@ private:
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
   void HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state);
-  bool ResetSurfaceSize(CSizeInt size, std::int32_t scale);
+  bool ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool fullScreen, bool fromConfigure);
   bool SetSizeFromSurfaceSize(CSizeInt surfaceSize);
   
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
@@ -132,6 +132,7 @@ private:
   void UpdateBufferScale();
   void ApplyBufferScale(std::int32_t scale);
   void UpdateTouchDpi();
+  void ApplyShellSurfaceState(IShellSurface::StateBitset state);
 
   void AckConfigure(std::uint32_t serial);
 
@@ -191,12 +192,16 @@ private:
   /// Size of our surface in "surface coordinates", i.e. without scaling applied
   CSizeInt m_surfaceSize;
   std::int32_t m_scale = 1;
+  /// Shell surface state last acked
+  IShellSurface::StateBitset m_shellSurfaceState;
 
   // Configure state
   // ---------------
   std::uint32_t m_currentConfigureSerial = 0;
   bool m_firstSerialAcked = false;
   std::uint32_t m_lastAckedSerial = 0;
+  /// Shell surface state to be applied at next ack
+  IShellSurface::StateBitset m_nextShellSurfaceState;
   /// Whether this is the first call to SetFullScreen
   bool m_isInitialSetFullScreen = true;
   bool m_inhibitSkinReload = false;
