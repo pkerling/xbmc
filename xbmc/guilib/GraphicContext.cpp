@@ -437,20 +437,21 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
     g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
 #else
     switched = g_Windowing.SetFullScreen(true,  info_org, false);
-    // FIXME At the moment only Wayland expects the return value to be interpreted
-    // - all other windowing implementations might still assume that it does
-    // not matter what they return as it was before.
-    // This needs to get fixed when the resolution switching code is refactored.
-    if (g_Windowing.GetWinSystem() != WINDOW_SYSTEM_WAYLAND)
-    {
-      switched = true;
-    }
 #endif
   }
   else if (lastRes >= RES_DESKTOP )
-    g_Windowing.SetFullScreen(false, info_org, false);
+    switched = g_Windowing.SetFullScreen(false, info_org, false);
   else
-    g_Windowing.ResizeWindow(info_org.iWidth, info_org.iHeight, -1, -1);
+    switched = g_Windowing.ResizeWindow(info_org.iWidth, info_org.iHeight, -1, -1);
+
+  // FIXME At the moment only Wayland expects the return value to be interpreted
+  // - all other windowing implementations might still assume that it does
+  // not matter what they return as it was before.
+  // This needs to get fixed when the resolution switching code is refactored.
+  if (g_Windowing.GetWinSystem() != WINDOW_SYSTEM_WAYLAND)
+  {
+    switched = true;
+  }
 
   if (switched)
   {
