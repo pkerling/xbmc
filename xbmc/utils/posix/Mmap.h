@@ -42,11 +42,11 @@ public:
   CMmap(void* addr, std::size_t length, int prot, int flags, int fildes, off_t offset);
   ~CMmap();
   
-  void* data() const
+  void* Data() const
   {
     return m_memory;
   }
-  std::size_t size() const
+  std::size_t Size() const
   {
     return m_size;
   }
