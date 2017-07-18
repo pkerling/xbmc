@@ -14,7 +14,7 @@ if(ENABLE_EVENTCLIENTS AND BLUETOOTH_FOUND)
   endif()
 endif()
 
-if(CORE_PLATFORM_NAME STREQUAL "wayland")
+if(CORE_PLATFORM_NAME_LC STREQUAL "wayland")
   # This cannot go into wayland.cmake since it requires the Wayland dependencies
   # to already be resolved
   set(PROTOCOL_XMLS "${WAYLAND_PROTOCOLS_DIR}/unstable/xdg-shell/xdg-shell-unstable-v6.xml"
