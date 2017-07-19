@@ -169,6 +169,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_outputsInPreparation.clear();
   m_outputs.clear();
   m_surfaceOutputs.clear();
+  m_surfaceSubmissions.clear();
 
   m_connection.reset();
 
