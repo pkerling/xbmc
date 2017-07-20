@@ -178,14 +178,17 @@ if(OPENGLES_FOUND)
                       GUIShader.cpp
                       GUITextureGLES.cpp
                       MatrixGLES.cpp
-                      TextureGL.cpp
-                      TexturePi.cpp)
+                      TextureGL.cpp)
   list(APPEND HEADERS GUIFontTTFGL.h
                       GUIShader.h
                       GUITextureGLES.h
                       MatrixGLES.h
-                      TextureGL.h
-                      TexturePi.h)
+                      TextureGL.h)
+endif()
+
+if(CORE_PLATFORM_NAME_LC STREQUAL rbpi)
+  list(APPEND SOURCES TexturePi.cpp)
+  list(APPEND HEADERS TexturePi.h)
 endif()
 
 if(CORE_SYSTEM_NAME STREQUAL windows)
@@ -215,9 +218,7 @@ if(CORE_SYSTEM_NAME STREQUAL windows)
                     guishader_interlaced_left.hlsl
                     guishader_multi_texture_blend.hlsl
                     guishader_texture.hlsl
-                    guishader_texture_noblend.hlsl
-                    guishader_video.hlsl
-                    guishader_video_control.hlsl)
+                    guishader_texture_noblend.hlsl)
   foreach(shader ${SHADERS_VERTEX})
     get_filename_component(file ${shader} NAME_WE)
     add_custom_command(OUTPUT ${file}.h

@@ -119,6 +119,8 @@ void CRetroPlayerVideo::AddData(const uint8_t* data, unsigned int size)
 
   if (GetPicture(data, size, picture))
   {
+    picture.iDuration = 1.0 / m_framerate;
+
     if (!Configure(picture))
     {
       CLog::Log(LOGERROR, "RetroPlayerVideo: Failed to configure renderer");
@@ -208,14 +210,9 @@ void CRetroPlayerVideo::SendPicture(VideoPicture& picture)
 {
   std::atomic_bool bAbortOutput(false); //! @todo
 
-  int index = m_renderManager.AddVideoPicture(picture);
-  if (index < 0)
+  if (!m_renderManager.AddVideoPicture(picture, bAbortOutput, VS_INTERLACEMETHOD_NONE, false))
   {
     // Video device might not be done yet, drop the frame
     m_droppedFrames++;
-  }
-  else
-  {
-    m_renderManager.FlipPage(bAbortOutput, 0.0, VS_INTERLACEMETHOD_NONE, FS_NONE, false);
   }
 }
