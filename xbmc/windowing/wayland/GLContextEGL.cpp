@@ -187,7 +187,10 @@ void CGLContextEGL::DestroySurface()
 
 void CGLContextEGL::SetVSync(bool enable)
 {
-  eglSwapInterval(m_eglDisplay, enable);
+  if (eglSwapInterval(m_eglDisplay, enable) != EGL_TRUE)
+  {
+    CEGLUtils::LogError("Failed to set egl swap interval");
+  }
 }
 
 void CGLContextEGL::SwapBuffers()
@@ -195,5 +198,12 @@ void CGLContextEGL::SwapBuffers()
   if (m_eglDisplay == EGL_NO_DISPLAY || m_eglSurface == EGL_NO_SURFACE)
     return;
 
-  eglSwapBuffers(m_eglDisplay, m_eglSurface);
+  if (eglSwapBuffers(m_eglDisplay, m_eglSurface) != EGL_TRUE)
+  {
+    // For now we just hard fail if this fails
+    // Theoretically, EGL_CONTEXT_LOST could be handled, but it needs to be checked
+    // whether egl implemenatations actually use it (mesa does not)
+    CEGLUtils::LogError("eglSwapBuffers failed");
+    throw std::runtime_error("eglSwapBuffers failed");
+  }
 }
