@@ -28,6 +28,8 @@
 #include <cstring>
 #include <system_error>
 
+#include "Connection.h"
+#include "Registry.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
 #include "utils/posix/FileHandle.h"
@@ -50,15 +52,24 @@ const std::vector<std::string> MIME_TYPES_PREFERENCE =
 
 }
 
-CSeatSelection::CSeatSelection(wayland::data_device_t const& dataDevice)
-: m_dataDevice{dataDevice}
+CSeatSelection::CSeatSelection(CConnection& connection, wayland::seat_t const& seat)
 {
-  if (!m_dataDevice)
+  wayland::data_device_manager_t manager;
   {
-    CLog::Log(LOGWARNING, "No data device for Wayland seat, clipboard will not be available");
+    CRegistry registry(connection);
+    registry.RequestSingleton(manager, 1, 3, false);
+    registry.Bind();
+  }
+
+  if (!manager)
+  {
+    CLog::Log(LOGWARNING, "No data device manager announced by compositor, clipboard will not be available");
     return;
   }
 
+  m_dataDevice = manager.get_data_device(seat);
+
+  // Class is created in response to seat add events - so no events can get lost
   m_dataDevice.on_data_offer() = [this](wayland::data_offer_t offer)
   {
     // We don't know yet whether this is drag-and-drop or selection, so collect

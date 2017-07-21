@@ -20,9 +20,8 @@
 
 #include "ShellSurfaceXdgShellUnstableV6.h"
 
-#include <type_traits>
-
 #include "messaging/ApplicationMessenger.h"
+#include "Registry.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -48,8 +47,25 @@ IShellSurface::State ConvertStateFlag(wayland::zxdg_toplevel_v6_state flag)
 
 }
 
+CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(CConnection& connection, const wayland::surface_t& surface, std::string title, std::string class_)
+{
+  wayland::zxdg_shell_v6_t shell;
+  CRegistry registry(connection);
+  registry.RequestSingleton(shell, 1, 1, false);
+  registry.Bind();
+  
+  if (shell)
+  {
+    return new CShellSurfaceXdgShellUnstableV6(connection.GetDisplay(), shell, surface, title, class_);
+  }
+  else
+  {
+    return nullptr;
+  }
+}
+
 CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::display_t& display, const wayland::zxdg_shell_v6_t& shell, const wayland::surface_t& surface, std::string title, std::string app_id)
-: m_display(&display), m_shell(shell), m_surface(surface), m_xdgSurface(m_shell.get_xdg_surface(m_surface)), m_xdgToplevel(m_xdgSurface.get_toplevel())
+: m_display(display), m_shell(shell), m_surface(surface), m_xdgSurface(m_shell.get_xdg_surface(m_surface)), m_xdgToplevel(m_xdgSurface.get_toplevel())
 {
   m_shell.on_ping() = [this](std::uint32_t serial)
   {
@@ -82,7 +98,7 @@ void CShellSurfaceXdgShellUnstableV6::Initialize()
   // Don't do it in constructor since SetFullScreen might be called before
   m_surface.commit();
   // Make sure we get the initial configure before continuing
-  m_display->roundtrip();
+  m_display.roundtrip();
 }
 
 void CShellSurfaceXdgShellUnstableV6::AckConfigure(std::uint32_t serial)

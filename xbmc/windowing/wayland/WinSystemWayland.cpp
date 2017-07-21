@@ -40,6 +40,7 @@
 #include "input/touch/generic/GenericTouchInputHandler.h"
 #include "linux/PlatformConstants.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
+#include "Registry.h"
 #include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
@@ -122,23 +123,34 @@ bool CWinSystemWayland::InitWindowSystem()
   VIDEOPLAYER::CProcessInfoWayland::Register();
 
   CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
-  m_connection.reset(new CConnection(this));
-  m_connection->BindSingletons();
+  m_connection.reset(new CConnection());
+  m_registry.reset(new CRegistry(*m_connection));
 
-  if (m_connection->GetPresentation())
-  {
-    m_connection->GetPresentation().on_clock_id() = [this](std::uint32_t clockId)
-    {
-      CLog::Log(LOGINFO, "Wayland presentation clock: %" PRIu32, clockId);
-      m_presentationClock = static_cast<clockid_t> (clockId);
-    };
-  }
+  m_registry->RequestSingleton(m_compositor, 1, 4);
+  m_registry->RequestSingleton(m_shm, 1, 1);
+  m_registry->RequestSingleton(m_presentation, 1, 1, false);
+  // version 2 adds name event -> optional
+  // version 4 adds wl_keyboard repeat_info -> optional
+  // version 5 adds discrete axis events in wl_pointer -> unused
+  m_registry->Request<wayland::seat_t>(1, 5, std::bind(&CWinSystemWayland::OnSeatAdded, this, _1, _2), std::bind(&CWinSystemWayland::OnSeatRemoved, this, _1));
+  // version 2 adds done() -> required
+  // version 3 adds destructor -> optional
+  m_registry->Request<wayland::output_t>(2, 3, std::bind(&CWinSystemWayland::OnOutputAdded, this, _1, _2), std::bind(&CWinSystemWayland::OnOutputRemoved, this, _1));
 
-  m_connection->BindOther();
+  m_registry->Bind();
 
   if (m_seatProcessors.empty())
   {
     CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
+  }
+
+  if (m_presentation)
+  {
+    m_presentation.on_clock_id() = [this](std::uint32_t clockId)
+    {
+      CLog::Log(LOGINFO, "Wayland presentation clock: %" PRIu32, clockId);
+      m_presentationClock = static_cast<clockid_t> (clockId);
+    };
   }
 
   // Do another roundtrip to get initial wl_output information
@@ -177,6 +189,11 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_surfaceOutputs.clear();
   m_surfaceSubmissions.clear();
 
+  if (m_registry)
+  {
+    m_registry->UnbindSingletons();
+  }
+  m_registry.reset();
   m_connection.reset();
 
   CGenericTouchInputHandler::GetInstance().UnregisterHandler();
@@ -188,7 +205,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         bool fullScreen,
                                         RESOLUTION_INFO& res)
 {
-  m_surface = m_connection->GetCompositor().create_surface();
+  m_surface = m_compositor.create_surface();
   m_surface.on_enter() = [this](wayland::output_t wloutput)
   {
     if (auto output = FindOutputByWaylandOutput(wloutput))
@@ -221,15 +238,11 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   // Try with this resolution if compositor does not say otherwise
   SetSizeFromSurfaceSize({res.iWidth, res.iHeight});
 
-  auto xdgShell = m_connection->GetXdgShellUnstableV6();
-  if (xdgShell)
-  {
-    m_shellSurface.reset(new CShellSurfaceXdgShellUnstableV6(m_connection->GetDisplay(), xdgShell, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
-  }
-  else
+  m_shellSurface.reset(CShellSurfaceXdgShellUnstableV6::TryCreate(*m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
+  if (!m_shellSurface)
   {
     CLog::LogF(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
-    m_shellSurface.reset(new CShellSurfaceWlShell(m_connection->GetShell(), m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
+    m_shellSurface.reset(new CShellSurfaceWlShell(*m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   }
 
   // Just remember initial width/height for context creation
@@ -304,9 +317,7 @@ bool CWinSystemWayland::DestroyWindow()
 
 bool CWinSystemWayland::CanDoWindowed()
 {
-  // Windowed mode only supported when we have subcompositing support for drawing
-  // window borders - does not make much sense otherwise
-  return m_connection->GetSubcompositor();
+  return true;
 }
 
 int CWinSystemWayland::GetNumScreens()
@@ -471,6 +482,7 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   }
 
   CLog::LogF(LOGINFO, "Wayland asked to switch mode to %dx%d @%.3f Hz on output \"%s\" %s%s%s", res.iWidth, res.iHeight, res.fRefreshRate, res.strOutput.c_str(), fullScreen ? "full screen" : "windowed", wasConfigure ? " from configure" : "", wasInternal ? " internally" : "");
+
   if (fullScreen)
   {
     if (wasExternal || m_currentOutput != res.strOutput)
@@ -530,7 +542,7 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     // Mark everything opaque so the compositor can render it faster
     // Do it here so size always matches the configured egl surface
     CLog::LogF(LOGDEBUG, "Setting opaque region size %dx%d", m_surfaceSize.Width(), m_surfaceSize.Height());
-    wayland::region_t opaqueRegion = m_connection->GetCompositor().create_region();
+    wayland::region_t opaqueRegion = m_compositor.create_region();
     opaqueRegion.add(0, 0, m_surfaceSize.Width(), m_surfaceSize.Height());
     m_surface.set_opaque_region(opaqueRegion);
     if (m_surface.can_set_buffer_scale())
@@ -791,7 +803,7 @@ void CWinSystemWayland::LoadDefaultCursor()
   {
     // Load default cursor theme and default cursor
     // Size of 16px is somewhat random
-    m_cursorTheme = wayland::cursor_theme_t("", 16, m_connection->GetShm());
+    m_cursorTheme = wayland::cursor_theme_t("", 16, m_shm);
     wayland::cursor_t cursor;
     try
     {
@@ -804,7 +816,7 @@ void CWinSystemWayland::LoadDefaultCursor()
     // Just use the first image, do not handle animation
     m_cursorImage = cursor.image(0);
     m_cursorBuffer = m_cursorImage.get_buffer();
-    m_cursorSurface = m_connection->GetCompositor().create_surface();
+    m_cursorSurface = m_compositor.create_surface();
   }
   // Attach buffer to a surface - it seems that the compositor may change
   // the cursor surface when the pointer leaves our surface, so we reattach the
@@ -826,23 +838,27 @@ void CWinSystemWayland::Unregister(IDispResource* resource)
   m_dispResources.erase(resource);
 }
 
-void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::seat_t& seat)
+void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::proxy_t&& proxy)
 {
   CSingleLock lock(m_seatProcessorsMutex);
-  wayland::data_device_t dataDevice;
-  if (m_connection->GetDataDeviceManager())
-  {
-    dataDevice = m_connection->GetDataDeviceManager().get_data_device(seat);
-  }
 
+  wayland::seat_t seat(proxy);
   auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct,
                                                  std::forward_as_tuple(name),
-                                                 std::forward_as_tuple(name, seat, dataDevice, static_cast<IInputHandler&> (*this)));
+                                                 std::forward_as_tuple(name, seat, *m_connection, static_cast<IInputHandler&> (*this)));
   newSeatEmplace.first->second.SetCoordinateScale(m_scale);
 }
 
-void CWinSystemWayland::OnOutputAdded(std::uint32_t name, wayland::output_t& output)
+void CWinSystemWayland::OnSeatRemoved(std::uint32_t name)
 {
+  CSingleLock lock(m_seatProcessorsMutex);
+
+  m_seatProcessors.erase(name);
+}
+
+void CWinSystemWayland::OnOutputAdded(std::uint32_t name, wayland::proxy_t&& proxy)
+{
+  wayland::output_t output(proxy);
   // This is not accessed from multiple threads
   m_outputsInPreparation.emplace(name, std::make_shared<COutput>(name, output, std::bind(&CWinSystemWayland::OnOutputDone, this, name)));
 }
@@ -877,21 +893,16 @@ void CWinSystemWayland::OnOutputDone(std::uint32_t name)
   UpdateBufferScale();
 }
 
-void CWinSystemWayland::OnGlobalRemoved(std::uint32_t name)
+void CWinSystemWayland::OnOutputRemoved(std::uint32_t name)
 {
+  m_outputsInPreparation.erase(name);
+
+  CSingleLock lock(m_outputsMutex);
+  if (m_outputs.erase(name) != 0)
   {
-    CSingleLock lock(m_seatProcessorsMutex);
-    m_seatProcessors.erase(name);
-  }
-  {
-    m_outputsInPreparation.erase(name);
-    CSingleLock lock(m_outputsMutex);
-    if (m_outputs.erase(name) != 0)
-    {
-      // Theoretically, the compositor should automatically put us on another
-      // (visible and connected) output if the output we were on is lost,
-      // so there is nothing in particular to do here
-    }
+    // Theoretically, the compositor should automatically put us on another
+    // (visible and connected) output if the output we were on is lost,
+    // so there is nothing in particular to do here
   }
 }
 
@@ -1015,7 +1026,7 @@ void CWinSystemWayland::PrepareFramePresentation()
 {
   // Continuously measure display latency (i.e. time between when the frame was rendered
   // and when it becomes visible to the user) to correct AV sync
-  if (m_connection->GetPresentation())
+  if (m_presentation)
   {
     auto tStart = GetPresentationClockTime();
     // wp_presentation_feedback creation is coupled to the surface's commit().
@@ -1023,7 +1034,7 @@ void CWinSystemWayland::PrepareFramePresentation()
     // This creates a new Wayland protocol object in the main thread, but this
     // will not result in a race since the corresponding events are never sent
     // before commit() on the surface, which only occurs afterwards.
-    auto feedback = m_connection->GetPresentation().feedback(m_surface);
+    auto feedback = m_presentation.feedback(m_surface);
     // Save feedback objects in list so they don't get destroyed upon exit of this function
     // Hand iterator to lambdas so they do not hold a (then circular) reference
     // to the actual object
@@ -1092,7 +1103,7 @@ float CWinSystemWayland::GetFrameLatencyAdjustment()
 
 float CWinSystemWayland::GetDisplayLatency()
 {
-  if (m_connection->GetPresentation())
+  if (m_presentation)
   {
     return m_latencyMovingAverage * 1000.0f;
   }
@@ -1114,7 +1125,7 @@ KODI::CSignalRegistration CWinSystemWayland::RegisterOnPresentationFeedback(Pres
 
 std::unique_ptr<CVideoSync> CWinSystemWayland::GetVideoSync(void* clock)
 {
-  if (m_surface && m_connection->GetPresentation())
+  if (m_surface && m_presentation)
   {
     CLog::LogF(LOGINFO, "Using presentation protocol for video sync");
     return std::unique_ptr<CVideoSync>(new CVideoSyncWpPresentation(clock));
@@ -1129,16 +1140,21 @@ std::unique_ptr<CVideoSync> CWinSystemWayland::GetVideoSync(void* clock)
 #if defined(HAVE_LIBVA)
 void* CWinSystemWayland::GetVaDisplay()
 {
-  return vaGetDisplayWl(reinterpret_cast<wl_display*> (m_connection->GetDisplay().c_ptr()));
+  return vaGetDisplayWl(m_connection->GetDisplay());
 }
 #endif
 
 std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
 {
-  if (m_surface && m_connection->GetIdleInhibitManagerUnstableV1())
+  if (m_surface)
   {
-    CLog::LogF(LOGINFO, "Using idle-inhibit-unstable-v1 protocol for screen saver inhibition");
-    return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverIdleInhibitUnstableV1(m_connection->GetIdleInhibitManagerUnstableV1(), m_surface));
+    std::unique_ptr<IOSScreenSaver> ptr;
+    ptr.reset(COSScreenSaverIdleInhibitUnstableV1::TryCreate(*m_connection, m_surface));
+    if (ptr)
+    {
+      CLog::LogF(LOGINFO, "Using idle-inhibit-unstable-v1 protocol for screen saver inhibition");
+      return ptr;
+    }
   }
 #if defined(HAVE_DBUS)
   else if (KODI::WINDOWING::LINUX::COSScreenSaverFreedesktop::IsAvailable())

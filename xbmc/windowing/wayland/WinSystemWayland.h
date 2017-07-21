@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <ctime>
+#include <list>
 #include <map>
 #include <set>
 
@@ -46,7 +47,10 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CWinSystemWayland : public CWinSystemBase, IInputHandler, IConnectionHandler
+class CRegistry;
+class CWindowDecorator;
+
+class CWinSystemWayland : public CWinSystemBase, IInputHandler
 {
 public:
   CWinSystemWayland();
@@ -111,10 +115,10 @@ private:
   void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) override;
   void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) override;
 
-  // IConnectionHandler
-  void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) override;
-  void OnOutputAdded(std::uint32_t name, wayland::output_t& output) override;
-  void OnGlobalRemoved(std::uint32_t name) override;
+  void OnSeatAdded(std::uint32_t name, wayland::proxy_t&& seat);
+  void OnSeatRemoved(std::uint32_t name);
+  void OnOutputAdded(std::uint32_t name, wayland::proxy_t&& output);
+  void OnOutputRemoved(std::uint32_t name);
 
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
@@ -137,6 +141,13 @@ private:
   void AckConfigure(std::uint32_t serial);
 
   timespec GetPresentationClockTime();
+
+  // Globals
+  // -------
+  std::unique_ptr<CRegistry> m_registry;
+  wayland::compositor_t m_compositor;
+  wayland::shm_t m_shm;
+  wayland::presentation_t m_presentation;
   
   std::unique_ptr<IShellSurface> m_shellSurface;
   

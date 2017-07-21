@@ -22,7 +22,26 @@
 
 #include <cassert>
 
+#include "Registry.h"
+
 using namespace KODI::WINDOWING::WAYLAND;
+
+COSScreenSaverIdleInhibitUnstableV1* COSScreenSaverIdleInhibitUnstableV1::TryCreate(CConnection& connection, wayland::surface_t const& inhibitSurface)
+{
+  wayland::zwp_idle_inhibit_manager_v1_t manager;
+  CRegistry registry(connection);
+  registry.RequestSingleton(manager, 1, 1, false);
+  registry.Bind();
+
+  if (manager)
+  {
+    return new COSScreenSaverIdleInhibitUnstableV1(manager, inhibitSurface);
+  }
+  else
+  {
+    return nullptr;
+  }
+}
 
 COSScreenSaverIdleInhibitUnstableV1::COSScreenSaverIdleInhibitUnstableV1(const wayland::zwp_idle_inhibit_manager_v1_t& manager, const wayland::surface_t& inhibitSurface)
 : m_manager(manager), m_surface(inhibitSurface)

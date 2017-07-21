@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include "Connection.h"
 #include "ShellSurface.h"
 
 namespace KODI
@@ -38,13 +39,13 @@ public:
   /**
    * Construct wl_shell_surface for given surface
    * 
-   * \param shell wl_shell global
+   * \param connection connection global
    * \param surface surface to make shell surface for
    * \param title title of the surfae
    * \param class_ class of the surface, which should match the name of the
    *               .desktop file of the application
    */
-  CShellSurfaceWlShell(wayland::shell_t const& shell, wayland::surface_t const& surface, std::string title, std::string class_);
+  CShellSurfaceWlShell(CConnection& connection, wayland::surface_t const& surface, std::string title, std::string class_);
   
   void Initialize() override;
   

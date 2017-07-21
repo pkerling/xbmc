@@ -18,6 +18,7 @@
  *
  */
 
+#include "Registry.h"
 #include "ShellSurfaceWlShell.h"
 
 #include <cmath>
@@ -25,9 +26,16 @@
 using namespace KODI::WINDOWING::WAYLAND;
 using namespace std::placeholders;
 
-CShellSurfaceWlShell::CShellSurfaceWlShell(const wayland::shell_t& shell, const wayland::surface_t& surface, std::string title, std::string class_)
-: m_shell(shell), m_shellSurface(m_shell.get_shell_surface(surface))
+CShellSurfaceWlShell::CShellSurfaceWlShell(CConnection& connection, const wayland::surface_t& surface, std::string title, std::string class_)
 {
+  {
+    CRegistry registry(connection);
+    registry.RequestSingleton(m_shell, 1, 1);
+    registry.Bind();
+  }
+  
+  m_shellSurface = m_shell.get_shell_surface(surface);
+
   m_surfaceState.set(STATE_ACTIVATED);
   m_shellSurface.set_class(class_);
   m_shellSurface.set_title(title);

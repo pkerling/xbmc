@@ -19,13 +19,9 @@
  */
 #pragma once
 
-#include <cstdint>
-#include <list>
-#include <map>
 #include <memory>
 
 #include <wayland-client.hpp>
-#include <wayland-extra-protocols.hpp>
 
 namespace KODI
 {
@@ -35,71 +31,17 @@ namespace WAYLAND
 {
 
 /**
- * Handler interface for \ref CConnection
- */
-class IConnectionHandler
-{
-public:
-  virtual ~IConnectionHandler() {}
-  virtual void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) {}
-  virtual void OnOutputAdded(std::uint32_t name, wayland::output_t& output) {}
-  virtual void OnGlobalRemoved(std::uint32_t name) {}
-};
-
-/**
- * Wayland connection state manager
- * 
- * Listens for global interface add/remove add passes corresponding information
- * to handler
+ * Connection to Wayland compositor
  */
 class CConnection
 {
 public:
-  explicit CConnection(IConnectionHandler* handler);
-
-  void BindSingletons();
-  void BindOther();
+  CConnection();
   
   wayland::display_t& GetDisplay();
-  wayland::compositor_t GetCompositor();
-  wayland::shell_t GetShell();
-  wayland::shm_t GetShm();
-  wayland::data_device_manager_t GetDataDeviceManager();
-  wayland::subcompositor_t GetSubcompositor();
-  wayland::zxdg_shell_v6_t GetXdgShellUnstableV6();
-  wayland::zwp_idle_inhibit_manager_v1_t GetIdleInhibitManagerUnstableV1();
-  wayland::presentation_t GetPresentation();
   
 private:
-  void CheckRequiredGlobals();
-  void HandleRegistry(bool bindSingletons, bool bindNonSingletons);
-  
-  IConnectionHandler* m_handler;
-  
   std::unique_ptr<wayland::display_t> m_display;
-  
-  struct InterfaceBindInfo
-  {
-    wayland::proxy_t& target;
-    // Throw exception if trying to bind below this version
-    std::uint32_t minVersion;
-    // Limit bind version to the minimum of this and compositor version
-    std::uint32_t maxVersion;
-    bool required;
-    InterfaceBindInfo(wayland::proxy_t& target, std::uint32_t minVersion, std::uint32_t maxVersion, bool required = true)
-      : target(target), minVersion(minVersion), maxVersion(maxVersion), required(required) {}
-  };
-  std::map<std::string, InterfaceBindInfo> m_binds;
-  
-  wayland::registry_t m_registry;
-  wayland::compositor_t m_compositor;
-  wayland::shell_t m_shell;
-  wayland::shm_t m_shm;
-  wayland::data_device_manager_t m_dataDeviceManager;
-  wayland::subcompositor_t m_subcompositor;
-  wayland::zxdg_shell_v6_t m_xdgShellUnstableV6;
-  wayland::zwp_idle_inhibit_manager_v1_t m_idleInhibitManagerUnstableV1;
-  wayland::presentation_t m_presentation;
 };
 
 }

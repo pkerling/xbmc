@@ -95,12 +95,13 @@ class CSeat : IInputHandlerPointer, IInputHandlerKeyboard
 {
 public:
   /**
-   * Construct seat input processor
+   * Construct seat handler
    * \param globalName Wayland numeric global name of the seat
    * \param seat bound seat_t instance
+   * \param connection connection for retrieving additional globals
    * \param handler handler that receives events from this seat, must not be null
    */
-  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, wayland::data_device_t const & dataDevice, IInputHandler& handler);
+  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, CConnection& connection, IInputHandler& handler);
   ~CSeat();
   std::uint32_t GetGlobalName() const
   {
