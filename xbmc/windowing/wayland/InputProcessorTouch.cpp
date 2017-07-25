@@ -24,11 +24,16 @@
 
 using namespace KODI::WINDOWING::WAYLAND;
 
-CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch)
-: m_touch{touch}
+CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch, wayland::surface_t const& surface)
+: m_touch{touch}, m_surface{surface}
 {
   m_touch.on_down() = [this](std::uint32_t serial, std::uint32_t time, wayland::surface_t surface, std::int32_t id, double x, double y)
   {
+    if (surface != m_surface)
+    {
+      return;
+    }
+
     // Find free Kodi pointer number
     int kodiPointer = -1;
     // Not optimal, but irrelevant for the small number of iterations

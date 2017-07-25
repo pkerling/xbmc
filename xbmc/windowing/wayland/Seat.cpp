@@ -163,7 +163,7 @@ void CSeat::OnKeyboardEvent(XBMC_Event& event)
 
 void CSeat::HandleTouchCapability(wayland::touch_t const& touch)
 {
-  m_touch.reset(new CInputProcessorTouch(touch));
+  m_touch.reset(new CInputProcessorTouch(touch, m_inputSurface));
   UpdateCoordinateScale();
 }
 
