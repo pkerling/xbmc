@@ -98,10 +98,12 @@ public:
    * Construct seat handler
    * \param globalName Wayland numeric global name of the seat
    * \param seat bound seat_t instance
+   * \param inputSurface surface that receives the input, used for matching
+   *                     pointer focus enter/leave events
    * \param connection connection for retrieving additional globals
    * \param handler handler that receives events from this seat, must not be null
    */
-  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, CConnection& connection, IInputHandler& handler);
+  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, wayland::surface_t const& inputSurface, CConnection& connection, IInputHandler& handler);
   ~CSeat();
   std::uint32_t GetGlobalName() const
   {
@@ -150,6 +152,7 @@ private:
   
   std::uint32_t m_globalName;
   wayland::seat_t m_seat;
+  wayland::surface_t m_inputSurface;
   std::string m_name{"<unknown>"};
   std::int32_t m_coordinateScale{1};
 

@@ -115,6 +115,7 @@ private:
   void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) override;
   void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) override;
 
+  // Registry handlers
   void OnSeatAdded(std::uint32_t name, wayland::proxy_t&& seat);
   void OnSeatRemoved(std::uint32_t name);
   void OnOutputAdded(std::uint32_t name, wayland::proxy_t&& output);
@@ -145,6 +146,13 @@ private:
   // Globals
   // -------
   std::unique_ptr<CRegistry> m_registry;
+  /**
+   * Registry used exclusively for wayland::seat_t
+   * 
+   * Use extra registry because seats can only be registered after the surface
+   * has been created
+   */
+  std::unique_ptr<CRegistry> m_seatRegistry;
   wayland::compositor_t m_compositor;
   wayland::shm_t m_shm;
   wayland::presentation_t m_presentation;

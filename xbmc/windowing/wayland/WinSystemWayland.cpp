@@ -129,20 +129,11 @@ bool CWinSystemWayland::InitWindowSystem()
   m_registry->RequestSingleton(m_compositor, 1, 4);
   m_registry->RequestSingleton(m_shm, 1, 1);
   m_registry->RequestSingleton(m_presentation, 1, 1, false);
-  // version 2 adds name event -> optional
-  // version 4 adds wl_keyboard repeat_info -> optional
-  // version 5 adds discrete axis events in wl_pointer -> unused
-  m_registry->Request<wayland::seat_t>(1, 5, std::bind(&CWinSystemWayland::OnSeatAdded, this, _1, _2), std::bind(&CWinSystemWayland::OnSeatRemoved, this, _1));
   // version 2 adds done() -> required
   // version 3 adds destructor -> optional
   m_registry->Request<wayland::output_t>(2, 3, std::bind(&CWinSystemWayland::OnOutputAdded, this, _1, _2), std::bind(&CWinSystemWayland::OnOutputRemoved, this, _1));
 
   m_registry->Bind();
-
-  if (m_seatProcessors.empty())
-  {
-    CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
-  }
 
   if (m_presentation)
   {
@@ -194,6 +185,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
     m_registry->UnbindSingletons();
   }
   m_registry.reset();
+  m_seatRegistry.reset();
   m_connection.reset();
 
   CGenericTouchInputHandler::GetInstance().UnregisterHandler();
@@ -280,6 +272,18 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
   // Set real handler during runtime
   m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2, _3);
+
+  m_seatRegistry.reset(new CRegistry(*m_connection));
+  // version 2 adds name event -> optional
+  // version 4 adds wl_keyboard repeat_info -> optional
+  // version 5 adds discrete axis events in wl_pointer -> unused
+  m_seatRegistry->Request<wayland::seat_t>(1, 5, std::bind(&CWinSystemWayland::OnSeatAdded, this, _1, _2), std::bind(&CWinSystemWayland::OnSeatRemoved, this, _1));
+  m_seatRegistry->Bind();
+
+  if (m_seatProcessors.empty())
+  {
+    CLog::Log(LOGWARNING, "Wayland compositor did not announce a wl_seat - you will not have any input devices for the time being");
+  }
 
   // Now start processing events
   //
@@ -845,7 +849,7 @@ void CWinSystemWayland::OnSeatAdded(std::uint32_t name, wayland::proxy_t&& proxy
   wayland::seat_t seat(proxy);
   auto newSeatEmplace = m_seatProcessors.emplace(std::piecewise_construct,
                                                  std::forward_as_tuple(name),
-                                                 std::forward_as_tuple(name, seat, *m_connection, static_cast<IInputHandler&> (*this)));
+                                                 std::forward_as_tuple(name, seat, m_surface, *m_connection, static_cast<IInputHandler&> (*this)));
   newSeatEmplace.first->second.SetCoordinateScale(m_scale);
 }
 

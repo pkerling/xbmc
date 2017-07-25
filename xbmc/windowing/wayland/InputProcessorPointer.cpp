@@ -49,47 +49,64 @@ int WaylandToXbmcButton(std::uint32_t button)
 
 }
 
-CInputProcessorPointer::CInputProcessorPointer(wayland::pointer_t const& pointer, IInputHandlerPointer& handler)
-: m_pointer{pointer}, m_handler{handler}
+CInputProcessorPointer::CInputProcessorPointer(wayland::pointer_t const& pointer, wayland::surface_t const& surface, IInputHandlerPointer& handler)
+: m_pointer{pointer}, m_surface{surface}, m_handler{handler}
 {
   m_pointer.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, double surfaceX, double surfaceY)
   {
-    m_handler.OnPointerEnter(m_pointer, serial);
-    SendMouseMotion();
+    if (surface == m_surface)
+    {
+      m_pointerOnSurface = true;
+      m_handler.OnPointerEnter(m_pointer, serial);
       SetMousePosFromSurface({surfaceX, surfaceY});
+      SendMouseMotion();
+    }
   };
   m_pointer.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
   {
-    m_handler.OnPointerLeave();
+    if (m_pointerOnSurface)
+    {
+      m_handler.OnPointerLeave();
+      m_pointerOnSurface = false;
+    }
   };
   m_pointer.on_motion() = [this](std::uint32_t time, double surfaceX, double surfaceY)
   {
-    SendMouseMotion();
+    if (m_pointerOnSurface)
+    {
       SetMousePosFromSurface({surfaceX, surfaceY});
+      SendMouseMotion();
+    }
   };
   m_pointer.on_button() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t button, wayland::pointer_button_state state)
   {
-    int xbmcButton = WaylandToXbmcButton(button);
-    if (xbmcButton < 0)
+    if (m_pointerOnSurface)
     {
-      // Button is unmapped
-      return;
-    }
+      int xbmcButton = WaylandToXbmcButton(button);
+      if (xbmcButton < 0)
+      {
+        // Button is unmapped
+        return;
+      }
 
-    bool pressed = (state == wayland::pointer_button_state::pressed);
-    SendMouseButton(xbmcButton, pressed);
+      bool pressed = (state == wayland::pointer_button_state::pressed);
+      SendMouseButton(xbmcButton, pressed);
+    }
   };
   m_pointer.on_axis() = [this](std::uint32_t serial, wayland::pointer_axis axis, std::int32_t value)
   {
-    // For axis events we only care about the vector direction
-    // and not the scalar magnitude. Every axis event callback
-    // generates one scroll button event for XBMC
+    if (m_pointerOnSurface)
+    {
+      // For axis events we only care about the vector direction
+      // and not the scalar magnitude. Every axis event callback
+      // generates one scroll button event for XBMC
 
-    // Negative is up
-    unsigned char xbmcButton = (wl_fixed_to_double(value) < 0.0) ? XBMC_BUTTON_WHEELUP : XBMC_BUTTON_WHEELDOWN;
-    // Simulate a single click of the wheel-equivalent "button"
-    SendMouseButton(xbmcButton, true);
-    SendMouseButton(xbmcButton, false);
+      // Negative is up
+      unsigned char xbmcButton = (wl_fixed_to_double(value) < 0.0) ? XBMC_BUTTON_WHEELUP : XBMC_BUTTON_WHEELDOWN;
+      // Simulate a single click of the wheel-equivalent "button"
+      SendMouseButton(xbmcButton, true);
+      SendMouseButton(xbmcButton, false);
+    }
   };
 
   // Wayland groups pointer events, but right now there is no benefit in

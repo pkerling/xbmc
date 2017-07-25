@@ -47,7 +47,7 @@ public:
 class CInputProcessorPointer
 {
 public:
-  CInputProcessorPointer(wayland::pointer_t const& pointer, IInputHandlerPointer& handler);
+  CInputProcessorPointer(wayland::pointer_t const& pointer, wayland::surface_t const& surface, IInputHandlerPointer& handler);
   void SetCoordinateScale(std::int32_t scale) { m_coordinateScale = scale; }
 
 private:
@@ -60,7 +60,10 @@ private:
   void SendMouseButton(unsigned char button, bool pressed);
 
   wayland::pointer_t m_pointer;
+  wayland::surface_t m_surface;
   IInputHandlerPointer& m_handler;
+
+  bool m_pointerOnSurface{};
 
   // Pointer position in *scaled* coordinates
   CPointGen<std::uint16_t> m_pointerPosition;
