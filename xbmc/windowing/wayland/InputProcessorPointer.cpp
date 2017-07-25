@@ -55,8 +55,8 @@ CInputProcessorPointer::CInputProcessorPointer(wayland::pointer_t const& pointer
   m_pointer.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, double surfaceX, double surfaceY)
   {
     m_handler.OnPointerEnter(m_pointer, serial);
-    SetMousePosFromSurface(surfaceX, surfaceY);
     SendMouseMotion();
+      SetMousePosFromSurface({surfaceX, surfaceY});
   };
   m_pointer.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
   {
@@ -64,8 +64,8 @@ CInputProcessorPointer::CInputProcessorPointer(wayland::pointer_t const& pointer
   };
   m_pointer.on_motion() = [this](std::uint32_t time, double surfaceX, double surfaceY)
   {
-    SetMousePosFromSurface(surfaceX, surfaceY);
     SendMouseMotion();
+      SetMousePosFromSurface({surfaceX, surfaceY});
   };
   m_pointer.on_button() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t button, wayland::pointer_button_state state)
   {
@@ -106,10 +106,9 @@ std::uint16_t CInputProcessorPointer::ConvertMouseCoordinate(double coord)
   return static_cast<std::uint16_t> (std::round(coord * m_coordinateScale));
 }
 
-void CInputProcessorPointer::SetMousePosFromSurface(double x, double y)
+void CInputProcessorPointer::SetMousePosFromSurface(CPointGen<double> position)
 {
-  m_pointerX = ConvertMouseCoordinate(x);
-  m_pointerY = ConvertMouseCoordinate(y);
+  m_pointerPosition = {ConvertMouseCoordinate(position.x), ConvertMouseCoordinate(position.y)};
 }
 
 void CInputProcessorPointer::SendMouseMotion()
@@ -118,8 +117,8 @@ void CInputProcessorPointer::SendMouseMotion()
   event.type = XBMC_MOUSEMOTION;
   event.motion =
   {
-    .x = m_pointerX,
-    .y = m_pointerY
+    .x = m_pointerPosition.x,
+    .y = m_pointerPosition.y
   };
   m_handler.OnPointerEvent(event);
 }
@@ -131,8 +130,8 @@ void CInputProcessorPointer::SendMouseButton(unsigned char button, bool pressed)
   event.button =
   {
     .button = button,
-    .x = m_pointerX,
-    .y = m_pointerY
+    .x = m_pointerPosition.x,
+    .y = m_pointerPosition.y
   };
   m_handler.OnPointerEvent(event);
 }

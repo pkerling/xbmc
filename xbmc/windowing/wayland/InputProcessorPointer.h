@@ -24,6 +24,7 @@
 
 #include <wayland-client-protocol.hpp>
 
+#include "guilib/Geometry.h"
 #include "input/XBMC_keysym.h"
 #include "windowing/XBMC_events.h"
 
@@ -54,7 +55,7 @@ private:
   CInputProcessorPointer& operator=(CInputProcessorPointer const& other) = delete;
 
   std::uint16_t ConvertMouseCoordinate(double coord);
-  void SetMousePosFromSurface(double x, double y);
+  void SetMousePosFromSurface(CPointGen<double> position);
   void SendMouseMotion();
   void SendMouseButton(unsigned char button, bool pressed);
 
@@ -62,8 +63,7 @@ private:
   IInputHandlerPointer& m_handler;
 
   // Pointer position in *scaled* coordinates
-  std::uint16_t m_pointerX{};
-  std::uint16_t m_pointerY{};
+  CPointGen<std::uint16_t> m_pointerPosition;
   std::int32_t m_coordinateScale{1};
 };
 
