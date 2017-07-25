@@ -134,7 +134,7 @@ private:
   void SendFocusChange(bool focus);
   void HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state);
   bool ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool fullScreen, bool fromConfigure);
-  bool SetSizeFromSurfaceSize(CSizeInt surfaceSize);
+  bool SetSize(CSizeInt configuredSize, IShellSurface::StateBitset state, bool sizeIncludesDecoration = true);
   
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
   std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
@@ -146,7 +146,7 @@ private:
   void UpdateBufferScale();
   void ApplyBufferScale(std::int32_t scale);
   void UpdateTouchDpi();
-  void ApplyShellSurfaceState(IShellSurface::StateBitset state);
+  CSizeInt ApplyShellSurfaceState(IShellSurface::StateBitset state, CSizeInt configuredSize);
 
   void AckConfigure(std::uint32_t serial);
 
@@ -176,6 +176,10 @@ private:
   /// outputs that did not receive their done event yet
   std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputsInPreparation;
   CCriticalSection m_outputsMutex;
+
+  // Windowed mode
+  // -------------
+  std::unique_ptr<CWindowDecorator> m_windowDecorator;
 
   // Cursor
   // ------
@@ -219,6 +223,9 @@ private:
   std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
   /// Size of our surface in "surface coordinates", i.e. without scaling applied
   CSizeInt m_surfaceSize;
+  /// Size of the whole window including window decorations as given by configure
+  CSizeInt m_configuredSize;
+  /// Scale in use for main surface buffer
   std::int32_t m_scale = 1;
   /// Shell surface state last acked
   IShellSurface::StateBitset m_shellSurfaceState;

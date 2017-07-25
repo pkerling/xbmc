@@ -53,6 +53,7 @@
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
 #include "VideoSyncWpPresentation.h"
+#include "WindowDecorator.h"
 #include "WinEventsWayland.h"
 #include "utils/TimeUtils.h"
 
@@ -168,6 +169,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
   // Make sure no more events get processed when we kill the instances
   CWinEventsWayland::SetDisplay(nullptr);
 
+  m_windowDecorator.reset();
   DestroyWindow();
   // wl_display_disconnect frees all proxy objects, so we have to make sure
   // all stuff is gone on the C++ side before that
@@ -228,8 +230,16 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     }
   };
 
+  m_windowDecorator.reset(new CWindowDecorator(*this, *m_connection, m_surface));
+
+  if (fullScreen)
+  {
+    m_shellSurfaceState.set(IShellSurface::STATE_FULLSCREEN);
+  }
+  // Assume we're active on startup until someone tells us otherwise
+  m_shellSurfaceState.set(IShellSurface::STATE_ACTIVATED);
   // Try with this resolution if compositor does not say otherwise
-  SetSizeFromSurfaceSize({res.iWidth, res.iHeight});
+  SetSize({res.iWidth, res.iHeight}, m_shellSurfaceState, false);
 
   m_shellSurface.reset(CShellSurfaceXdgShellUnstableV6::TryCreate(*m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   if (!m_shellSurface)
@@ -245,8 +255,9 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     if (!size.IsZero())
     {
       CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", size.Width(), size.Height());
-      SetSizeFromSurfaceSize(size);
+      SetSize(size, state, true);
     }
+    m_shellSurfaceState = state;
     AckConfigure(serial);
   };
 
@@ -266,6 +277,9 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   }
 
   m_shellSurface->Initialize();
+
+  // Apply window decorations if necessary
+  m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
 
   // Update resolution with real size as it could have changed due to configure()
   UpdateDesktopResolution(res, 0, m_nWidth, m_nHeight, res.fRefreshRate);
@@ -514,27 +528,34 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     {
       // Switch done, do not SetFullScreen() again - otherwise we would
       // get an endless repetition of setting full screen and configure events
-      CLog::LogF(LOGDEBUG, "Called in response to surface configure, not calling SetFullscreen on surface");
+      CLog::LogF(LOGDEBUG, "Called internally, not calling SetFullscreen on surface");
     }
   }
   else
   {
     if (wasExternal)
     {
-      CLog::LogF(LOGDEBUG, "Setting windowed");
-      m_shellSurface->SetWindowed();
+      if (m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN))
+      {
+        CLog::LogF(LOGDEBUG, "Setting windowed");
+        m_shellSurface->SetWindowed();
+      }
+      else
+      {
+        CLog::LogF(LOGDEBUG, "Not setting windowed: already windowed");
+      }
     }
     else
     {
-      CLog::LogF(LOGDEBUG, "Called in response to surface configure, not calling SetWindowed on surface");
+      CLog::LogF(LOGDEBUG, "Not setting windowed: called internally");
     }
   }
 
-  if (!wasExternal && !mustHonorSize)
+  if (wasExternal && !mustHonorSize)
   {
     CLog::LogF(LOGDEBUG, "Directly setting windowed size %dx%d on Kodi request", res.iWidth, res.iHeight);
     // Kodi is directly setting window size, apply
-    SetSizeFromSurfaceSize({res.iWidth, res.iHeight});
+    SetSize({res.iWidth, res.iHeight}, m_shellSurfaceState, false);
   }
 
   // Go ahead if
@@ -568,7 +589,8 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     if (wasConfigure)
     {
       // New shell surface state can only come from configure
-      ApplyShellSurfaceState(m_nextShellSurfaceState);
+      m_shellSurfaceState = m_nextShellSurfaceState;
+      m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
       AckConfigure(m_currentConfigureSerial);
     }
   }
@@ -604,7 +626,12 @@ void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, CSizeInt si
     // Fullscreen will not have changed, since that is handled in ResetSurfaceSize.
     // All other changes only affect the appearance of the decorations and so need
     // not be synchronized with the main surface.
-    ApplyShellSurfaceState(m_nextShellSurfaceState);
+    // FIXME Call from main thread!!
+    m_shellSurfaceState = m_nextShellSurfaceState;
+    if (m_windowDecorator)
+    {
+      m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
+    }
     // nothing changed, ack immediately
     AckConfigure(serial);
   }
@@ -659,7 +686,7 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
   // Do not change current size if we are free to choose
   if (!size.IsZero())
   {
-    sizeChanged = SetSizeFromSurfaceSize(size);
+    sizeChanged = SetSize(size, m_nextShellSurfaceState, true);
   }
  
   // Get actual frame rate from monitor, take highest frame rate if multiple
@@ -728,18 +755,32 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
 /**
  * Calculate internal resolution from surface size and set variables
  *
- * \return whether any size variable changed
+ * \param next surface size
+ * \param state window state to determine whether decorations are enabled at all
+ * \param sizeIncludesDecoration if true, given size includes potential window decorations
+ * \return whether main buffer (not surface) size changed
  */
-bool CWinSystemWayland::SetSizeFromSurfaceSize(CSizeInt surfaceSize)
+bool CWinSystemWayland::SetSize(CSizeInt size, IShellSurface::StateBitset state, bool sizeIncludesDecoration)
 {
-  CSizeInt newSize{surfaceSize * m_scale};
-
-  if (surfaceSize != m_surfaceSize || newSize.Width() != m_nWidth || newSize.Height() != m_nHeight)
+  // Depending on whether the size has decorations included (i.e. comes from the
+  // compositor or from Kodi), we need to calculate differently
+  if (sizeIncludesDecoration)
   {
-    m_surfaceSize = surfaceSize;
+    m_configuredSize = size;
+    m_surfaceSize = m_windowDecorator->CalculateMainSurfaceSize(size, state);
+  }
+  else
+  {
+    m_surfaceSize = size;
+    m_configuredSize = m_windowDecorator->CalculateFullSurfaceSize(size, state);
+  }
+  CSizeInt newSize{m_surfaceSize * m_scale};
+
+  if (newSize.Width() != m_nWidth || newSize.Height() != m_nHeight)
+  {
     m_nWidth = newSize.Width();
     m_nHeight = newSize.Height();
-    CLog::LogF(LOGINFO, "Set surface size %dx%d at scale %d -> resolution %dx%d", m_surfaceSize.Width(), m_surfaceSize.Height(), m_scale, m_nWidth, m_nHeight);
+    CLog::LogF(LOGINFO, "Set size %dx%d %s decoration at scale %d -> configured size %dx%d, surface size %dx%d, resolution %dx%d", size.Width(), size.Height(), sizeIncludesDecoration ? "including" : "excluding", m_scale, m_configuredSize.Width(), m_configuredSize.Height(), m_surfaceSize.Width(), m_surfaceSize.Height(), m_nWidth, m_nHeight);
     return true;
   }
   else
@@ -983,7 +1024,7 @@ void CWinSystemWayland::UpdateBufferScale()
   {
     auto const newScale = (*maxBufferScaleIt)->GetScale();
     // Recalculate resolution with new scale if it changed
-    ResetSurfaceSize(m_surfaceSize, newScale, m_bFullScreen, false);
+    ResetSurfaceSize(m_configuredSize, newScale, m_bFullScreen, false);
   }
 }
 
@@ -1193,8 +1234,23 @@ std::string CWinSystemWayland::GetClipboardText()
   return "";
 }
 
-void CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state)
+/**
+ * Apply queued surface state change and adjust main surface size if necessary
+ *
+ * Adds or removes window decorations as necessary. If window decorations are enabled,
+ * the returned size will be the configured size decreased by the size of the
+ * window decorations.
+ *
+ * \param state surface state to set
+ * \param configuredSize size that the compositor has configured which includes window
+ *                       decorations
+ * \return size that should be used for the main surface
+ */
+CSizeInt CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state, CSizeInt configuredSize)
 {
+  m_shellSurfaceState = state;
+  m_windowDecorator->SetState(configuredSize, m_scale, state);
+  return configuredSize;
 }
 
 void CWinSystemWayland::OnWindowMove(const wayland::seat_t& seat, std::uint32_t serial)
