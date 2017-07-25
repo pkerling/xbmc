@@ -19,9 +19,7 @@
  */
 #pragma once
 
-#include <cstdint>
-
-#include <wayland-client-protocol.hpp>
+#include <wayland-client.hpp>
 
 namespace KODI
 {
@@ -30,21 +28,12 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-/**
- * Handler for reacting to events originating in window decorations, such as
- * moving the window by clicking and dragging
- */
-class IWindowDecorationHandler
+struct WaylandCPtrCompare
 {
-public:
-  virtual void OnWindowMove(wayland::seat_t const& seat, std::uint32_t serial) = 0;
-  virtual void OnWindowResize(wayland::seat_t const& seat, std::uint32_t serial, wayland::shell_surface_resize edge) = 0;
-  virtual void OnWindowShowContextMenu(wayland::seat_t const& seat, std::uint32_t serial, CPointInt position) = 0;
-  virtual void OnWindowMinimize() = 0;
-  virtual void OnWindowMaximize() = 0;
-  virtual void OnWindowClose() = 0;
-
-  virtual ~IWindowDecorationHandler() = default;
+  bool operator()(wayland::proxy_t const& p1, wayland::proxy_t const& p2)
+  {
+    return p1.c_ptr() < p2.c_ptr();
+  }
 };
 
 }

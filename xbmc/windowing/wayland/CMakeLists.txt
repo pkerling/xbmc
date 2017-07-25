@@ -18,6 +18,7 @@ set(SOURCES Connection.cpp
             ShellSurfaceXdgShellUnstableV6.cpp
             VideoSyncWpPresentation.cpp
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.cpp
+            WindowDecorator.cpp
             WinEventsWayland.cpp
             WinSystemWayland.cpp
             WinSystemWaylandEGLContext.cpp)
@@ -38,6 +39,7 @@ set(HEADERS Connection.h
             Signals.h
             VideoSyncWpPresentation.h
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.hpp
+            WindowDecorator.h
             WinEventsWayland.h
             WinSystemWayland.h
             WinSystemWaylandEGLContext.h)
