@@ -72,3 +72,32 @@ void CShellSurfaceWlShell::SetWindowed()
   m_shellSurface.set_toplevel();
   m_surfaceState.reset(STATE_FULLSCREEN);
 }
+
+void CShellSurfaceWlShell::SetMaximized()
+{
+  m_shellSurface.set_maximized(wayland::output_t());
+  m_surfaceState.set(STATE_MAXIMIZED);
+}
+
+void CShellSurfaceWlShell::UnsetMaximized()
+{
+  m_surfaceState.reset(STATE_MAXIMIZED);
+}
+
+void CShellSurfaceWlShell::SetMinimized()
+{
+}
+
+void CShellSurfaceWlShell::StartMove(const wayland::seat_t& seat, std::uint32_t serial)
+{
+  m_shellSurface.move(seat, serial);
+}
+
+void CShellSurfaceWlShell::StartResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge)
+{
+  m_shellSurface.resize(seat, serial, edge);
+}
+
+void CShellSurfaceWlShell::ShowShellContextMenu(const wayland::seat_t&, std::uint32_t, CPointInt)
+{
+}

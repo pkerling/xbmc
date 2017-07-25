@@ -68,6 +68,7 @@ public:
   };
   using StateBitset = std::bitset<STATE_COUNT>;
   static std::string StateToString(StateBitset state);
+
   
   /**
    * Initialize shell surface
@@ -83,9 +84,16 @@ public:
   
   virtual void SetFullScreen(wayland::output_t const& output, float refreshRate) = 0;
   virtual void SetWindowed() = 0;
+  virtual void SetMaximized() = 0;
+  virtual void UnsetMaximized() = 0;
+  virtual void SetMinimized() = 0;
   
   ConfigureHandler& OnConfigure();
   virtual void AckConfigure(std::uint32_t serial) = 0;
+
+  virtual void StartMove(wayland::seat_t const& seat, std::uint32_t serial) = 0;
+  virtual void StartResize(wayland::seat_t const& seat, std::uint32_t serial, wayland::shell_surface_resize edge) = 0;
+  virtual void ShowShellContextMenu(wayland::seat_t const& seat, std::uint32_t serial, CPointInt position) = 0;
 
 protected:
   void InvokeOnConfigure(std::uint32_t serial, CSizeInt size, StateBitset state);

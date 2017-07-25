@@ -57,7 +57,14 @@ public:
   
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
+  void SetMaximized() override;
+  void UnsetMaximized() override;
+  void SetMinimized() override;
   void AckConfigure(std::uint32_t serial) override;
+
+  void StartMove(const wayland::seat_t& seat, std::uint32_t serial) override;
+  void StartResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge) override;
+  void ShowShellContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position) override;
 
 private:
   wayland::display_t& m_display;

@@ -132,3 +132,34 @@ void CShellSurfaceXdgShellUnstableV6::SetWindowed()
   m_currentOutput = wayland::output_t();
   m_xdgToplevel.unset_fullscreen();
 }
+
+void CShellSurfaceXdgShellUnstableV6::SetMaximized()
+{
+  m_xdgToplevel.set_maximized();
+}
+
+void CShellSurfaceXdgShellUnstableV6::UnsetMaximized()
+{
+  m_xdgToplevel.unset_maximized();
+}
+
+void CShellSurfaceXdgShellUnstableV6::SetMinimized()
+{
+  m_xdgToplevel.set_minimized();
+}
+
+void CShellSurfaceXdgShellUnstableV6::StartMove(const wayland::seat_t& seat, std::uint32_t serial)
+{
+  m_xdgToplevel.move(seat, serial);
+}
+
+void CShellSurfaceXdgShellUnstableV6::StartResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge)
+{
+  // wl_shell shell_surface_resize is identical to xdg_shell resize_edge
+  m_xdgToplevel.resize(seat, serial, static_cast<std::uint32_t> (edge));
+}
+
+void CShellSurfaceXdgShellUnstableV6::ShowShellContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position)
+{
+  m_xdgToplevel.show_window_menu(seat, serial, position.x, position.y);
+}
