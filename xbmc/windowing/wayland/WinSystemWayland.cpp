@@ -39,6 +39,7 @@
 #include "input/touch/generic/GenericTouchActionHandler.h"
 #include "input/touch/generic/GenericTouchInputHandler.h"
 #include "linux/PlatformConstants.h"
+#include "messaging/ApplicationMessenger.h"
 #include "OSScreenSaverIdleInhibitUnstableV1.h"
 #include "Registry.h"
 #include "ServiceBroker.h"
@@ -1194,4 +1195,41 @@ std::string CWinSystemWayland::GetClipboardText()
 
 void CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state)
 {
+}
+
+void CWinSystemWayland::OnWindowMove(const wayland::seat_t& seat, std::uint32_t serial)
+{
+  m_shellSurface->StartMove(seat, serial);
+}
+
+void CWinSystemWayland::OnWindowResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge)
+{
+  m_shellSurface->StartResize(seat, serial, edge);
+}
+
+void CWinSystemWayland::OnWindowShowContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position)
+{
+  m_shellSurface->ShowShellContextMenu(seat, serial, position);
+}
+
+void CWinSystemWayland::OnWindowClose()
+{
+  KODI::MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
+}
+
+void CWinSystemWayland::OnWindowMinimize()
+{
+  m_shellSurface->SetMinimized();
+}
+
+void CWinSystemWayland::OnWindowMaximize()
+{
+  if (m_shellSurfaceState.test(IShellSurface::STATE_MAXIMIZED))
+  {
+    m_shellSurface->UnsetMaximized();
+  }
+  else
+  {
+    m_shellSurface->SetMaximized();
+  }
 }

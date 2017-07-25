@@ -36,6 +36,7 @@
 #include "Signals.h"
 #include "ShellSurface.h"
 #include "threads/CriticalSection.h"
+#include "WindowDecorationHandler.h"
 #include "windowing/WinSystem.h"
 
 class IDispResource;
@@ -50,7 +51,7 @@ namespace WAYLAND
 class CRegistry;
 class CWindowDecorator;
 
-class CWinSystemWayland : public CWinSystemBase, IInputHandler
+class CWinSystemWayland : public CWinSystemBase, IInputHandler, IWindowDecorationHandler
 {
 public:
   CWinSystemWayland();
@@ -114,6 +115,14 @@ private:
   void OnLeave(std::uint32_t seatGlobalName, InputType type) override;
   void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) override;
   void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) override;
+
+  // IWindowDecorationHandler
+  void OnWindowMove(const wayland::seat_t& seat, std::uint32_t serial) override;
+  void OnWindowResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge) override;
+  void OnWindowShowContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position) override;
+  void OnWindowClose() override;
+  void OnWindowMaximize() override;
+  void OnWindowMinimize() override;
 
   // Registry handlers
   void OnSeatAdded(std::uint32_t name, wayland::proxy_t&& seat);
