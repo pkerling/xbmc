@@ -43,14 +43,27 @@ namespace PVR
     bool m_bOnOff;
   };
 
-  class CPVRContinueLastChannelJob : public CJob
+  class CPVRPlayChannelOnStartupJob : public CJob
   {
   public:
-    CPVRContinueLastChannelJob() = default;
-    ~CPVRContinueLastChannelJob() override = default;
-    const char *GetType() const override { return "pvr-continue-last-channel-job"; }
+    CPVRPlayChannelOnStartupJob() = default;
+    ~CPVRPlayChannelOnStartupJob() override = default;
+    const char *GetType() const override { return "pvr-play-channel-on-startup"; }
 
     bool DoWork() override;
+  };
+
+  class CPVRChannelEntryTimeoutJob : public CJob, public IJobCallback
+  {
+  public:
+    CPVRChannelEntryTimeoutJob(int iTimeout);
+    ~CPVRChannelEntryTimeoutJob() override = default;
+    const char *GetType() const override { return "pvr-channel-entry-timeout-job"; }
+    void OnJobComplete(unsigned int iJobID, bool bSuccess, CJob *job) override {}
+
+    bool DoWork() override;
+  private:
+    XbmcThreads::EndTime m_delayTimer;
   };
 
   class CPVREventlogJob : public CJob

@@ -70,7 +70,10 @@
 
 #include <string>
 #include <vector>
+
+#ifdef HAVE_LIBBLURAY
 #include "filesystem/BlurayDirectory.h"
+#endif
 
 using namespace XFILE;
 
@@ -218,7 +221,7 @@ void CMediaManager::GetNetworkLocations(VECSOURCES &locations, bool autolocation
 #endif// HAS_FILESYSTEM_NFS
 
 #ifdef HAS_UPNP
-    if (!CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_UPNP))
+    if (CServiceBroker::GetSettings().GetBool(CSettings::SETTING_SERVICES_UPNP))
     {
       std::string strDevices = g_localizeStrings.Get(33040); //"% Devices"
       share.strPath = "upnp://";
@@ -726,6 +729,7 @@ CMediaManager::DiscInfo CMediaManager::GetDiscInfo(const std::string& mediaPath)
     info.name = dvdNavigator.GetDVDTitleString();
     info.serial = dvdNavigator.GetDVDSerialString();
   }
+#ifdef HAVE_LIBBLURAY
   // check for Blu-ray discs
   else if (XFILE::CFile::Exists(URIUtils::AddFileToFolder(mediaPath, "BDMV", "index.bdmv")))
   {
@@ -738,6 +742,7 @@ CMediaManager::DiscInfo CMediaManager::GetDiscInfo(const std::string& mediaPath)
     info.name = bdDir.GetBlurayTitle();
     info.serial = bdDir.GetBlurayID();
   }
+#endif
 
   return info;
 }

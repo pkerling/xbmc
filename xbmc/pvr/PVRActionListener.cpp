@@ -29,6 +29,7 @@
 #include "pvr/PVRManager.h"
 #include "pvr/addons/PVRClients.h"
 #include "pvr/channels/PVRChannel.h"
+#include "pvr/channels/PVRChannelGroupsContainer.h"
 
 #include "PVRActionListener.h"
 
@@ -60,6 +61,8 @@ CPVRActionListener::~CPVRActionListener()
 bool CPVRActionListener::OnAction(const CAction &action)
 {
   bool bIsJumpSMS = false;
+  bool bIsPlayingPVR(CServiceBroker::GetPVRManager().IsPlaying() &&
+                     g_application.CurrentFileItem().HasPVRChannelInfoTag());
 
   switch (action.GetID())
   {
@@ -69,19 +72,18 @@ bool CPVRActionListener::OnAction(const CAction &action)
     {
       // see if we're already playing a PVR stream and if not or the stream type
       // doesn't match the demanded type, start playback of according type
-      bool isPlayingPvr(CServiceBroker::GetPVRManager().IsPlaying() && g_application.CurrentFileItem().HasPVRChannelInfoTag());
       switch (action.GetID())
       {
         case ACTION_PVR_PLAY:
-          if (!isPlayingPvr)
+          if (!bIsPlayingPVR)
             CServiceBroker::GetPVRManager().GUIActions()->SwitchToChannel(PlaybackTypeAny);
           break;
         case ACTION_PVR_PLAY_TV:
-          if (!isPlayingPvr || g_application.CurrentFileItem().GetPVRChannelInfoTag()->IsRadio())
+          if (!bIsPlayingPVR || g_application.CurrentFileItem().GetPVRChannelInfoTag()->IsRadio())
             CServiceBroker::GetPVRManager().GUIActions()->SwitchToChannel(PlaybackTypeTV);
           break;
         case ACTION_PVR_PLAY_RADIO:
-          if (!isPlayingPvr || !g_application.CurrentFileItem().GetPVRChannelInfoTag()->IsRadio())
+          if (!bIsPlayingPVR || !g_application.CurrentFileItem().GetPVRChannelInfoTag()->IsRadio())
             CServiceBroker::GetPVRManager().GUIActions()->SwitchToChannel(PlaybackTypeRadio);
           break;
       }
@@ -124,6 +126,66 @@ bool CPVRActionListener::OnAction(const CAction &action)
       }
     }
     break;
+
+    // channel switching
+    case ACTION_MOVE_UP:
+    case ACTION_NEXT_ITEM:
+    case ACTION_CHANNEL_UP:
+    {
+      if (!bIsPlayingPVR)
+        return false;
+
+      if ((action.GetID() == ACTION_MOVE_UP && // only up/down shows a preview, all others do switch
+           CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH)) ||
+          CServiceBroker::GetSettings().GetInt(CSettings::SETTING_PVRPLAYBACK_CHANNELENTRYTIMEOUT) > 0)
+      {
+        CServiceBroker::GetPVRManager().ChannelPreviewUp();
+      }
+      else
+      {
+        const CPVRChannelPtr currentChannel(CServiceBroker::GetPVRManager().GetCurrentChannel());
+        const CFileItemPtr item(CServiceBroker::GetPVRManager().ChannelGroups()->Get(currentChannel->IsRadio())->GetSelectedGroup()->GetByChannelUp(currentChannel));
+        CServiceBroker::GetPVRManager().GUIActions()->SwitchToChannel(item, false);
+      }
+      
+      return true;
+    }
+    case ACTION_MOVE_DOWN:
+    case ACTION_PREV_ITEM:
+    case ACTION_CHANNEL_DOWN:
+    {
+      if (!bIsPlayingPVR)
+        return false;
+
+      if ((action.GetID() == ACTION_MOVE_DOWN && // only up/down shows a preview, all others do switch
+           CServiceBroker::GetSettings().GetBool(CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH)) ||
+          CServiceBroker::GetSettings().GetInt(CSettings::SETTING_PVRPLAYBACK_CHANNELENTRYTIMEOUT) > 0)
+      {
+        CServiceBroker::GetPVRManager().ChannelPreviewDown();
+      }
+      else
+      {
+        const CPVRChannelPtr currentChannel(CServiceBroker::GetPVRManager().GetCurrentChannel());
+        const CFileItemPtr item(CServiceBroker::GetPVRManager().ChannelGroups()->Get(currentChannel->IsRadio())->GetSelectedGroup()->GetByChannelDown(currentChannel));
+        CServiceBroker::GetPVRManager().GUIActions()->SwitchToChannel(item, false);
+      }
+
+      return true;
+    }
+    case ACTION_CHANNEL_SWITCH:
+    {
+      if (!bIsPlayingPVR)
+        return false;
+
+      // Offset from key codes back to button number
+      int iChannelNumber = static_cast<int>(action.GetAmount());
+      const CPVRChannelPtr currentChannel(CServiceBroker::GetPVRManager().GetCurrentChannel());
+      const CFileItemPtr item(CServiceBroker::GetPVRManager().ChannelGroups()->Get(currentChannel->IsRadio())->GetSelectedGroup()->GetByChannelNumber(iChannelNumber));
+      CServiceBroker::GetPVRManager().GUIActions()->SwitchToChannel(item, false);
+
+      return true;
+    }
+
   }
   return false;
 }

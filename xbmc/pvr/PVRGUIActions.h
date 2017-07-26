@@ -267,10 +267,10 @@ namespace PVR
     bool SwitchToChannel(PlaybackType type) const;
 
     /*!
-     * @brief Continue playback of the last played channel.
-     * @return True if playback was continued, false otherwise.
+     * @brief Plays the last played channel or the first channel of TV or Radio on startup.
+     * @return True if playback was started, false otherwise.
      */
-    bool ContinueLastPlayedChannel() const;
+    bool PlayChannelOnStartup() const;
 
     /*!
      * @brief Hide a channel, always showing a confirmation dialog.
@@ -411,14 +411,6 @@ namespace PVR
      * @return true on success, false otherwise.
      */
     bool SwitchToChannel(const CFileItemPtr &item, bool bCheckResume, bool bFullscreen) const;
-
-    /*!
-     * @brief Try a fast Live TV/Radio channel switch. Calls directly into active player instead of using messaging
-     * @param channel the channel to switch to.
-     * @param bFullscreen start playback fullscreen or not.
-     * @return true if the switch was succesful, false otherwise.
-     */
-    bool TryFastChannelSwitch(const CPVRChannelPtr &channel, bool bFullscreen) const;
 
     /*!
      * @brief Start playback of the given item.

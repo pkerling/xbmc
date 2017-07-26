@@ -33,6 +33,9 @@
 #include "pvr/recordings/PVRRecordings.h"
 #include "pvr/timers/PVRTimers.h"
 #include "ServiceBroker.h"
+#ifdef TARGET_POSIX
+#include "linux/XTimeUtils.h"
+#endif
 
 namespace PVR
 {
@@ -42,9 +45,28 @@ bool CPVRSetRecordingOnChannelJob::DoWork()
   return CServiceBroker::GetPVRManager().GUIActions()->SetRecordingOnChannel(m_channel, m_bOnOff);
 }
 
-bool CPVRContinueLastChannelJob::DoWork()
+CPVRChannelEntryTimeoutJob::CPVRChannelEntryTimeoutJob(int iTimeout)
 {
-  return CServiceBroker::GetPVRManager().GUIActions()->ContinueLastPlayedChannel();
+  m_delayTimer.Set(iTimeout);
+}
+
+bool CPVRChannelEntryTimeoutJob::DoWork()
+{
+  while (!ShouldCancel(0, 0))
+  {
+    if (m_delayTimer.IsTimePast())
+    {
+      CServiceBroker::GetPVRManager().ChannelPreviewSelect();
+      return true;
+    }
+    Sleep(10);
+  }
+  return false;
+}
+
+bool CPVRPlayChannelOnStartupJob::DoWork()
+{
+  return CServiceBroker::GetPVRManager().GUIActions()->PlayChannelOnStartup();
 }
 
 CPVREventlogJob::CPVREventlogJob(bool bNotifyUser, bool bError, const std::string &label, const std::string &msg, const std::string &icon)
