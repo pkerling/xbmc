@@ -90,6 +90,8 @@ CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::displa
   };
   m_xdgToplevel.set_app_id(app_id);
   m_xdgToplevel.set_title(title);
+  // Set sensible minimum size
+  m_xdgToplevel.set_min_size(300, 200);
 }
 
 void CShellSurfaceXdgShellUnstableV6::Initialize()
