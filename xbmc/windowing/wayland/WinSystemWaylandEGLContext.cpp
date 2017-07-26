@@ -146,6 +146,8 @@ void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
     // Make sure it reaches the compositor
     m_connection->GetDisplay().flush();
   }
+
+  FinishFramePresentation();
 }
 
 EGLDisplay CWinSystemWaylandEGLContext::GetEGLDisplay() const

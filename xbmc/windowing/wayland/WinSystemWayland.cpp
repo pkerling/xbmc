@@ -53,6 +53,7 @@
 #include "VideoSyncWpPresentation.h"
 #include "WinEventsWayland.h"
 #include "windowing/linux/OSScreenSaverFreedesktop.h"
+#include "utils/TimeUtils.h"
 
 using namespace KODI::WINDOWING;
 using namespace KODI::WINDOWING::LINUX;
@@ -1010,6 +1011,17 @@ void CWinSystemWayland::PrepareFramePresentation()
       m_surfaceSubmissions.erase(iter);
     };
   }
+}
+
+void CWinSystemWayland::FinishFramePresentation()
+{
+  m_frameStartTime = CurrentHostCounter();
+}
+
+float CWinSystemWayland::GetFrameLatencyAdjustment()
+{
+  std::uint64_t now = CurrentHostCounter();
+  return static_cast<float> (now - m_frameStartTime) / CurrentHostFrequency() * 1000.0f;
 }
 
 float CWinSystemWayland::GetDisplayLatency()

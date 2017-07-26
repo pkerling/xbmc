@@ -81,6 +81,7 @@ public:
 
   float GetSyncOutputRefreshRate();
   float GetDisplayLatency() override;
+  float GetFrameLatencyAdjustment() override;
   std::unique_ptr<CVideoSync> GetVideoSync(void* clock) override;
   
   void* GetVaDisplay();
@@ -98,6 +99,7 @@ protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
 
   void PrepareFramePresentation();
+  void FinishFramePresentation();
 
   std::unique_ptr<CConnection> m_connection;
   wayland::surface_t m_surface;
@@ -173,6 +175,7 @@ private:
   static const int LATENCY_MOVING_AVERAGE_SIZE = 30;
   std::atomic<float> m_latencyMovingAverage;
   CSignalHandlerList<PresentationFeedbackHandler> m_presentationFeedbackHandlers;
+  std::uint64_t m_frameStartTime{};
 
   // IDispResource
   // -------------
