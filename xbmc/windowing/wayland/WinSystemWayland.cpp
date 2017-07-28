@@ -642,9 +642,7 @@ void CWinSystemWayland::AckConfigure(std::uint32_t serial)
 {
   // Send ack if we have a new serial number or this is the first time
   // this function is called
-  // FIXME the serial != 0 check is only temporary until configure sequence
-  // is fixed
-  if (serial != 0 && (serial != m_lastAckedSerial || !m_firstSerialAcked))
+  if (serial != m_lastAckedSerial || !m_firstSerialAcked)
   {
     CLog::LogF(LOGDEBUG, "Acking serial %u", serial);
     m_shellSurface->AckConfigure(serial);
