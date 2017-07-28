@@ -680,12 +680,27 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
   m_scale = scale;
 
   bool sizeChanged = false;
+  bool sizeIncludesDecoration = true;
 
-  // Do not change current size if we are free to choose
-  if (!size.IsZero())
+  if (size.IsZero())
   {
-    sizeChanged = SetSize(size, m_nextShellSurfaceState, true);
+    if (fullScreen)
+    {
+      // Do not change current size - SetSize must be called regardless in case
+      // scale or something else changed
+      size = m_configuredSize;
+    }
+    else
+    {
+      // Compositor has no preference and we're going windowed
+      // -> adopt windowed size that Kodi wants
+      auto const& windowed = CDisplaySettings::GetInstance().GetResolutionInfo(RES_WINDOW);
+      size = CSizeInt{windowed.iWidth, windowed.iHeight};
+      sizeIncludesDecoration = false;
+    }
   }
+
+  sizeChanged = SetSize(size, m_nextShellSurfaceState, sizeIncludesDecoration);
  
   // Get actual frame rate from monitor, take highest frame rate if multiple
   // m_surfaceOutputs is only updated from event handling thread, so no lock
