@@ -726,6 +726,10 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
   {
     switchToRes = RES_WINDOW;
     SetWindowResolution(m_nWidth, m_nHeight);
+    // Save window size
+    CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_WIDTH, m_nWidth);
+    CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_HEIGHT, m_nHeight);
+    CServiceBroker::GetSettings().Save();
   }
   else
   {
