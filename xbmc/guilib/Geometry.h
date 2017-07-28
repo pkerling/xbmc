@@ -166,6 +166,11 @@ public:
     return m_w * m_h;
   }
 
+  CPointGen<T> ToPoint() const
+  {
+    return {m_w, m_h};
+  }
+
   template <class U> CSizeGen<T>(const CSizeGen<U>& rhs)
   {
     CheckSet(rhs.m_w, rhs.m_h);
@@ -239,6 +244,13 @@ public:
     y1 = p1.y;
     x2 = p2.x;
     y2 = p2.y;
+  }
+  CRectGen<T>(const CPointGen<T> &origin, const CSizeGen<T> &size)
+  {
+    x1 = origin.x;
+    y1 = origin.y;
+    x2 = x1 + size.Width();
+    y2 = y1 + size.Height();
   }
 
   template <class U> explicit CRectGen<T>(const CRectGen<U>& rhs)
@@ -329,6 +341,11 @@ public:
   inline T Area() const XBMC_FORCE_INLINE
   {
     return Width() * Height();
+  };
+
+  CSizeGen<T> ToSize() const
+  {
+    return {Width(), Height()};
   };
 
   std::vector<this_type> SubtractRect(this_type splitterRect)
