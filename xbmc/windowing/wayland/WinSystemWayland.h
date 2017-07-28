@@ -36,6 +36,7 @@
 #include "Signals.h"
 #include "ShellSurface.h"
 #include "threads/CriticalSection.h"
+#include "utils/ActorProtocol.h"
 #include "WindowDecorationHandler.h"
 #include "windowing/WinSystem.h"
 
@@ -146,8 +147,9 @@ private:
   void UpdateBufferScale();
   void ApplyBufferScale(std::int32_t scale);
   void UpdateTouchDpi();
-  void ApplyShellSurfaceState();
+  void ApplyShellSurfaceState(IShellSurface::StateBitset state);
 
+  void ProcessMessages();
   void AckConfigure(std::uint32_t serial);
 
   timespec GetPresentationClockTime();
@@ -230,13 +232,15 @@ private:
   /// Shell surface state last acked
   IShellSurface::StateBitset m_shellSurfaceState;
 
+  // Internal communication
+  // ----------------------
+  /// Protocol for communicating events to the main thread
+  Actor::Protocol m_protocol;
+
   // Configure state
   // ---------------
-  std::uint32_t m_currentConfigureSerial = 0;
   bool m_firstSerialAcked = false;
   std::uint32_t m_lastAckedSerial = 0;
-  /// Shell surface state to be applied at next ack
-  IShellSurface::StateBitset m_nextShellSurfaceState;
   /// Whether this is the first call to SetFullScreen
   bool m_isInitialSetFullScreen = true;
   bool m_inhibitSkinReload = false;
