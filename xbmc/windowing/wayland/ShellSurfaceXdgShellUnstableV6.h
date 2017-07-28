@@ -74,8 +74,6 @@ private:
   wayland::zxdg_surface_v6_t m_xdgSurface;
   wayland::zxdg_toplevel_v6_t m_xdgToplevel;
 
-  wayland::output_t m_currentOutput;
-
   CSizeInt m_configuredSize;
   StateBitset m_configuredState;
 };

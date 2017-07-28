@@ -217,6 +217,7 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_seatProcessors.clear();
   m_outputsInPreparation.clear();
   m_outputs.clear();
+  m_lastSetOutput.proxy_release();
   m_surfaceOutputs.clear();
   m_surfaceSubmissions.clear();
 
@@ -289,9 +290,9 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   // This is used for sizing the EGLSurface
   m_shellSurface->OnConfigure() = [this](std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
   {
+    CLog::Log(LOGDEBUG, "CreateNewWindow: Initial configure serial %u: size %dx%d state %s", serial, size.Width(), size.Height(), IShellSurface::StateToString(state).c_str());
     if (!size.IsZero())
     {
-      CLog::Log(LOGINFO, "Got initial Wayland surface size %dx%d", size.Width(), size.Height());
       SetSize(size, state, true);
     }
     m_shellSurfaceState = state;
@@ -302,14 +303,13 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   {
     // Try to start on correct monitor and with correct buffer scale
     auto output = FindOutputByUserFriendlyName(CServiceBroker::GetSettings().GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR));
-    if (output)
+    auto wlOutput = output ? output->GetWaylandOutput() : wayland::output_t();
+    m_lastSetOutput = wlOutput;
+    m_shellSurface->SetFullScreen(wlOutput, res.fRefreshRate);
+    if (output && m_surface.can_set_buffer_scale())
     {
-      m_shellSurface->SetFullScreen(output->GetWaylandOutput(), res.fRefreshRate);
-      if (m_surface.can_set_buffer_scale())
-      {
-        m_scale = output->GetScale();
-        ApplyBufferScale(m_scale);
-      }
+      m_scale = output->GetScale();
+      ApplyBufferScale(m_scale);
     }
   }
 
@@ -421,10 +421,10 @@ void CWinSystemWayland::UpdateResolutions()
   }
 
   auto output = FindOutputByUserFriendlyName(userOutput);
-  if (!output)
+  if (!output && m_lastSetOutput)
   {
     // Fallback to current output
-    output = FindOutputByUserFriendlyName(m_currentOutput);
+    output = FindOutputByWaylandOutput(m_lastSetOutput);
   }
   if (!output)
   {
@@ -546,14 +546,15 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   {
     if (wasExternal)
     {
-      if (!m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || m_currentOutput != res.strOutput)
+      // Try to match output
+      auto output = FindOutputByUserFriendlyName(res.strOutput);
+      auto wlOutput = output ? output->GetWaylandOutput() : wayland::output_t();
+      if (!m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || (m_lastSetOutput != wlOutput))
       {
-        // There is -no- guarantee that the compositor will put the surface on this
-        // screen, but pretend that it does so we have any information at all
-        m_currentOutput = res.strOutput;
+        // Remember the output we set last so we don't set it again until we
+        // either go windowed or were on a different output
+        m_lastSetOutput = wlOutput;
 
-        // Try to match output
-        auto output = FindOutputByUserFriendlyName(res.strOutput);
         if (output)
         {
           CLog::LogF(LOGDEBUG, "Resolved output \"%s\" to bound Wayland global %u", res.strOutput.c_str(), output->GetGlobalName());
@@ -564,7 +565,7 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
         }
 
         CLog::LogF(LOGDEBUG, "Setting full-screen with refresh rate %.3f", res.fRefreshRate);
-        m_shellSurface->SetFullScreen(output ? output->GetWaylandOutput() : wayland::output_t(), res.fRefreshRate);
+        m_shellSurface->SetFullScreen(wlOutput, res.fRefreshRate);
       }
       else
       {
@@ -798,7 +799,7 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
       // Add new resolution if none found
       RESOLUTION_INFO newResInfo;
       UpdateDesktopResolution(newResInfo, 0, m_nWidth, m_nHeight, m_fRefreshRate);
-      newResInfo.strOutput = m_currentOutput; // we just assume the compositor put us on the right output
+      newResInfo.strOutput = CDisplaySettings::GetInstance().GetCurrentResolutionInfo().strOutput; // we just assume the compositor put us on the right output
       CDisplaySettings::GetInstance().AddResolutionInfo(newResInfo);
       CDisplaySettings::GetInstance().ApplyCalibrations();
       switchToRes = static_cast<RESOLUTION> (CDisplaySettings::GetInstance().ResolutionInfoSize() - 1);

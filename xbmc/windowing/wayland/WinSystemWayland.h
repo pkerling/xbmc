@@ -219,7 +219,7 @@ private:
 
   // Surface state
   // -------------
-  std::string m_currentOutput;
+  wayland::output_t m_lastSetOutput;
   /// Set of outputs that show some part of our main surface as indicated by
   /// compositor
   std::set<std::shared_ptr<COutput>> m_surfaceOutputs;

@@ -118,20 +118,11 @@ CShellSurfaceXdgShellUnstableV6::~CShellSurfaceXdgShellUnstableV6()
 void CShellSurfaceXdgShellUnstableV6::SetFullScreen(const wayland::output_t& output, float)
 {
   // xdg_shell does not support refresh rate setting at the moment
-  
-  // mutter has some problems with setting the same output again, so only
-  // call set_fullscreen() if the output changes
-  // https://bugzilla.gnome.org/show_bug.cgi?id=783709
-  if (output != m_currentOutput)
-  {
-    m_xdgToplevel.set_fullscreen(output);
-    m_currentOutput = output;
-  }
+  m_xdgToplevel.set_fullscreen(output);
 }
 
 void CShellSurfaceXdgShellUnstableV6::SetWindowed()
 {
-  m_currentOutput = wayland::output_t();
   m_xdgToplevel.unset_fullscreen();
 }
 
