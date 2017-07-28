@@ -495,7 +495,7 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   // Reset configure flag
   // Setting it in res will not modify the global information in CDisplaySettings
   // and we don't know which resolution index this is, so just reset all
-  for (size_t resIdx = RES_DESKTOP; resIdx < CDisplaySettings::GetInstance().ResolutionInfoSize(); resIdx++)
+  for (size_t resIdx = RES_HDTV_1080i; resIdx < CDisplaySettings::GetInstance().ResolutionInfoSize(); resIdx++)
   {
     CDisplaySettings::GetInstance().GetResolutionInfo(resIdx).strId = "";
   }
