@@ -772,6 +772,15 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
       sizeIncludesDecoration = false;
     }
   }
+  // Clamp to a sensible range
+  if (size.Width() < 300)
+  {
+    size.SetWidth(300);
+  }
+  if (size.Height() < 200)
+  {
+    size.SetHeight(200);
+  }
 
   sizeChanged = SetSize(size, m_shellSurfaceState, sizeIncludesDecoration);
  
