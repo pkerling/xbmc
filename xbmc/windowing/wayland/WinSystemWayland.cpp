@@ -654,6 +654,9 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 void CWinSystemWayland::ProcessMessages()
 {
   Actor::Message* message{};
+  MessageHandle lastConfigureMessage;
+  int skippedConfigures = -1;
+
   while (m_protocol.ReceiveOutMessage(&message))
   {
     MessageHandle guard{message};
@@ -661,16 +664,26 @@ void CWinSystemWayland::ProcessMessages()
     {
       case WinSystemWaylandProtocol::CONFIGURE:
       {
-        auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (message->data);
-        CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
-        ApplyShellSurfaceState(configure->state);
-        ResetSurfaceSize(configure->surfaceSize, m_scale, configure->state.test(IShellSurface::STATE_FULLSCREEN), true);
-        AckConfigure(configure->serial);
+        skippedConfigures++;
+        lastConfigureMessage = std::move(guard);
       }
       break;
       default:
         CLog::LogF(LOGWARNING, "Unhandled message %d", message->signal);
     }
+  }
+
+  if (lastConfigureMessage)
+  {
+    if (skippedConfigures > 0)
+    {
+      CLog::LogF(LOGDEBUG, "Skipped %d configures", skippedConfigures);
+    }
+    auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (lastConfigureMessage.Get()->data);
+    CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
+    ApplyShellSurfaceState(configure->state);
+    ResetSurfaceSize(configure->surfaceSize, m_scale, configure->state.test(IShellSurface::STATE_FULLSCREEN), true);
+    AckConfigure(configure->serial);
   }
 }
 
