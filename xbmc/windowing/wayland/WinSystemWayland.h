@@ -146,7 +146,7 @@ private:
   void UpdateBufferScale();
   void ApplyBufferScale(std::int32_t scale);
   void UpdateTouchDpi();
-  CSizeInt ApplyShellSurfaceState(IShellSurface::StateBitset state, CSizeInt configuredSize);
+  void ApplyShellSurfaceState();
 
   void AckConfigure(std::uint32_t serial);
 

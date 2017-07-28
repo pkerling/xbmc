@@ -483,15 +483,25 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   // in compositors, this code must be changed to match the behavior that is
   // expected then anyway.
 
+  bool wasConfigure = (res.strId == CONFIGURE_RES_ID);
+  bool wasInternal = (res.strId == INTERNAL_RES_ID);
+  // Everything that has no known ID came from other sources
+  bool wasExternal = !wasConfigure && !wasInternal;
+  // Size is always updated in configure handler
+  bool sizeUpdated = wasConfigure;
+
+  // Update shell surface state first so following code does the right thing
+  if (wasConfigure)
+  {
+    // New shell surface state can only come from configure
+    ApplyShellSurfaceState();
+  }
+
   // We can honor the Kodi-requested size only if we are not bound by configure rules,
   // which applies for maximized and fullscreen states.
   // Also, setting an unconfigured size just when going fullscreen makes no sense.
   bool mustHonorSize = m_shellSurfaceState.test(IShellSurface::STATE_MAXIMIZED) || m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || fullScreen;
 
-  bool wasConfigure = (res.strId == CONFIGURE_RES_ID);
-  bool wasInternal = (res.strId == INTERNAL_RES_ID);
-  // Everything that has not a known ID came from other sources
-  bool wasExternal = !wasConfigure && !wasInternal;
   // Reset configure flag
   // Setting it in res will not modify the global information in CDisplaySettings
   // and we don't know which resolution index this is, so just reset all
@@ -504,31 +514,38 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
 
   if (fullScreen)
   {
-    if (wasExternal || m_currentOutput != res.strOutput)
+    if (wasExternal)
     {
-      // There is -no- guarantee that the compositor will put the surface on this
-      // screen, but pretend that it does so we have any information at all
-      m_currentOutput = res.strOutput;
-
-      // Try to match output
-      auto output = FindOutputByUserFriendlyName(res.strOutput);
-      if (output)
+      if (!m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || m_currentOutput != res.strOutput)
       {
-        CLog::LogF(LOGDEBUG, "Resolved output \"%s\" to bound Wayland global %u", res.strOutput.c_str(), output->GetGlobalName());
+        // There is -no- guarantee that the compositor will put the surface on this
+        // screen, but pretend that it does so we have any information at all
+        m_currentOutput = res.strOutput;
+
+        // Try to match output
+        auto output = FindOutputByUserFriendlyName(res.strOutput);
+        if (output)
+        {
+          CLog::LogF(LOGDEBUG, "Resolved output \"%s\" to bound Wayland global %u", res.strOutput.c_str(), output->GetGlobalName());
+        }
+        else
+        {
+          CLog::LogF(LOGINFO, "Could not match output \"%s\" to a currently available Wayland output, falling back to default output", res.strOutput.c_str());
+        }
+
+        CLog::LogF(LOGDEBUG, "Setting full-screen with refresh rate %.3f", res.fRefreshRate);
+        m_shellSurface->SetFullScreen(output ? output->GetWaylandOutput() : wayland::output_t(), res.fRefreshRate);
       }
       else
       {
-        CLog::LogF(LOGINFO, "Could not match output \"%s\" to a currently available Wayland output, falling back to default output", res.strOutput.c_str());
+        CLog::LogF(LOGDEBUG, "Not setting full screen: already full screen on requested output");
       }
-      
-      CLog::LogF(LOGDEBUG, "Setting full-screen with refresh rate %.3f", res.fRefreshRate);
-      m_shellSurface->SetFullScreen(output ? output->GetWaylandOutput() : wayland::output_t(), res.fRefreshRate);
     }
     else
     {
       // Switch done, do not SetFullScreen() again - otherwise we would
       // get an endless repetition of setting full screen and configure events
-      CLog::LogF(LOGDEBUG, "Called internally, not calling SetFullscreen on surface");
+      CLog::LogF(LOGDEBUG, "Not setting full screen: called internally");
     }
   }
   else
@@ -556,14 +573,14 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     CLog::LogF(LOGDEBUG, "Directly setting windowed size %dx%d on Kodi request", res.iWidth, res.iHeight);
     // Kodi is directly setting window size, apply
     SetSize({res.iWidth, res.iHeight}, m_shellSurfaceState, false);
+    sizeUpdated = true;
   }
 
   // Go ahead if
   // * the request came from inside WinSystemWayland (for a compositor configure
   //   request or because we want to resize the window explicitly) or
-  // * we are free to choose any size we want, which means we do not have to wait
-  //   for configure
-  if (!wasExternal || !mustHonorSize)
+  // * the size has already been updated directly in this function
+  if (!wasExternal || sizeUpdated)
   {
     // Mark everything opaque so the compositor can render it faster
     // Do it here so size always matches the configured egl surface
@@ -588,23 +605,26 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     // to this configure, so go and ack it
     if (wasConfigure)
     {
-      // New shell surface state can only come from configure
-      m_shellSurfaceState = m_nextShellSurfaceState;
-      m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
       AckConfigure(m_currentConfigureSerial);
     }
+  }
+
+  // Update window decoration state
+  if (sizeUpdated || wasConfigure)
+  {
+    m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
   }
 
   bool wasInitialSetFullScreen = m_isInitialSetFullScreen;
   m_isInitialSetFullScreen = false;
 
   // Need to return true
-  // * when this SetFullScreen() call was initiated by a configure() event
+  // * when this SetFullScreen() call changed the context size (either directly
+  //   or because it was initiated by configure)
   // * on first SetFullScreen so GraphicsContext gets resolution
   // Otherwise, Kodi must keep the old resolution.
-  return wasConfigure || wasInitialSetFullScreen;
+  return sizeUpdated || wasInitialSetFullScreen;
 }
-
 
 void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
 {
@@ -614,6 +634,16 @@ void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
     g_application.ReloadSkin();
   }
 }
+
+void CWinSystemWayland::ApplyShellSurfaceState()
+{
+  if (m_windowDecorator)
+  {
+    m_windowDecorator->SetState(m_configuredSize, m_scale, m_nextShellSurfaceState);
+  }
+  m_shellSurfaceState = m_nextShellSurfaceState;
+}
+
 void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
 {
   CSingleLock lock(g_graphicsContext);
@@ -627,11 +657,7 @@ void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, CSizeInt si
     // All other changes only affect the appearance of the decorations and so need
     // not be synchronized with the main surface.
     // FIXME Call from main thread!!
-    m_shellSurfaceState = m_nextShellSurfaceState;
-    if (m_windowDecorator)
-    {
-      m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
-    }
+    ApplyShellSurfaceState();
     // nothing changed, ack immediately
     AckConfigure(serial);
   }
@@ -1249,25 +1275,6 @@ std::string CWinSystemWayland::GetClipboardText()
     }
   }
   return "";
-}
-
-/**
- * Apply queued surface state change and adjust main surface size if necessary
- *
- * Adds or removes window decorations as necessary. If window decorations are enabled,
- * the returned size will be the configured size decreased by the size of the
- * window decorations.
- *
- * \param state surface state to set
- * \param configuredSize size that the compositor has configured which includes window
- *                       decorations
- * \return size that should be used for the main surface
- */
-CSizeInt CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state, CSizeInt configuredSize)
-{
-  m_shellSurfaceState = state;
-  m_windowDecorator->SetState(configuredSize, m_scale, state);
-  return configuredSize;
 }
 
 void CWinSystemWayland::OnWindowMove(const wayland::seat_t& seat, std::uint32_t serial)
