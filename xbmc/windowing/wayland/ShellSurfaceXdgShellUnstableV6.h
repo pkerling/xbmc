@@ -60,6 +60,7 @@ public:
   void SetMaximized() override;
   void UnsetMaximized() override;
   void SetMinimized() override;
+  void SetWindowGeometry(CRectInt geometry) override;
   void AckConfigure(std::uint32_t serial) override;
 
   void StartMove(const wayland::seat_t& seat, std::uint32_t serial) override;

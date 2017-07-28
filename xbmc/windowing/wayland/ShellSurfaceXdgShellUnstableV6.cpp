@@ -150,6 +150,11 @@ void CShellSurfaceXdgShellUnstableV6::SetMinimized()
   m_xdgToplevel.set_minimized();
 }
 
+void CShellSurfaceXdgShellUnstableV6::SetWindowGeometry(CRectInt geometry)
+{
+  m_xdgSurface.set_window_geometry(geometry.x1, geometry.y1, geometry.Width(), geometry.Height());
+}
+
 void CShellSurfaceXdgShellUnstableV6::StartMove(const wayland::seat_t& seat, std::uint32_t serial)
 {
   m_xdgToplevel.move(seat, serial);

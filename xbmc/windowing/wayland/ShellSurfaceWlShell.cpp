@@ -88,6 +88,10 @@ void CShellSurfaceWlShell::SetMinimized()
 {
 }
 
+void CShellSurfaceWlShell::SetWindowGeometry(CRectInt)
+{
+}
+
 void CShellSurfaceWlShell::StartMove(const wayland::seat_t& seat, std::uint32_t serial)
 {
   m_shellSurface.move(seat, serial);

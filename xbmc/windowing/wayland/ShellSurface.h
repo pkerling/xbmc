@@ -87,6 +87,7 @@ public:
   virtual void SetMaximized() = 0;
   virtual void UnsetMaximized() = 0;
   virtual void SetMinimized() = 0;
+  virtual void SetWindowGeometry(CRectInt geometry) = 0;
   
   ConfigureHandler& OnConfigure();
   virtual void AckConfigure(std::uint32_t serial) = 0;
