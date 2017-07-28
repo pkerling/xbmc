@@ -97,20 +97,24 @@ public:
   /**
    * Get calculated size of main surface
    */
-  CSizeInt GetMainSurfaceSize()
+  CSizeInt GetMainSurfaceSize() const
   {
     return m_mainSurfaceSize;
   }
   /**
+   * Get full geometry of the window, including decorations if active
+   */
+  CRectInt GetWindowGeometry() const;
+  /**
    * Calculate size of main surface given the size of the full area
    * including decorations and a state
    */
-  CSizeInt CalculateMainSurfaceSize(CSizeInt size, IShellSurface::StateBitset state);
+  CSizeInt CalculateMainSurfaceSize(CSizeInt size, IShellSurface::StateBitset state) const;
   /**
    * Calculate size of full surface including decorations given the size of the
    * main surface and a state
    */
-  CSizeInt CalculateFullSurfaceSize(CSizeInt mainSurfaceSize, IShellSurface::StateBitset state);
+  CSizeInt CalculateFullSurfaceSize(CSizeInt mainSurfaceSize, IShellSurface::StateBitset state) const;
 
   bool IsDecorationActive() const;
 
@@ -173,6 +177,7 @@ private:
     wayland::surface_t surface;
     wayland::subsurface_t subsurface;
     Buffer currentBuffer;
+    CRectInt geometry;
   };
   BorderSurface MakeBorderSurface();
 

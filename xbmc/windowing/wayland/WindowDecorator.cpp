@@ -86,17 +86,31 @@ static_assert(BUTTON_SIZE <= TOP_BAR_HEIGHT - BUTTONS_EDGE_DISTANCE * 2, "Button
  * ---------------------------------------------
  */
 
-CSizeInt SurfaceSize(SurfaceIndex type, CSizeInt windowSurfaceSize)
+
+CRectInt SurfaceGeometry(SurfaceIndex type, CSizeInt mainSurfaceSize)
 {
   switch (type)
   {
     case SURFACE_TOP:
-      return { windowSurfaceSize.Width() + 2 * BORDER_WIDTH, TOP_BAR_HEIGHT + BORDER_WIDTH };
+      return {
+        CPointInt{-BORDER_WIDTH, -(BORDER_WIDTH + TOP_BAR_HEIGHT)},
+        CSizeInt{mainSurfaceSize.Width() + 2 * BORDER_WIDTH, TOP_BAR_HEIGHT + BORDER_WIDTH}
+      };
     case SURFACE_RIGHT:
-    case SURFACE_LEFT:
-      return { BORDER_WIDTH, windowSurfaceSize.Height() };
+      return {
+        CPointInt{mainSurfaceSize.Width(), 0},
+        CSizeInt{BORDER_WIDTH, mainSurfaceSize.Height()}
+      };
     case SURFACE_BOTTOM:
-      return { windowSurfaceSize.Width() + 2 * BORDER_WIDTH, BORDER_WIDTH };
+      return {
+        CPointInt{-BORDER_WIDTH, mainSurfaceSize.Height()},
+        CSizeInt{mainSurfaceSize.Width() + 2 * BORDER_WIDTH, BORDER_WIDTH}
+      };
+    case SURFACE_LEFT:
+      return {
+        CPointInt{-BORDER_WIDTH, 0},
+        CSizeInt{BORDER_WIDTH, mainSurfaceSize.Height()}
+      };
     default:
       throw std::logic_error("Invalid surface type");
   }
@@ -116,7 +130,7 @@ std::size_t MemoryBytesForSize(CSizeInt windowSurfaceSize, int scale)
 
   for (auto surface : { SURFACE_TOP, SURFACE_RIGHT, SURFACE_BOTTOM, SURFACE_LEFT })
   {
-    size += SurfaceSize(surface, windowSurfaceSize).Area();
+    size += SurfaceGeometry(surface, windowSurfaceSize).Area();
   }
 
   size *= scale;
@@ -435,7 +449,7 @@ void CWindowDecorator::UpdateSeatCursor(Seat& seat)
 
   {
     CSingleLock lock(m_mutex);
-    auto resizeEdge = ResizeEdgeForPosition(seat.currentSurface, SurfaceSize(seat.currentSurface, m_mainSurfaceSize), CPointInt{seat.pointerPosition});
+    auto resizeEdge = ResizeEdgeForPosition(seat.currentSurface, SurfaceGeometry(seat.currentSurface, m_mainSurfaceSize).ToSize(), CPointInt{seat.pointerPosition});
     if (resizeEdge != wayland::shell_surface_resize::none)
     {
       cursorName = CursorForResizeEdge(resizeEdge);
@@ -484,7 +498,7 @@ void CWindowDecorator::HandleSeatClick(wayland::seat_t seat, SurfaceIndex surfac
     case BTN_LEFT:
     {
       CSingleLock lock(m_mutex);
-      auto resizeEdge = ResizeEdgeForPosition(surface, m_mainSurfaceSize, CPointInt{position});
+      auto resizeEdge = ResizeEdgeForPosition(surface, SurfaceGeometry(surface, m_mainSurfaceSize).ToSize(), CPointInt{position});
       if (resizeEdge == wayland::shell_surface_resize::none)
       {
         for (auto const& button : m_buttons)
@@ -531,7 +545,7 @@ bool CWindowDecorator::StateHasWindowDecorations(IShellSurface::StateBitset stat
   return m_subcompositor && !state.test(IShellSurface::STATE_FULLSCREEN);
 }
 
-CSizeInt CWindowDecorator::CalculateMainSurfaceSize(CSizeInt size, IShellSurface::StateBitset state)
+CSizeInt CWindowDecorator::CalculateMainSurfaceSize(CSizeInt size, IShellSurface::StateBitset state) const
 {
   if (StateHasWindowDecorations(state))
   {
@@ -545,7 +559,7 @@ CSizeInt CWindowDecorator::CalculateMainSurfaceSize(CSizeInt size, IShellSurface
   }
 }
 
-CSizeInt CWindowDecorator::CalculateFullSurfaceSize(CSizeInt size, IShellSurface::StateBitset state)
+CSizeInt CWindowDecorator::CalculateFullSurfaceSize(CSizeInt size, IShellSurface::StateBitset state) const
 {
   if (StateHasWindowDecorations(state))
   {
@@ -607,8 +621,8 @@ void CWindowDecorator::Reset()
   ResetShm();
   if (IsDecorationActive())
   {
-    ReattachSubsurfaces();
     AllocateBuffers();
+    ReattachSubsurfaces();
     PositionButtons();
     Repaint();
   }
@@ -682,6 +696,7 @@ void CWindowDecorator::ResetSurfaces()
         // immediately, before the next commit on the main surface - just make it
         // invisible by attaching a NULL buffer
         surface.surface.attach(wayland::buffer_t(), 0, 0);
+        surface.surface.set_opaque_region(wayland::region_t());
         surface.surface.commit();
       }
     }
@@ -691,10 +706,25 @@ void CWindowDecorator::ResetSurfaces()
 void CWindowDecorator::ReattachSubsurfaces()
 {
   CSingleLock lock(m_mutex);
-  m_surfaces[SURFACE_TOP].subsurface.set_position(-BORDER_WIDTH, -(BORDER_WIDTH + TOP_BAR_HEIGHT));
-  m_surfaces[SURFACE_RIGHT].subsurface.set_position(m_mainSurfaceSize.Width(), 0);
-  m_surfaces[SURFACE_BOTTOM].subsurface.set_position(-BORDER_WIDTH, m_mainSurfaceSize.Height());
-  m_surfaces[SURFACE_LEFT].subsurface.set_position(-BORDER_WIDTH, 0);
+  for (auto& surface : m_surfaces)
+  {
+    surface.subsurface.set_position(surface.geometry.x1, surface.geometry.y1);
+  }
+}
+
+CRectInt CWindowDecorator::GetWindowGeometry() const
+{
+  CRectInt geometry{{0, 0}, m_mainSurfaceSize.ToPoint()};
+
+  if (IsDecorationActive())
+  {
+    for (auto const& surface : m_surfaces)
+    {
+      geometry.Union(surface.geometry);
+    }
+  }
+
+  return geometry;
 }
 
 void CWindowDecorator::ResetShm()
@@ -745,10 +775,10 @@ void CWindowDecorator::AllocateBuffers()
   {
     if (!m_surfaces[i].currentBuffer.data)
     {
-      auto size = SurfaceSize(static_cast<SurfaceIndex> (i), m_mainSurfaceSize);
-      m_surfaces[i].currentBuffer = GetBuffer(size * m_scale);
+      m_surfaces[i].geometry = SurfaceGeometry(static_cast<SurfaceIndex> (i), m_mainSurfaceSize);
+      m_surfaces[i].currentBuffer = GetBuffer(m_surfaces[i].geometry.ToSize() * m_scale);
       auto region = m_compositor.create_region();
-      region.add(0, 0, size.Width(), size.Height());
+      region.add(0, 0, m_surfaces[i].geometry.Width(), m_surfaces[i].geometry.Height());
       m_surfaces[i].surface.set_opaque_region(region);
       if (m_surfaces[i].surface.can_set_buffer_scale())
       {

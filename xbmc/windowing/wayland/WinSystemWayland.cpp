@@ -636,6 +636,7 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   if (sizeUpdated || wasConfigure)
   {
     m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
+    m_shellSurface->SetWindowGeometry(m_windowDecorator->GetWindowGeometry());
   }
 
   bool wasInitialSetFullScreen = m_isInitialSetFullScreen;
