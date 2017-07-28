@@ -52,6 +52,8 @@ protected:
    */
   bool InitWindowSystemEGL(EGLint renderableType, EGLint apiType);
 
+  void PresentFrame(bool rendered);
+
   CGLContextEGL m_eglContext;
 };
 

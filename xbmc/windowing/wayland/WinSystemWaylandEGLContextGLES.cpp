@@ -81,8 +81,5 @@ void CWinSystemWaylandEGLContextGLES::SetVSyncImpl(bool enable)
 
 void CWinSystemWaylandEGLContextGLES::PresentRenderImpl(bool rendered)
 {
-  if (rendered)
-  {
-    m_eglContext.SwapBuffers();
-  }
+  PresentFrame(rendered);
 }

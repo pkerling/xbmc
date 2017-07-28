@@ -1486,8 +1486,16 @@ bool CApplication::OnSettingsSaving() const
   return true;
 }
 
-void CApplication::ReloadSkin(bool confirm/*=false*/)
+void CApplication::ReloadSkin(bool confirm)
 {
+  // Skin will actually be reloaded on FrameMove and not immediately to avoid deadlocks
+  m_reloadSkinFlag = confirm ? ReloadSkinFlag::RELOAD_CONFIRM : ReloadSkinFlag::RELOAD_NO_CONFIRM;
+}
+
+void CApplication::ReloadSkinInternal(bool confirm)
+{
+  m_reloadSkinFlag = ReloadSkinFlag::NO_RELOAD;
+
   if (!g_SkinInfo || m_bInitializing)
     return; // Don't allow reload before skin is loaded by system
 
@@ -2698,6 +2706,11 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
     unsigned int frameTime = now - m_lastRenderTime;
     if (fps > 0 && frameTime * fps < 1000)
       m_skipGuiRender = true;
+
+    if (m_reloadSkinFlag != ReloadSkinFlag::NO_RELOAD)
+    {
+      ReloadSkinInternal(m_reloadSkinFlag == ReloadSkinFlag::RELOAD_CONFIRM);
+    }
 
     if (!m_bStop)
     {
