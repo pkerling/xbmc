@@ -23,9 +23,9 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <vector>
 
 #include <linux/input-event-codes.h>
-#include <utility>
 
 #include "threads/SingleLock.h"
 #include "utils/EndianSwap.h"
@@ -58,6 +58,7 @@ constexpr int BUTTON_SIZE{21};
 constexpr std::uint32_t BORDER_COLOR{0xFF000000u};
 constexpr std::uint32_t BUTTON_COLOR_ACTIVE{0xFFFFFFFFu};
 constexpr std::uint32_t BUTTON_COLOR_INACTIVE{0xFF777777u};
+constexpr std::uint32_t BUTTON_HOVER_COLOR{0xFF555555u};
 
 static_assert(BUTTON_SIZE <= TOP_BAR_HEIGHT - BUTTONS_EDGE_DISTANCE * 2, "Buttons must fit in top bar");
 
@@ -147,7 +148,7 @@ std::size_t PositionInBuffer(CWindowDecorator::Buffer& buffer, CPointInt positio
     throw std::invalid_argument("Position out of bounds");
   }
   std::size_t offset = buffer.size.Width() * position.y + position.x;
-  if (offset * 4 >= buffer.dataSize)
+  if (offset * BYTES_PER_PIXEL >= buffer.dataSize)
   {
     throw std::invalid_argument("Position out of bounds");
   }
@@ -156,7 +157,8 @@ std::size_t PositionInBuffer(CWindowDecorator::Buffer& buffer, CPointInt positio
 
 void DrawHorizontalLine(CWindowDecorator::Buffer& buffer, std::uint32_t color, CPointInt position, int length)
 {
-  auto offsetStart = PositionInBuffer(buffer, position), offsetEnd = PositionInBuffer(buffer, position + CPointInt{length - 1, 0});
+  auto offsetStart = PositionInBuffer(buffer, position);
+  auto offsetEnd = PositionInBuffer(buffer, position + CPointInt{length - 1, 0});
   if (offsetEnd < offsetStart)
   {
     throw std::invalid_argument("Invalid drawing coordinates");
@@ -166,8 +168,9 @@ void DrawHorizontalLine(CWindowDecorator::Buffer& buffer, std::uint32_t color, C
 
 void DrawLineWithStride(CWindowDecorator::Buffer& buffer, std::uint32_t color, CPointInt position, int length, int stride)
 {
-  auto offsetStart = PositionInBuffer(buffer, position), offsetEnd = offsetStart + stride * (length - 1);
-  if (offsetEnd * 4 >= buffer.dataSize)
+  auto offsetStart = PositionInBuffer(buffer, position);
+  auto offsetEnd = offsetStart + stride * (length - 1);
+  if (offsetEnd * BYTES_PER_PIXEL >= buffer.dataSize)
   {
     throw std::invalid_argument("Position out of bounds");
   }
@@ -196,6 +199,23 @@ void DrawRectangle(CWindowDecorator::Buffer& buffer, std::uint32_t color, CRectI
   DrawVerticalLine(buffer, color, rect.P1(), rect.Height());
   DrawHorizontalLine(buffer, color, rect.P1() + CPointInt{1, rect.Height() - 1}, rect.Width() - 1);
   DrawVerticalLine(buffer, color, rect.P1() + CPointInt{rect.Width() - 1, 1}, rect.Height() - 1);
+}
+
+void FillRectangle(CWindowDecorator::Buffer& buffer, std::uint32_t color, CRectInt rect)
+{
+  for (int y = rect.y1; y <= rect.y2; y++)
+  {
+    DrawHorizontalLine(buffer, color, {rect.x1, y}, rect.Width());
+  }
+}
+
+void DrawButton(CWindowDecorator::Buffer& buffer, std::uint32_t lineColor, CRectInt rect, bool hover)
+{
+  if (hover)
+  {
+    FillRectangle(buffer, BUTTON_HOVER_COLOR, rect);
+  }
+  DrawRectangle(buffer, lineColor, rect);
 }
 
 wayland::shell_surface_resize ResizeEdgeForPosition(SurfaceIndex surface, CSizeInt surfaceSize, CPointInt position)
@@ -349,6 +369,7 @@ void CWindowDecorator::OnSeatAdded(std::uint32_t name, wayland::proxy_t&& proxy)
 void CWindowDecorator::OnSeatRemoved(std::uint32_t name)
 {
   m_seats.erase(name);
+  UpdateButtonHoverState();
 }
 
 void CWindowDecorator::OnSeatCapabilities(std::uint32_t name, wayland::seat_capability capabilities)
@@ -362,11 +383,12 @@ void CWindowDecorator::OnSeatCapabilities(std::uint32_t name, wayland::seat_capa
   {
     HandleSeatTouch(seat);
   }
+  UpdateButtonHoverState();
 }
 
 void CWindowDecorator::HandleSeatPointer(Seat& seat)
 {
-  seat.pointer.on_enter() = [this,&seat](std::uint32_t serial, wayland::surface_t surface, float x, float y)
+  seat.pointer.on_enter() = [this, &seat](std::uint32_t serial, wayland::surface_t surface, float x, float y)
   {
     // Reset first so we ignore events for surfaces we don't handle
    seat.currentSurface = SURFACE_COUNT;
@@ -379,16 +401,18 @@ void CWindowDecorator::HandleSeatPointer(Seat& seat)
        seat.currentSurface = static_cast<SurfaceIndex> (i);
        seat.pointerPosition = {x, y};
        UpdateSeatCursor(seat);
+       UpdateButtonHoverState();
        break;
       }
     }
   };
-  seat.pointer.on_leave() = [&seat](std::uint32_t, wayland::surface_t)
+  seat.pointer.on_leave() = [this, &seat](std::uint32_t, wayland::surface_t)
   {
     seat.currentSurface = SURFACE_COUNT;
     // Recreate cursor surface on reenter
     seat.cursorName.clear();
     seat.cursor.proxy_release();
+    UpdateButtonHoverState();
   };
   seat.pointer.on_motion() = [this, &seat](std::uint32_t, float x, float y)
   {
@@ -396,6 +420,7 @@ void CWindowDecorator::HandleSeatPointer(Seat& seat)
     {
       seat.pointerPosition = {x, y};
       UpdateSeatCursor(seat);
+      UpdateButtonHoverState();
     }
   };
   seat.pointer.on_button() = [this, &seat](std::uint32_t serial, std::uint32_t, std::uint32_t button, wayland::pointer_button_state state)
@@ -477,6 +502,35 @@ void CWindowDecorator::UpdateSeatCursor(Seat& seat)
   seat.cursor.commit();
 }
 
+void CWindowDecorator::UpdateButtonHoverState()
+{
+  std::vector<CPoint> pointerPositions;
+
+  CSingleLock lock(m_mutex);
+
+  for (auto const& seatPair : m_seats)
+  {
+    auto const& seat = seatPair.second;
+    if (seat.currentSurface == SURFACE_TOP)
+    {
+      pointerPositions.emplace_back(seat.pointerPosition);
+    }
+  }
+
+  bool changed = false;
+  for (auto& button : m_buttons)
+  {
+    bool wasHovered = button.hovered;
+    button.hovered = std::any_of(pointerPositions.cbegin(), pointerPositions.cend(), [&](CPoint point) { return button.position.PtInRect(CPointInt{point}); });
+    changed = changed || (button.hovered != wasHovered);
+  }
+
+  if (changed)
+  {
+    // Repaint!
+    Reset(false);
+  }
+}
 
 void CWindowDecorator::HandleSeatClick(wayland::seat_t seat, SurfaceIndex surface, std::uint32_t serial, std::uint32_t button, CPoint position)
 {
@@ -636,9 +690,9 @@ void CWindowDecorator::ResetButtons()
       // Minimize
       m_buttons.emplace_back();
       Button& minimize = m_buttons.back();
-      minimize.draw = [this](Buffer& buffer, CRectInt position)
+      minimize.draw = [this](Buffer& buffer, CRectInt position, bool hover)
       {
-        DrawRectangle(buffer, m_buttonColor, position);
+        DrawButton(buffer, m_buttonColor, position, hover);
         DrawHorizontalLine(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, position.Height() - BUTTON_INNER_SEPARATION - 1}, position.Width() - 2 * BUTTON_INNER_SEPARATION);
       };
       minimize.onClick = [this] { m_handler.OnWindowMinimize(); };
@@ -646,9 +700,9 @@ void CWindowDecorator::ResetButtons()
       // Maximize
       m_buttons.emplace_back();
       Button& maximize = m_buttons.back();
-      maximize.draw = [this](Buffer& buffer, CRectInt position)
+      maximize.draw = [this](Buffer& buffer, CRectInt position, bool hover)
       {
-        DrawRectangle(buffer, m_buttonColor, position);
+        DrawButton(buffer, m_buttonColor, position, hover);
         DrawRectangle(buffer, m_buttonColor, {position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}, position.P2() - CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}});
         DrawHorizontalLine(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION + 1}, position.Width() - 2 * BUTTON_INNER_SEPARATION);
       };
@@ -657,9 +711,9 @@ void CWindowDecorator::ResetButtons()
       // Close
       m_buttons.emplace_back();
       Button& close = m_buttons.back();
-      close.draw = [this](Buffer& buffer, CRectInt position)
+      close.draw = [this](Buffer& buffer, CRectInt position, bool hover)
       {
-        DrawRectangle(buffer, m_buttonColor, position);
+        DrawButton(buffer, m_buttonColor, position, hover);
         auto diagonal = position.Width() - 2 * BUTTON_INNER_SEPARATION;
         DrawLineWithStride(buffer, m_buttonColor, position.P1() + CPointInt{BUTTON_INNER_SEPARATION, BUTTON_INNER_SEPARATION}, diagonal, buffer.size.Width() + 1);
         DrawLineWithStride(buffer, m_buttonColor, position.P1() + CPointInt{position.Width() - BUTTON_INNER_SEPARATION - 1, BUTTON_INNER_SEPARATION}, diagonal, buffer.size.Width() - 1);
@@ -816,7 +870,7 @@ void CWindowDecorator::Repaint()
   // Draw buttons
   for (auto& button : m_buttons)
   {
-    button.draw(topBuffer, button.position);
+    button.draw(topBuffer, button.position, button.hovered);
   }
 
   // Finally make everything visible

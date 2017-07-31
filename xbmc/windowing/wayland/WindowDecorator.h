@@ -222,7 +222,8 @@ private:
   struct Button
   {
     CRectInt position;
-    std::function<void(Buffer&, CRectInt)> draw;
+    bool hovered{};
+    std::function<void(Buffer&, CRectInt, bool /* hover */)> draw;
     std::function<void()> onClick;
   };
   std::vector<Button> m_buttons;
@@ -239,6 +240,7 @@ private:
   void HandleSeatTouch(Seat& seat);
 
   void UpdateSeatCursor(Seat& seat);
+  void UpdateButtonHoverState();
   void HandleSeatClick(wayland::seat_t seat, SurfaceIndex surface, std::uint32_t serial, std::uint32_t button, CPoint position);
 };
 
