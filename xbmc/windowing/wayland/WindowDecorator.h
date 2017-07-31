@@ -142,15 +142,19 @@ private:
   CWindowDecorator(CWindowDecorator const& other) = delete;
   CWindowDecorator& operator=(CWindowDecorator const& other) = delete;
   
-  void Reset();
+  void Reset(bool reallocate);
+
+  // These functions should not be called directly as they may leave internal
+  // structures in an inconsistent state when called individually - only call
+  // Reset().
   void ResetButtons();
   void ResetSurfaces();
+  void ResetShm();
   void ReattachSubsurfaces();
   void PositionButtons();
   void AllocateBuffers();
   void Repaint();
   void CommitAllBuffers();
-  void ResetShm();
 
   bool StateHasWindowDecorations(IShellSurface::StateBitset state) const;
 

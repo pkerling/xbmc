@@ -339,19 +339,6 @@ CWindowDecorator::CWindowDecorator(IWindowDecorationHandler& handler, CConnectio
   m_registry.Bind();
 }
 
-void CWindowDecorator::PositionButtons()
-{
-  CPointInt position{m_surfaces[SURFACE_TOP].currentBuffer.size.Width() - BORDER_WIDTH, BORDER_WIDTH + BUTTONS_EDGE_DISTANCE};
-  for (auto iter = m_buttons.rbegin(); iter != m_buttons.rend(); iter++)
-  {
-    position.x -= (BUTTONS_EDGE_DISTANCE + BUTTON_SIZE);
-    // Clamp if not enough space
-    position.x = std::max(0, position.x);
-
-    iter->position = CRectInt{position, position + CPointInt{BUTTON_SIZE, BUTTON_SIZE}};
-  }
-}
-
 void CWindowDecorator::OnSeatAdded(std::uint32_t name, wayland::proxy_t&& proxy)
 {
   wayland::seat_t seat{proxy};
@@ -576,6 +563,7 @@ CSizeInt CWindowDecorator::CalculateFullSurfaceSize(CSizeInt size, IShellSurface
 void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBitset state)
 {
   CSizeInt mainSurfaceSize = CalculateMainSurfaceSize(size, state);
+  CSingleLock lock(m_mutex);
   if (mainSurfaceSize == m_mainSurfaceSize && scale == m_scale && state == m_windowState)
   {
     return;
@@ -604,34 +592,43 @@ void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBi
     m_mainSurfaceSize = mainSurfaceSize;
     m_scale = scale;
     CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Resetting decorations");
-    Reset();
+    Reset(true);
   }
   else if (IsDecorationActive())
   {
     CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Repainting decorations");
     // Only state differs, no reallocation needed
-    Repaint();
+    Reset(false);
   }
 }
 
-void CWindowDecorator::Reset()
+void CWindowDecorator::Reset(bool reallocate)
 {
-  ResetButtons();
-  ResetSurfaces();
-  ResetShm();
+  // The complete reset operation should be seen as one atomic update to the
+  // internal state, otherwise buffer/surface state might be mismatched
+  CSingleLock lock(m_mutex);
+
+  if (reallocate)
+  {
+    ResetButtons();
+    ResetSurfaces();
+    ResetShm();
+    if (IsDecorationActive())
+    {
+      AllocateBuffers();
+      ReattachSubsurfaces();
+      PositionButtons();
+    }
+  }
+
   if (IsDecorationActive())
   {
-    AllocateBuffers();
-    ReattachSubsurfaces();
-    PositionButtons();
     Repaint();
   }
 }
 
 void CWindowDecorator::ResetButtons()
 {
-  CSingleLock lock(m_mutex);
-
   if (IsDecorationActive())
   {
     if (m_buttons.empty())
@@ -678,7 +675,6 @@ void CWindowDecorator::ResetButtons()
 
 void CWindowDecorator::ResetSurfaces()
 {
-  CSingleLock lock(m_mutex);
   if (IsDecorationActive())
   {
     if (!m_surfaces.front().surface)
@@ -705,7 +701,6 @@ void CWindowDecorator::ResetSurfaces()
 
 void CWindowDecorator::ReattachSubsurfaces()
 {
-  CSingleLock lock(m_mutex);
   for (auto& surface : m_surfaces)
   {
     surface.subsurface.set_position(surface.geometry.x1, surface.geometry.y1);
@@ -729,7 +724,6 @@ CRectInt CWindowDecorator::GetWindowGeometry() const
 
 void CWindowDecorator::ResetShm()
 {
-  CSingleLock lock(m_mutex);
   if (IsDecorationActive())
   {
     m_memory.reset(new CSharedMemory(MemoryBytesForSize(m_mainSurfaceSize, m_scale)));
@@ -744,7 +738,21 @@ void CWindowDecorator::ResetShm()
 
   for (auto& surface : m_surfaces)
   {
-    surface.currentBuffer.data = nullptr;
+    // Buffers are invalid now, reset
+    surface.currentBuffer = Buffer{};
+  }
+}
+
+void CWindowDecorator::PositionButtons()
+{
+  CPointInt position{m_surfaces[SURFACE_TOP].currentBuffer.size.Width() - BORDER_WIDTH, BORDER_WIDTH + BUTTONS_EDGE_DISTANCE};
+  for (auto iter = m_buttons.rbegin(); iter != m_buttons.rend(); iter++)
+  {
+    position.x -= (BUTTONS_EDGE_DISTANCE + BUTTON_SIZE);
+    // Clamp if not enough space
+    position.x = std::max(0, position.x);
+
+    iter->position = CRectInt{position, position + CPointInt{BUTTON_SIZE, BUTTON_SIZE}};
   }
 }
 
@@ -770,7 +778,6 @@ CWindowDecorator::Buffer CWindowDecorator::GetBuffer(CSizeInt size)
 
 void CWindowDecorator::AllocateBuffers()
 {
-  CSingleLock lock(m_mutex);
   for (std::size_t i = 0; i < m_surfaces.size(); i++)
   {
     if (!m_surfaces[i].currentBuffer.data)
