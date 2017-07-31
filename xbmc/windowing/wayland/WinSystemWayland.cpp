@@ -973,8 +973,8 @@ void CWinSystemWayland::LoadDefaultCursor()
   if (!m_cursorSurface)
   {
     // Load default cursor theme and default cursor
-    // Size of 16px is somewhat random
-    m_cursorTheme = wayland::cursor_theme_t("", 16, m_shm);
+    // Size of 24px is what most themes seem to have
+    m_cursorTheme = wayland::cursor_theme_t("", 24, m_shm);
     wayland::cursor_t cursor;
     try
     {

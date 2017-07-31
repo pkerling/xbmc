@@ -958,7 +958,7 @@ void CWindowDecorator::LoadCursorTheme()
   if (!m_cursorTheme)
   {
     // Load default cursor theme
-    // Base size of 16px is somewhat random
-    m_cursorTheme = wayland::cursor_theme_t("", 16 * m_scale, m_shm);
+    // Base size of 24px is what most cursor themes seem to have
+    m_cursorTheme = wayland::cursor_theme_t("", 24 * m_scale, m_shm);
   }
 }
