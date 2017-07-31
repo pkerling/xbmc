@@ -107,7 +107,22 @@ public:
   bool IsCalibrating() const;
   void SetCalibrating(bool bOnOff);
   bool IsValidResolution(RESOLUTION res);
-  void SetVideoResolution(RESOLUTION res, bool forceUpdate = false);
+  /**
+   * Set graphic context resolution
+   *
+   * Applies to scissors, view port, clipping etc. but does not affect rendering system.
+   * Updating rendering system size is the responsibility of the windowing
+   * implementation. Windowing implementation SetFullScreen etc. will be called if
+   * callWindowing is true.
+   *
+   * \param res resolution to set
+   * \param forceUpdate true to continue resolution update even if res is
+   *                    already the current resolution - useful if the data of
+   *                    res such as width/height has changed
+   * \param callWindowing true to call the windowing system, false to only update
+   *                      internal state
+   */
+  void SetVideoResolution(RESOLUTION res, bool forceUpdate = false, bool callWindowing = true);
   RESOLUTION GetVideoResolution() const;
   void ResetOverscan(RESOLUTION res, OVERSCAN &overscan);
   void ResetOverscan(RESOLUTION_INFO &resinfo);
@@ -275,7 +290,7 @@ private:
   void UpdateCameraPosition(const CPoint &camera, const float &factor);
   // this method is indirectly called by the public SetVideoResolution
   // it only works when called from mainthread (thats what SetVideoResolution ensures)
-  void SetVideoResolutionInternal(RESOLUTION res, bool forceUpdate);
+  void SetVideoResolutionInternal(RESOLUTION res, bool forceUpdate, bool callWindowing);
   RESOLUTION_INFO m_windowResolution;
   std::stack<CPoint> m_cameras;
   std::stack<CPoint> m_origins;

@@ -369,19 +369,19 @@ bool CGraphicContext::IsValidResolution(RESOLUTION res)
 }
 
 // call SetVideoResolutionInternal and ensure its done from mainthread
-void CGraphicContext::SetVideoResolution(RESOLUTION res, bool forceUpdate)
+void CGraphicContext::SetVideoResolution(RESOLUTION res, bool forceUpdate, bool callWindowing)
 {
   if (g_application.IsCurrentThread())
   {
-    SetVideoResolutionInternal(res, forceUpdate);
+    SetVideoResolutionInternal(res, forceUpdate, callWindowing);
   }
   else
   {
-    CApplicationMessenger::GetInstance().SendMsg(TMSG_SETVIDEORESOLUTION, res, forceUpdate ? 1 : 0);
+    CApplicationMessenger::GetInstance().SendMsg(TMSG_SETVIDEORESOLUTION, res, (forceUpdate ? 1 : 0) | (callWindowing ? 2 : 0));
   }
 }
 
-void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdate)
+void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdate, bool callWindowing)
 {
   RESOLUTION lastRes = m_Resolution;
 
@@ -430,27 +430,30 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   m_fFPSOverride = 0;
 
   bool switched = true;
-  if (g_advancedSettings.m_fullScreen)
+  if (callWindowing)
   {
+    if (g_advancedSettings.m_fullScreen)
+    {
 #if defined (TARGET_DARWIN) || defined (TARGET_WINDOWS)
-    bool blankOtherDisplays = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
-    g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
+      bool blankOtherDisplays = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
+      g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
 #else
-    switched = g_Windowing.SetFullScreen(true,  info_org, false);
+      switched = g_Windowing.SetFullScreen(true,  info_org, false);
 #endif
-  }
-  else if (lastRes >= RES_DESKTOP )
-    switched = g_Windowing.SetFullScreen(false, info_org, false);
-  else
-    switched = g_Windowing.ResizeWindow(info_org.iWidth, info_org.iHeight, -1, -1);
+    }
+    else if (lastRes >= RES_DESKTOP )
+      switched = g_Windowing.SetFullScreen(false, info_org, false);
+    else
+      switched = g_Windowing.ResizeWindow(info_org.iWidth, info_org.iHeight, -1, -1);
 
-  // FIXME At the moment only Wayland expects the return value to be interpreted
-  // - all other windowing implementations might still assume that it does
-  // not matter what they return as it was before.
-  // This needs to get fixed when the resolution switching code is refactored.
-  if (g_Windowing.GetWinSystem() != WINDOW_SYSTEM_WAYLAND)
-  {
-    switched = true;
+    // FIXME At the moment only Wayland expects the return value to be interpreted
+    // - all other windowing implementations might still assume that it does
+    // not matter what they return as it was before.
+    // This needs to get fixed when the resolution switching code is refactored.
+    if (g_Windowing.GetWinSystem() != WINDOW_SYSTEM_WAYLAND)
+    {
+      switched = true;
+    }
   }
 
   if (switched)
