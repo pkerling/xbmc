@@ -55,8 +55,9 @@
 #include "VideoSyncWpPresentation.h"
 #include "WindowDecorator.h"
 #include "WinEventsWayland.h"
-#include "utils/TimeUtils.h"
+#include "windowing/linux/OSScreenSaverFreedesktop.h"
 #include "utils/ActorProtocol.h"
+#include "utils/TimeUtils.h"
 
 #if defined(HAVE_DBUS)
 # include "windowing/linux/OSScreenSaverFreedesktop.h"
@@ -71,7 +72,6 @@ namespace
 
 RESOLUTION FindMatchingCustomResolution(CSizeInt size, float refreshRate)
 {
-  CSingleLock lock(g_graphicsContext);
   for (size_t res = RES_DESKTOP; res < CDisplaySettings::GetInstance().ResolutionInfoSize(); ++res)
   {
     auto const& resInfo = CDisplaySettings::GetInstance().GetResolutionInfo(res);
@@ -123,7 +123,9 @@ namespace WinSystemWaylandProtocol
 
 enum OutMessage
 {
-  CONFIGURE = 0
+  CONFIGURE,
+  OUTPUT_HOTPLUG,
+  BUFFER_SCALE
 };
 
 struct MsgConfigure
@@ -133,12 +135,12 @@ struct MsgConfigure
   IShellSurface::StateBitset state;
 };
 
+struct MsgBufferScale
+{
+  int scale;
 };
 
-/// ID for a resolution that was set in response to configure
-const std::string CONFIGURE_RES_ID = "configure";
-/// ID for a resoultion that was set in response to an internal event (such as setting window size explicitly)
-const std::string INTERNAL_RES_ID = "internal";
+};
 
 }
 
@@ -157,11 +159,12 @@ bool CWinSystemWayland::InitWindowSystem()
 {
   wayland::set_log_handler([](std::string message)
   {
-    CLog::Log(LOGWARNING, "wayland-client log message: %s", message.c_str()); });
+    CLog::Log(LOGWARNING, "wayland-client log message: %s", message.c_str());
+  });
 
   VIDEOPLAYER::CProcessInfoWayland::Register();
 
-  CLog::LogFunction(LOGINFO, "CWinSystemWayland::InitWindowSystem", "Connecting to Wayland server");
+  CLog::LogF(LOGINFO, "Connecting to Wayland server");
   m_connection.reset(new CConnection());
   m_registry.reset(new CRegistry(*m_connection));
 
@@ -203,10 +206,6 @@ bool CWinSystemWayland::InitWindowSystem()
 
 bool CWinSystemWayland::DestroyWindowSystem()
 {
-  // Make sure no more events get processed when we kill the instances
-  CWinEventsWayland::SetDisplay(nullptr);
-
-  m_windowDecorator.reset();
   DestroyWindow();
   // wl_display_disconnect frees all proxy objects, so we have to make sure
   // all stuff is gone on the C++ side before that
@@ -214,19 +213,14 @@ bool CWinSystemWayland::DestroyWindowSystem()
   m_cursorBuffer = wayland::buffer_t();
   m_cursorImage = wayland::cursor_image_t();
   m_cursorTheme = wayland::cursor_theme_t();
-  m_seatProcessors.clear();
   m_outputsInPreparation.clear();
   m_outputs.clear();
-  m_lastSetOutput.proxy_release();
-  m_surfaceOutputs.clear();
-  m_surfaceSubmissions.clear();
 
   if (m_registry)
   {
     m_registry->UnbindSingletons();
   }
   m_registry.reset();
-  m_seatRegistry.reset();
   m_connection.reset();
 
   CGenericTouchInputHandler::GetInstance().UnregisterHandler();
@@ -238,6 +232,8 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
                                         bool fullScreen,
                                         RESOLUTION_INFO& res)
 {
+  CLog::LogF(LOGINFO, "Starting %s size %dx%d", fullScreen ? "full screen" : "windowed", res.iWidth, res.iHeight);
+
   m_surface = m_compositor.create_surface();
   m_surface.on_enter() = [this](wayland::output_t wloutput)
   {
@@ -277,7 +273,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   // Assume we're active on startup until someone tells us otherwise
   m_shellSurfaceState.set(IShellSurface::STATE_ACTIVATED);
   // Try with this resolution if compositor does not say otherwise
-  SetSize({res.iWidth, res.iHeight}, m_shellSurfaceState, false);
+  UpdateSizeVariables({res.iWidth, res.iHeight}, m_scale, m_shellSurfaceState, false);
 
   m_shellSurface.reset(CShellSurfaceXdgShellUnstableV6::TryCreate(*m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   if (!m_shellSurface)
@@ -285,19 +281,6 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     CLog::LogF(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
     m_shellSurface.reset(new CShellSurfaceWlShell(*m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   }
-
-  // Just remember initial width/height for context creation
-  // This is used for sizing the EGLSurface
-  m_shellSurface->OnConfigure() = [this](std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
-  {
-    CLog::Log(LOGDEBUG, "CreateNewWindow: Initial configure serial %u: size %dx%d state %s", serial, size.Width(), size.Height(), IShellSurface::StateToString(state).c_str());
-    if (!size.IsZero())
-    {
-      SetSize(size, state, true);
-    }
-    m_shellSurfaceState = state;
-    AckConfigure(serial);
-  };
 
   if (fullScreen)
   {
@@ -309,9 +292,22 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     if (output && m_surface.can_set_buffer_scale())
     {
       m_scale = output->GetScale();
-      ApplyBufferScale(m_scale);
+      ApplyBufferScale();
     }
   }
+
+  // Just remember initial width/height for context creation
+  // This is used for sizing the EGLSurface
+  m_shellSurface->OnConfigure() = [this](std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
+  {
+    CLog::LogFunction(LOGDEBUG, "CreateNewWindow", "Initial configure serial %u: size %dx%d state %s", serial, size.Width(), size.Height(), IShellSurface::StateToString(state).c_str());
+    m_shellSurfaceState = state;
+    if (!size.IsZero())
+    {
+      UpdateSizeVariables(size, m_scale, m_shellSurfaceState, true);
+    }
+    AckConfigure(serial);
+  };
 
   m_shellSurface->Initialize();
 
@@ -319,7 +315,7 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
 
   // Update resolution with real size as it could have changed due to configure()
-  UpdateDesktopResolution(res, 0, m_nWidth, m_nHeight, res.fRefreshRate);
+  UpdateDesktopResolution(res, 0, m_bufferSize.Width(), m_bufferSize.Height(), res.fRefreshRate);
   res.bFullScreen = fullScreen;
 
   // Set real handler during runtime
@@ -364,9 +360,18 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
 
 bool CWinSystemWayland::DestroyWindow()
 {
+  // Make sure no more events get processed when we kill the instances
+  CWinEventsWayland::SetDisplay(nullptr);
+  
   m_shellSurface.reset();
   // waylandpp automatically calls wl_surface_destroy when the last reference is removed
   m_surface = wayland::surface_t();
+  m_windowDecorator.reset();
+  m_seatProcessors.clear();
+  m_lastSetOutput.proxy_release();
+  m_surfaceOutputs.clear();
+  m_surfaceSubmissions.clear();
+  m_seatRegistry.reset();
 
   return true;
 }
@@ -487,29 +492,25 @@ std::shared_ptr<COutput> CWinSystemWayland::FindOutputByWaylandOutput(wayland::o
   return (outputIt == m_outputs.end() ? nullptr : outputIt->second);
 }
 
-bool CWinSystemWayland::ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop)
+/**
+ * Change resolution and window state on Kodi request
+ *
+ * This function is used for updating resolution when Kodi initiates a resolution
+ * change, such as when changing between full screen and windowed mode or when
+ * selecting a different monitor or resolution in the settings.
+ *
+ * Size updates originating from compositor events (such as configure or buffer
+ * scale changes) should not use this function, but \ref SetResolutionInternal
+ * instead.
+ * 
+ * \param fullScreen whether to go full screen or windowed
+ * \param res resolution to set
+ * \return whether the requested resolution was actually set - is false e.g.
+ *         when already in full screen mode since the application cannot
+ *         set the size then
+ */
+bool CWinSystemWayland::SetResolutionExternal(bool fullScreen, RESOLUTION_INFO const& res)
 {
-  // CGraphicContext is "smart" and never calls SetFullScreen when we start in
-  // windowed mode or already are in windowed mode and only have a resize.
-  // But we need the call to happen since we can handle all of that ourselves,
-  // SetFullScreen already takes care of all cases and updates egl_window/
-  // rendersystem size etc.
-  // Introducing another function for changing resolution state would just
-  // complicate things - so defer to SetFullScreen anyway.
-  auto& res = CDisplaySettings::GetInstance().GetResolutionInfo(RES_WINDOW);
-  // The newWidth/newHeight parameters are taken from RES_WINDOW anyway, so we can just
-  // ignore them
-  return SetFullScreen(false, res, false);
-}
-
-bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
-{
-  // FIXME Our configuration is protected by graphicsContext lock
-  // If we'd use a mutex private to this class, we would have to lock both
-  // that one and graphicsContext (because the resolutions get updated),
-  // leading to a possible deadlock.
-  CSingleLock lock(g_graphicsContext);
-
   // In fullscreen modes, we never change the surface size on Kodi's request,
   // but only when the compositor tells us to. At least xdg_shell specifies
   // that with state fullscreen the dimensions given in configure() must
@@ -520,98 +521,100 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
   // in compositors, this code must be changed to match the behavior that is
   // expected then anyway.
 
-  bool wasConfigure = (res.strId == CONFIGURE_RES_ID);
-  bool wasInternal = (res.strId == INTERNAL_RES_ID);
-  // Everything that has no known ID came from other sources
-  bool wasExternal = !wasConfigure && !wasInternal;
-  // Size is always updated in configure handler
-  bool sizeUpdated = wasConfigure;
-
   // We can honor the Kodi-requested size only if we are not bound by configure rules,
   // which applies for maximized and fullscreen states.
-  // Also, setting an unconfigured size just when going fullscreen makes no sense.
+  // Also, setting an unconfigured size when just going fullscreen makes no sense.
   bool mustHonorSize = m_shellSurfaceState.test(IShellSurface::STATE_MAXIMIZED) || m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || fullScreen;
 
-  // Reset configure flag
-  // Setting it in res will not modify the global information in CDisplaySettings
-  // and we don't know which resolution index this is, so just reset all
-  for (size_t resIdx = RES_HDTV_1080i; resIdx < CDisplaySettings::GetInstance().ResolutionInfoSize(); resIdx++)
-  {
-    CDisplaySettings::GetInstance().GetResolutionInfo(resIdx).strId = "";
-  }
-
-  CLog::LogF(LOGINFO, "Wayland asked to switch mode to %dx%d @%.3f Hz on output \"%s\" %s%s%s", res.iWidth, res.iHeight, res.fRefreshRate, res.strOutput.c_str(), fullScreen ? "full screen" : "windowed", wasConfigure ? " from configure" : "", wasInternal ? " internally" : "");
+  CLog::LogF(LOGINFO, "Wayland asked to switch mode to %dx%d @%.3f Hz on output \"%s\" %s", res.iWidth, res.iHeight, res.fRefreshRate, res.strOutput.c_str(), fullScreen ? "full screen" : "windowed");
 
   if (fullScreen)
   {
-    if (wasExternal)
+    // Try to match output
+    auto output = FindOutputByUserFriendlyName(res.strOutput);
+    auto wlOutput = output ? output->GetWaylandOutput() : wayland::output_t();
+    if (!m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || (m_lastSetOutput != wlOutput))
     {
-      // Try to match output
-      auto output = FindOutputByUserFriendlyName(res.strOutput);
-      auto wlOutput = output ? output->GetWaylandOutput() : wayland::output_t();
-      if (!m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || (m_lastSetOutput != wlOutput))
+      // Remember the output we set last so we don't set it again until we
+      // either go windowed or were on a different output
+      m_lastSetOutput = wlOutput;
+
+      if (output)
       {
-        // Remember the output we set last so we don't set it again until we
-        // either go windowed or were on a different output
-        m_lastSetOutput = wlOutput;
-
-        if (output)
-        {
-          CLog::LogF(LOGDEBUG, "Resolved output \"%s\" to bound Wayland global %u", res.strOutput.c_str(), output->GetGlobalName());
-        }
-        else
-        {
-          CLog::LogF(LOGINFO, "Could not match output \"%s\" to a currently available Wayland output, falling back to default output", res.strOutput.c_str());
-        }
-
-        CLog::LogF(LOGDEBUG, "Setting full-screen with refresh rate %.3f", res.fRefreshRate);
-        m_shellSurface->SetFullScreen(wlOutput, res.fRefreshRate);
+        CLog::LogF(LOGDEBUG, "Resolved output \"%s\" to bound Wayland global %u", res.strOutput.c_str(), output->GetGlobalName());
       }
       else
       {
-        CLog::LogF(LOGDEBUG, "Not setting full screen: already full screen on requested output");
+        CLog::LogF(LOGINFO, "Could not match output \"%s\" to a currently available Wayland output, falling back to default output", res.strOutput.c_str());
       }
+
+      CLog::LogF(LOGDEBUG, "Setting full-screen with refresh rate %.3f", res.fRefreshRate);
+      m_shellSurface->SetFullScreen(wlOutput, res.fRefreshRate);
     }
     else
     {
-      // Switch done, do not SetFullScreen() again - otherwise we would
-      // get an endless repetition of setting full screen and configure events
-      CLog::LogF(LOGDEBUG, "Not setting full screen: called internally");
+      CLog::LogF(LOGDEBUG, "Not setting full screen: already full screen on requested output");
     }
   }
   else
   {
-    if (wasExternal)
+    if (m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN))
     {
-      if (m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN))
-      {
-        CLog::LogF(LOGDEBUG, "Setting windowed");
-        m_shellSurface->SetWindowed();
-      }
-      else
-      {
-        CLog::LogF(LOGDEBUG, "Not setting windowed: already windowed");
-      }
+      CLog::LogF(LOGDEBUG, "Setting windowed");
+      m_shellSurface->SetWindowed();
     }
     else
     {
-      CLog::LogF(LOGDEBUG, "Not setting windowed: called internally");
+      CLog::LogF(LOGDEBUG, "Not setting windowed: already windowed");
     }
   }
 
-  if (wasExternal && !mustHonorSize)
+  bool sizeChanged = false;
+  // Set Kodi-provided size only if we are free to choose any size, otherwise
+  // wait for the compositor configure
+  if (!mustHonorSize)
   {
     CLog::LogF(LOGDEBUG, "Directly setting windowed size %dx%d on Kodi request", res.iWidth, res.iHeight);
     // Kodi is directly setting window size, apply
-    SetSize({res.iWidth, res.iHeight}, m_shellSurfaceState, false);
-    sizeUpdated = true;
+    auto updateResult = UpdateSizeVariables({res.iWidth, res.iHeight}, m_scale, m_shellSurfaceState, false);
+    sizeChanged = updateResult.bufferSizeChanged;
+    ApplySizeUpdate(updateResult);
   }
 
-  // Go ahead if
-  // * the request came from inside WinSystemWayland (for a compositor configure
-  //   request or because we want to resize the window explicitly) or
-  // * the size has already been updated directly in this function
-  if (!wasExternal || sizeUpdated)
+  bool wasInitialSetFullScreen = m_isInitialSetFullScreen;
+  m_isInitialSetFullScreen = false;
+
+  // Need to return true
+  // * when this SetFullScreen() call changed the context size
+  // * on first SetFullScreen so GraphicsContext gets resolution
+  // Otherwise, Kodi must keep the old resolution.
+  return sizeChanged || wasInitialSetFullScreen;
+}
+
+bool CWinSystemWayland::ResizeWindow(int, int, int, int)
+{
+  // CGraphicContext is "smart" and calls ResizeWindow or SetFullScreen depending
+  // on some state like wheter we were already full screen. But actually the processing
+  // here is always identical, so we are using a common function to handle both.
+  auto& res = CDisplaySettings::GetInstance().GetResolutionInfo(RES_WINDOW);
+  // The newWidth/newHeight parameters are taken from RES_WINDOW anyway, so we can just
+  // ignore them
+  return SetResolutionExternal(false, res);
+}
+
+bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool)
+{
+  return SetResolutionExternal(fullScreen, res);
+}
+
+void CWinSystemWayland::ApplySizeUpdate(SizeUpdateInformation update)
+{
+  if (update.bufferScaleChanged)
+  {
+    // Buffer scale must also match egl size configuration
+    ApplyBufferScale();
+  }
+  if (update.surfaceSizeChanged)
   {
     // Mark everything opaque so the compositor can render it faster
     // Do it here so size always matches the configured egl surface
@@ -619,36 +622,17 @@ bool CWinSystemWayland::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, boo
     wayland::region_t opaqueRegion = m_compositor.create_region();
     opaqueRegion.add(0, 0, m_surfaceSize.Width(), m_surfaceSize.Height());
     m_surface.set_opaque_region(opaqueRegion);
-    if (m_surface.can_set_buffer_scale())
-    {
-      // Buffer scale must also match egl size configuration
-      ApplyBufferScale(m_scale);
-    }
-
-    // FIXME This assumes that the resolution has already been set. Should
-    // be moved to some post-change callback when resolution setting is refactored.
-    if (!m_inhibitSkinReload)
-    {
-      g_application.ReloadSkin();
-    }
   }
-
-  // Update window decoration state
-  if (sizeUpdated || wasConfigure)
+  if (update.configuredSizeChanged)
   {
+    // Update window decoration state
     m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
     m_shellSurface->SetWindowGeometry(m_windowDecorator->GetWindowGeometry());
   }
-
-  bool wasInitialSetFullScreen = m_isInitialSetFullScreen;
-  m_isInitialSetFullScreen = false;
-
-  // Need to return true
-  // * when this SetFullScreen() call changed the context size (either directly
-  //   or because it was initiated by configure)
-  // * on first SetFullScreen so GraphicsContext gets resolution
-  // Otherwise, Kodi must keep the old resolution.
-  return sizeUpdated || wasInitialSetFullScreen;
+  // Set always, because of initialization order GL context has to keep track of
+  // whether the size changed. If we skip based on update.bufferSizeChanged here,
+  // GL context will never get its initial size set.
+  SetContextSize(m_bufferSize);
 }
 
 void CWinSystemWayland::ProcessMessages()
@@ -656,6 +640,7 @@ void CWinSystemWayland::ProcessMessages()
   Actor::Message* message{};
   MessageHandle lastConfigureMessage;
   int skippedConfigures = -1;
+  int newScale = m_scale;
 
   while (m_protocol.ReceiveOutMessage(&message))
   {
@@ -663,13 +648,34 @@ void CWinSystemWayland::ProcessMessages()
     switch (message->signal)
     {
       case WinSystemWaylandProtocol::CONFIGURE:
-      {
+        // Do not directly process configures, get the last one queued:
+        // While resizing, the compositor will usually send a configure event
+        // each time the mouse moves without any throttling (i.e. multiple times
+        // per rendered frame).
+        // Going through all those and applying them would waste a lot of time when
+        // we already know that the size is not final and will change again anyway.
         skippedConfigures++;
         lastConfigureMessage = std::move(guard);
-      }
-      break;
-      default:
-        CLog::LogF(LOGWARNING, "Unhandled message %d", message->signal);
+        break;
+      case WinSystemWaylandProtocol::OUTPUT_HOTPLUG:
+        // Maybe the output that was added was the one we should be on?
+        if (m_bFullScreen)
+        {
+          CLog::LogF(LOGDEBUG, "Output hotplug in full screen mode: Re-reading resolutions");
+          UpdateResolutions();
+          // This will call SetFullScreen(), which will match the output against
+          // the information from the resolution and call set_fullscreen on the
+          // surface if it changed.
+          g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
+        }
+        break;
+      case WinSystemWaylandProtocol::BUFFER_SCALE:
+        // Never update buffer scale if not possible to set it
+        if (m_surface.can_set_buffer_scale())
+        {
+          newScale = (reinterpret_cast<WinSystemWaylandProtocol::MsgBufferScale*> (message->data))->scale;
+        }
+        break;
     }
   }
 
@@ -679,11 +685,49 @@ void CWinSystemWayland::ProcessMessages()
     {
       CLog::LogF(LOGDEBUG, "Skipped %d configures", skippedConfigures);
     }
+    // Wayland will tell us here the size of the surface that was actually created,
+    // which might be different from what we expected e.g. when fullscreening
+    // on an output we chose - the compositor might have decided to use a different
+    // output for example
+    // It is very important that the EGL native module and the rendering system use the
+    // Wayland-announced size for rendering or corrupted graphics output will result.
     auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (lastConfigureMessage.Get()->data);
     CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
     ApplyShellSurfaceState(configure->state);
-    ResetSurfaceSize(configure->surfaceSize, m_scale, configure->state.test(IShellSurface::STATE_FULLSCREEN), true);
+
+    CSizeInt size = configure->surfaceSize;
+    bool sizeIncludesDecoration = true;
+
+    if (size.IsZero())
+    {
+      if (configure->state.test(IShellSurface::STATE_FULLSCREEN))
+      {
+        // Do not change current size - UpdateWithConfiguredSize must be called regardless in case
+        // scale or something else changed
+        size = m_configuredSize;
+      }
+      else
+      {
+        // Compositor has no preference and we're windowed
+        // -> adopt windowed size that Kodi wants
+        auto const& windowed = CDisplaySettings::GetInstance().GetResolutionInfo(RES_WINDOW);
+        // Kodi resolution is buffer size, but SetResolutionInternal expects
+        // surface size, so divide by m_scale
+        size = CSizeInt{windowed.iWidth, windowed.iHeight} / newScale;
+        CLog::LogF(LOGDEBUG, "Adapting Kodi windowed size %dx%d", size.Width(), size.Height());
+        sizeIncludesDecoration = false;
+      }
+    }
+
+    SetResolutionInternal(size, newScale, sizeIncludesDecoration);
     AckConfigure(configure->serial);
+  }
+
+  // If we were also configured, scale is already taken care of. But it could
+  // also be a scale change without configure, so apply that.
+  if (m_scale != newScale)
+  {
+    SetResolutionInternal(m_configuredSize, newScale, true);
   }
 }
 
@@ -698,10 +742,7 @@ void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
 
 void CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state)
 {
-  if (m_windowDecorator)
-  {
-    m_windowDecorator->SetState(m_configuredSize, m_scale, state);
-  }
+  m_windowDecorator->SetState(m_configuredSize, m_scale, state);
   m_shellSurfaceState = state;
 }
 
@@ -725,64 +766,22 @@ void CWinSystemWayland::AckConfigure(std::uint32_t serial)
 }
 
 /**
- * Set the internal surface size variables and perform resolution change
+ * Recalculate sizes from given parameters, apply them and update Kodi CDisplaySettings
+ * resolution if necessary
  *
- * Call only from Wayland event processing thread!
+ * This function should be called when events internal to the windowing system
+ * such as a compositor configure lead to a size change.
  *
- * size can be zero if compositor does not have a preference
+ * Call only from main thread.
  *
- * \return Whether surface parameters changed and video resolution change was
- *         performed
+ * \param size configured size, can be zero if compositor does not have a preference
+ * \param scale new buffer scale
+ * \param sizeIncludesDecoration whether size includes the size of the window decorations if present
  */
-bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool fullScreen, bool fromConfigure)
+void CWinSystemWayland::SetResolutionInternal(CSizeInt size, std::int32_t scale, bool sizeIncludesDecoration)
 {
-  // Wayland will tell us here the size of the surface that was actually created,
-  // which might be different from what we expected e.g. when fullscreening
-  // on an output we chose - the compositor might have decided to use a different
-  // output for example
-  // It is very important that the EGL native module and the rendering system use the
-  // Wayland-announced size for rendering or corrupted graphics output will result.
-
-  RESOLUTION switchToRes = RES_INVALID;
-
-  // FIXME See comment in SetFullScreen
-  CSingleLock lock(g_graphicsContext);
-
-  // Now update actual resolution with configured one
-  bool scaleChanged = (scale != m_scale);
-  m_scale = scale;
-
-  bool sizeChanged = false;
-  bool sizeIncludesDecoration = true;
-
-  if (size.IsZero())
-  {
-    if (fullScreen)
-    {
-      // Do not change current size - SetSize must be called regardless in case
-      // scale or something else changed
-      size = m_configuredSize;
-    }
-    else
-    {
-      // Compositor has no preference and we're going windowed
-      // -> adopt windowed size that Kodi wants
-      auto const& windowed = CDisplaySettings::GetInstance().GetResolutionInfo(RES_WINDOW);
-      size = CSizeInt{windowed.iWidth, windowed.iHeight};
-      sizeIncludesDecoration = false;
-    }
-  }
-  // Clamp to a sensible range
-  if (size.Width() < 300)
-  {
-    size.SetWidth(300);
-  }
-  if (size.Height() < 200)
-  {
-    size.SetHeight(200);
-  }
-
-  sizeChanged = SetSize(size, m_shellSurfaceState, sizeIncludesDecoration);
+  bool fullScreen = m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN);
+  auto updateResult = UpdateSizeVariables(size, scale, m_shellSurfaceState, sizeIncludesDecoration);
  
   // Get actual frame rate from monitor, take highest frame rate if multiple
   // m_surfaceOutputs is only updated from event handling thread, so no lock
@@ -794,73 +793,89 @@ bool CWinSystemWayland::ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool
     CLog::LogF(LOGDEBUG, "Resolved actual (maximum) refresh rate to %.3f Hz on output \"%s\"", refreshRate, UserFriendlyOutputName(*maxRefreshIt).c_str());
   }
 
-  if (refreshRate == m_fRefreshRate && !scaleChanged && !sizeChanged && m_bFullScreen == fullScreen)
+  // Check if any parameters of the Kodi resolution configuration changed
+  if (refreshRate != m_fRefreshRate || updateResult.bufferSizeChanged || m_bFullScreen != fullScreen)
   {
-    CLog::LogF(LOGDEBUG, "No change in size, refresh rate, scale, and fullscreen state, returning");
-    return false;
-  }
+    // Update Kodi resolution
 
-  m_fRefreshRate = refreshRate;
-  m_bFullScreen = fullScreen;
+    m_fRefreshRate = refreshRate;
+    m_bFullScreen = fullScreen;
 
-  // Find matching Kodi resolution member
-  if (!m_bFullScreen)
-  {
-    switchToRes = RES_WINDOW;
-    SetWindowResolution(m_nWidth, m_nHeight);
-    // Save window size
-    CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_WIDTH, m_nWidth);
-    CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_HEIGHT, m_nHeight);
-    CServiceBroker::GetSettings().Save();
-  }
-  else
-  {
-    switchToRes = FindMatchingCustomResolution({m_nWidth, m_nHeight}, m_fRefreshRate);
-    if (switchToRes == RES_INVALID)
+    RESOLUTION switchToRes = RES_INVALID;
+
+    // Find matching Kodi resolution member
+    if (!m_bFullScreen)
     {
-      // Add new resolution if none found
-      RESOLUTION_INFO newResInfo;
-      UpdateDesktopResolution(newResInfo, 0, m_nWidth, m_nHeight, m_fRefreshRate);
-      newResInfo.strOutput = CDisplaySettings::GetInstance().GetCurrentResolutionInfo().strOutput; // we just assume the compositor put us on the right output
-      CDisplaySettings::GetInstance().AddResolutionInfo(newResInfo);
-      CDisplaySettings::GetInstance().ApplyCalibrations();
-      switchToRes = static_cast<RESOLUTION> (CDisplaySettings::GetInstance().ResolutionInfoSize() - 1);
+      switchToRes = RES_WINDOW;
+      SetWindowResolution(m_bufferSize.Width(), m_bufferSize.Height());
+      // Save window size: Use unscaled size so we can start with same size
+      // no matter what monitor we are placed on at start
+      CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_WIDTH, m_surfaceSize.Width());
+      CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_HEIGHT, m_surfaceSize.Height());
+      CServiceBroker::GetSettings().Save();
     }
+    else
+    {
+      switchToRes = FindMatchingCustomResolution(m_bufferSize, m_fRefreshRate);
+      if (switchToRes == RES_INVALID)
+      {
+        // Add new resolution if none found
+        RESOLUTION_INFO newResInfo;
+        UpdateDesktopResolution(newResInfo, 0, m_bufferSize.Width(), m_bufferSize.Height(), m_fRefreshRate);
+        newResInfo.strOutput = CDisplaySettings::GetInstance().GetCurrentResolutionInfo().strOutput; // we just assume the compositor put us on the right output
+        CDisplaySettings::GetInstance().AddResolutionInfo(newResInfo);
+        CDisplaySettings::GetInstance().ApplyCalibrations();
+        switchToRes = static_cast<RESOLUTION> (CDisplaySettings::GetInstance().ResolutionInfoSize() - 1);
+      }
+    }
+
+    // RES_DESKTOP does not change usually, it is still the current resolution
+    // of the selected output
+
+    assert(switchToRes != RES_INVALID);
+
+    // Force resolution update without going through SetFullScreen etc. since
+    // we take care of size update here
+    // FIXME Ideally this class would be completely decoupled from g_graphicsContext,
+    // but this is not possible at the moment before some refactoring is done.
+    g_graphicsContext.SetVideoResolution(switchToRes, true, false);
   }
 
-  // RES_DESKTOP does not change usually, it is still the current resolution
-  // of the selected output
-
-  assert(switchToRes != RES_INVALID);
-
-  // Mark resolution so that we know it came from configure
-  CDisplaySettings::GetInstance().GetResolutionInfo(switchToRes).strId = fromConfigure ? CONFIGURE_RES_ID : INTERNAL_RES_ID;
-
-  CSingleExit exit(g_graphicsContext);
-
-  // Force resolution update
-  // SetVideoResolution() automatically delegates to main thread via internal
-  // message if called from other threads
-  // This will call SetFullScreen() with the new resolution, which also updates
-  // the size of the egl_window etc. from m_nWidth/m_nHeight.
-  // The call always blocks, so the configuration lock must be released beforehand.
-  // FIXME Ideally this class would be completely decoupled from g_graphicsContext,
-  // but this is not possible at the moment before the refactoring is done.
-  g_graphicsContext.SetVideoResolution(switchToRes, true);
-
-  return true;
+  ApplySizeUpdate(updateResult);
 }
 
 /**
  * Calculate internal resolution from surface size and set variables
  *
  * \param next surface size
+ * \param scale new buffer scale
  * \param state window state to determine whether decorations are enabled at all
  * \param sizeIncludesDecoration if true, given size includes potential window decorations
  * \return whether main buffer (not surface) size changed
  */
-bool CWinSystemWayland::SetSize(CSizeInt size, IShellSurface::StateBitset state, bool sizeIncludesDecoration)
+CWinSystemWayland::SizeUpdateInformation CWinSystemWayland::UpdateSizeVariables(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration)
 {
+  CLog::LogF(LOGDEBUG, "Set size %dx%d scale %d %s decorations with state %s", size.Width(), size.Height(), scale, sizeIncludesDecoration ? "including" : "excluding", IShellSurface::StateToString(state).c_str());
+
+  auto oldSurfaceSize = m_surfaceSize;
+  auto oldBufferSize = m_bufferSize;
+  auto oldConfiguredSize = m_configuredSize;
+  auto oldBufferScale = m_scale;
+
+  // Clamp to a sensible range
+  constexpr int MIN_WIDTH = 300;
+  constexpr int MIN_HEIGHT = 200;
+  if (size.Width() < MIN_WIDTH)
+  {
+    CLog::LogF(LOGWARNING, "Width %d is very small, clamping to %d", size.Width(), MIN_WIDTH);
+    size.SetWidth(MIN_WIDTH);
+  }
+  if (size.Height() < MIN_HEIGHT)
+  {
+    CLog::LogF(LOGWARNING, "Height %d is very small, clamping to %d", size.Height(), MIN_HEIGHT);
+    size.SetHeight(MIN_HEIGHT);
+  }
+
   // Depending on whether the size has decorations included (i.e. comes from the
   // compositor or from Kodi), we need to calculate differently
   if (sizeIncludesDecoration)
@@ -873,19 +888,30 @@ bool CWinSystemWayland::SetSize(CSizeInt size, IShellSurface::StateBitset state,
     m_surfaceSize = size;
     m_configuredSize = m_windowDecorator->CalculateFullSurfaceSize(size, state);
   }
-  CSizeInt newSize{m_surfaceSize * m_scale};
 
-  if (newSize.Width() != m_nWidth || newSize.Height() != m_nHeight)
+  m_scale = scale;
+  m_bufferSize = m_surfaceSize * m_scale;
+
+  auto changes = SizeUpdateInformation{m_surfaceSize != oldSurfaceSize, m_bufferSize != oldBufferSize, m_configuredSize != oldConfiguredSize, m_scale != oldBufferScale};
+
+  if (changes.surfaceSizeChanged)
   {
-    m_nWidth = newSize.Width();
-    m_nHeight = newSize.Height();
-    CLog::LogF(LOGINFO, "Set size %dx%d %s decoration at scale %d -> configured size %dx%d, surface size %dx%d, resolution %dx%d", size.Width(), size.Height(), sizeIncludesDecoration ? "including" : "excluding", m_scale, m_configuredSize.Width(), m_configuredSize.Height(), m_surfaceSize.Width(), m_surfaceSize.Height(), m_nWidth, m_nHeight);
-    return true;
+    CLog::LogF(LOGINFO, "Surface size changed: %dx%d -> %dx%d", oldSurfaceSize.Width(), oldSurfaceSize.Height(), m_surfaceSize.Width(), m_surfaceSize.Height());
   }
-  else
+  if (changes.bufferSizeChanged)
   {
-    return false;
+    CLog::LogF(LOGINFO, "Buffer size changed: %dx%d -> %dx%d", oldBufferSize.Width(), oldBufferSize.Height(), m_bufferSize.Width(), m_bufferSize.Height());
   }
+  if (changes.configuredSizeChanged)
+  {
+    CLog::LogF(LOGINFO, "Configured size changed: %dx%d -> %dx%d", oldConfiguredSize.Width(), oldConfiguredSize.Height(), m_configuredSize.Width(), m_configuredSize.Height());
+  }
+  if (changes.bufferScaleChanged)
+  {
+    CLog::LogF(LOGINFO, "Buffer scale changed: %d -> %d", oldBufferScale, m_scale);
+  }
+
+  return changes;
 }
 
 std::string CWinSystemWayland::UserFriendlyOutputName(std::shared_ptr<COutput> const& output)
@@ -1023,16 +1049,7 @@ void CWinSystemWayland::OnOutputDone(std::uint32_t name)
       m_outputsInPreparation.erase(it);
     }
 
-    // Maybe the output that was added was the one we should be on?
-    if (m_bFullScreen)
-    {
-      CSingleLock lock(g_graphicsContext);
-      UpdateResolutions();
-      // This will call SetFullScreen(), which will match the output against
-      // the information from the resolution and call set_fullscreen on the
-      // surface if it changed.
-      g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
-    }
+    m_protocol.SendOutMessage(WinSystemWaylandProtocol::OUTPUT_HOTPLUG);
   }
 
   UpdateBufferScale();
@@ -1110,31 +1127,25 @@ void CWinSystemWayland::OnSetCursor(wayland::pointer_t& pointer, std::uint32_t s
 
 void CWinSystemWayland::UpdateBufferScale()
 {
-  if (!m_surface || !m_surface.can_set_buffer_scale())
-  {
-    // Never modify scale when we cannot set it
-    return;
-  }
-
   // Adjust our surface size to the output with the biggest scale in order
   // to get the best quality
   auto const maxBufferScaleIt = std::max_element(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(), OutputScaleComparer());
   if (maxBufferScaleIt != m_surfaceOutputs.cend())
   {
-    auto const newScale = (*maxBufferScaleIt)->GetScale();
-    // Recalculate resolution with new scale if it changed
-    ResetSurfaceSize(m_configuredSize, newScale, m_bFullScreen, false);
+    WinSystemWaylandProtocol::MsgBufferScale msg{(*maxBufferScaleIt)->GetScale()};
+    m_protocol.SendOutMessage(WinSystemWaylandProtocol::BUFFER_SCALE, &msg, sizeof(msg));
   }
 }
 
-void CWinSystemWayland::ApplyBufferScale(std::int32_t scale)
+void CWinSystemWayland::ApplyBufferScale()
 {
-  CLog::LogF(LOGINFO, "Setting Wayland buffer scale to %d", scale);
-  m_surface.set_buffer_scale(scale);
+  CLog::LogF(LOGINFO, "Setting Wayland buffer scale to %d", m_scale);
+  m_surface.set_buffer_scale(m_scale);
+  m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
   CSingleLock lock(m_seatProcessorsMutex);
   for (auto& seatProcessor : m_seatProcessors)
   {
-    seatProcessor.second.SetCoordinateScale(scale);
+    seatProcessor.second.SetCoordinateScale(m_scale);
   }
 }
 

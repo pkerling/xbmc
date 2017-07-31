@@ -103,12 +103,22 @@ public:
 
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
+  CSizeInt GetBufferSize() const
+  {
+    return m_bufferSize;
+  }
+  std::unique_ptr<CConnection> const& GetConnection()
+  {
+    return m_connection;
+  }
+  wayland::surface_t GetMainSurface()
+  {
+    return m_surface;
+  }
 
   void PrepareFramePresentation();
   void FinishFramePresentation();
-
-  std::unique_ptr<CConnection> m_connection;
-  wayland::surface_t m_surface;
+  virtual void SetContextSize(CSizeInt size) = 0;
 
 private:
   // IInputHandler
@@ -134,8 +144,17 @@ private:
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
   void HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state);
-  bool ResetSurfaceSize(CSizeInt size, std::int32_t scale, bool fullScreen, bool fromConfigure);
-  bool SetSize(CSizeInt configuredSize, IShellSurface::StateBitset state, bool sizeIncludesDecoration = true);
+  bool SetResolutionExternal(bool fullScreen, RESOLUTION_INFO const& res);
+  void SetResolutionInternal(CSizeInt size, std::int32_t scale, bool sizeIncludesDecoration);
+  struct SizeUpdateInformation
+  {
+    bool surfaceSizeChanged : 1;
+    bool bufferSizeChanged : 1;
+    bool configuredSizeChanged : 1;
+    bool bufferScaleChanged : 1;
+  };
+  SizeUpdateInformation UpdateSizeVariables(CSizeInt configuredSize, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration = true);
+  void ApplySizeUpdate(SizeUpdateInformation update);
   
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
   std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
@@ -145,7 +164,7 @@ private:
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
   void UpdateBufferScale();
-  void ApplyBufferScale(std::int32_t scale);
+  void ApplyBufferScale();
   void UpdateTouchDpi();
   void ApplyShellSurfaceState(IShellSurface::StateBitset state);
 
@@ -156,6 +175,7 @@ private:
 
   // Globals
   // -------
+  std::unique_ptr<CConnection> m_connection;
   std::unique_ptr<CRegistry> m_registry;
   /**
    * Registry used exclusively for wayland::seat_t
@@ -219,16 +239,20 @@ private:
 
   // Surface state
   // -------------
+  wayland::surface_t m_surface;
   wayland::output_t m_lastSetOutput;
   /// Set of outputs that show some part of our main surface as indicated by
   /// compositor
   std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
-  /// Size of our surface in "surface coordinates", i.e. without scaling applied
+  /// Size of our surface in "surface coordinates" (i.e. without scaling applied)
+  /// and without window decorations
   CSizeInt m_surfaceSize;
+  /// Size of the buffer that should back the surface (i.e. with scaling applied)
+  CSizeInt m_bufferSize;
   /// Size of the whole window including window decorations as given by configure
   CSizeInt m_configuredSize;
   /// Scale in use for main surface buffer
-  std::int32_t m_scale = 1;
+  int m_scale = 1;
   /// Shell surface state last acked
   IShellSurface::StateBitset m_shellSurfaceState;
 

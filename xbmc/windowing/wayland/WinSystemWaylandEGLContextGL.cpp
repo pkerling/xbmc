@@ -53,24 +53,16 @@ bool CWinSystemWaylandEGLContextGL::InitWindowSystem()
   return true;
 }
 
-bool CWinSystemWaylandEGLContextGL::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
+void CWinSystemWaylandEGLContextGL::SetContextSize(CSizeInt size)
 {
-  if (!CWinSystemWaylandEGLContext::SetFullScreen(fullScreen, res, blankOtherDisplays))
-  {
-    return false;
-  }
+  CWinSystemWaylandEGLContext::SetContextSize(size);
 
   // Propagate changed dimensions to render system if necessary
-  if (m_nWidth != CRenderSystemGL::m_width || m_nHeight != CRenderSystemGL::m_height)
+  if (CRenderSystemGL::m_width != size.Width() || CRenderSystemGL::m_height != size.Height())
   {
-    CLog::LogF(LOGDEBUG, "Resetting render system to %dx%d", m_nWidth, m_nHeight);
-    if (!CRenderSystemGL::ResetRenderSystem(m_nWidth, m_nHeight))
-    {
-      return false;
-    }
+    CLog::LogF(LOGDEBUG, "Resetting render system to %dx%d", size.Width(), size.Height());
+    CRenderSystemGL::ResetRenderSystem(size.Width(), size.Height());
   }
-
-  return true;
 }
 
 void CWinSystemWaylandEGLContextGL::SetVSyncImpl(bool enable)

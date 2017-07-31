@@ -109,9 +109,9 @@ bool CGLContextEGL::CreateDisplay(wayland::display_t& display,
   return true;
 }
 
-bool CGLContextEGL::CreateSurface(wayland::surface_t& surface, int width, int height)
+bool CGLContextEGL::CreateSurface(wayland::surface_t const& surface, CSizeInt size)
 {
-  m_nativeWindow = wayland::egl_window_t(surface, width, height);
+  m_nativeWindow = wayland::egl_window_t(surface, size.Width(), size.Height());
     
   m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
                                                      m_eglConfig,
@@ -146,14 +146,16 @@ bool CGLContextEGL::CreateSurface(wayland::surface_t& surface, int width, int he
   return true;
 }
 
-void CGLContextEGL::GetAttachedSize(int& width, int& height)
+CSizeInt CGLContextEGL::GetAttachedSize()
 {
+  int width, height;
   m_nativeWindow.get_attached_size(width, height);
+  return {width, height};
 }
 
-void CGLContextEGL::Resize(int width, int height)
+void CGLContextEGL::Resize(CSizeInt size)
 {
-  m_nativeWindow.resize(width, height, 0, 0);
+  m_nativeWindow.resize(size.Width(), size.Height(), 0, 0);
 }
 
 void CGLContextEGL::Destroy()
