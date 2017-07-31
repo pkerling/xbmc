@@ -123,19 +123,27 @@ public:
     void* data{};
     std::size_t dataSize{};
     CSizeInt size{};
-    wayland::buffer_t buffer;
+    wayland::buffer_t wlBuffer;
 
     Buffer()
     {}
 
     Buffer(void* data, std::size_t dataSize, CSizeInt size, wayland::buffer_t&& buffer)
-    : data{data}, dataSize{dataSize}, size{size}, buffer{std::move(buffer)}
+    : data{data}, dataSize{dataSize}, size{size}, wlBuffer{std::move(buffer)}
     {}
 
     std::uint32_t* RgbaBuffer()
     {
       return static_cast<std::uint32_t*> (data);
     }
+  };
+
+  struct Surface
+  {
+    wayland::surface_t wlSurface;
+    Buffer buffer;
+    CSizeInt size;
+    int scale{1};
   };
 
 private:
@@ -178,9 +186,8 @@ private:
 
   struct BorderSurface
   {
-    wayland::surface_t surface;
+    Surface surface;
     wayland::subsurface_t subsurface;
-    Buffer currentBuffer;
     CRectInt geometry;
   };
   BorderSurface MakeBorderSurface();
@@ -195,7 +202,7 @@ private:
    */
   CCriticalSection m_mutex;
 
-  std::array<BorderSurface, 4> m_surfaces;
+  std::array<BorderSurface, 4> m_borderSurfaces;
 
   std::set<wayland::buffer_t, WaylandCPtrCompare> m_pendingBuffers;
   CCriticalSection m_pendingBuffersMutex;
@@ -223,7 +230,7 @@ private:
   {
     CRectInt position;
     bool hovered{};
-    std::function<void(Buffer&, CRectInt, bool /* hover */)> draw;
+    std::function<void(Surface&, CRectInt, bool /* hover */)> draw;
     std::function<void()> onClick;
   };
   std::vector<Button> m_buttons;
