@@ -83,6 +83,30 @@ public:
     return *this;
   };
 
+  this_type operator*(T factor) const
+  {
+    return {x * factor, y * factor};
+  }
+
+  this_type& operator*=(T factor)
+  {
+    x *= factor;
+    y *= factor;
+    return *this;
+  }
+
+  this_type operator/(T factor) const
+  {
+    return {x / factor, y / factor};
+  }
+
+  this_type& operator/=(T factor)
+  {
+    x /= factor;
+    y /= factor;
+    return *this;
+  }
+
   bool operator !=(const this_type &point) const
   {
     if (x != point.x) return true;
