@@ -47,7 +47,6 @@ using namespace KODI::MESSAGING;
 #define PVR_CLIENT_AVAHI_SLEEP_TIME_MS     (250)
 
 CPVRClients::CPVRClients(void) :
-    m_bIsSwitchingChannels(false),
     m_playingClientId(-EINVAL),
     m_bIsPlayingLiveTV(false),
     m_bIsPlayingRecording(false)
@@ -374,77 +373,6 @@ CPVRClientCapabilities CPVRClients::GetClientCapabilities(int iClientId) const
 
   CLog::Log(LOGERROR, "PVR - %s - cannot find client %d", __FUNCTION__, iClientId);
   return CPVRClientCapabilities();
-}
-
-std::string CPVRClients::GetStreamURL(const CPVRChannelPtr &channel)
-{
-  assert(channel.get());
-
-  std::string strReturn;
-  PVR_CLIENT client;
-  if (GetCreatedClient(channel->ClientID(), client))
-    strReturn = client->GetLiveStreamURL(channel);
-  else
-    CLog::Log(LOGERROR, "PVR - %s - cannot find client %d", __FUNCTION__, channel->ClientID());
-
-  return strReturn;
-}
-
-bool CPVRClients::SwitchChannel(const CPVRChannelPtr &channel)
-{
-  assert(channel.get());
-
-  {
-    CSingleLock lock(m_critSection);
-    if (m_bIsSwitchingChannels)
-    {
-      CLog::Log(LOGDEBUG, "PVRClients - %s - can't switch to channel '%s'. waiting for the previous switch to complete", __FUNCTION__, channel->ChannelName().c_str());
-      return false;
-    }
-    m_bIsSwitchingChannels = true;
-  }
-
-  bool bSwitchSuccessful(false);
-  CPVRChannelPtr currentChannel(GetPlayingChannel());
-  if (// no channel is currently playing
-      !currentChannel ||
-      // different backend
-      currentChannel->ClientID() != channel->ClientID() ||
-      // stream URL should always be opened as a new file
-      !channel->StreamURL().empty() || !currentChannel->StreamURL().empty())
-  {
-    if (channel->StreamURL().empty())
-    {
-      CloseStream();
-      bSwitchSuccessful = OpenStream(channel, true);
-    }
-    else
-    {
-      CApplicationMessenger::GetInstance().PostMsg(TMSG_MEDIA_PLAY, 0, 0, static_cast<void*>(new CFileItem(channel)));
-      bSwitchSuccessful = true;
-    }
-  }
-  // same channel
-  else if (currentChannel && currentChannel == channel)
-  {
-    bSwitchSuccessful = true;
-  }
-  else
-  {
-    PVR_CLIENT client;
-    if (GetCreatedClient(channel->ClientID(), client))
-      bSwitchSuccessful = client->SwitchChannel(channel);
-  }
-
-  {
-    CSingleLock lock(m_critSection);
-    m_bIsSwitchingChannels = false;
-  }
-
-  if (!bSwitchSuccessful)
-    CLog::Log(LOGERROR, "PVR - %s - cannot switch to channel '%s' on client '%d'",__FUNCTION__, channel->ChannelName().c_str(), channel->ClientID());
-
-  return bSwitchSuccessful;
 }
 
 CPVRChannelPtr CPVRClients::GetPlayingChannel() const
@@ -1048,6 +976,15 @@ bool CPVRClients::SupportsTimers() const
 bool CPVRClients::GetPlayingClient(PVR_CLIENT &client) const
 {
   return GetCreatedClient(GetPlayingClientID(), client);
+}
+
+std::string CPVRClients::GetLiveStreamURL(const CPVRChannelPtr &channel)
+{
+  PVR_CLIENT client;
+  if (GetCreatedClient(channel->ClientID(), client))
+    return client->GetLiveStreamURL(channel);
+
+  return std::string();
 }
 
 bool CPVRClients::OpenStream(const CPVRChannelPtr &channel, bool bIsSwitchingChannel)

@@ -353,7 +353,7 @@ CFileItem::~CFileItem(void)
   m_gameInfoTag = NULL;
 }
 
-const CFileItem& CFileItem::operator=(const CFileItem& item)
+CFileItem& CFileItem::operator=(const CFileItem& item)
 {
   if (this == &item)
     return *this;
@@ -361,7 +361,8 @@ const CFileItem& CFileItem::operator=(const CFileItem& item)
   CGUIListItem::operator=(item);
   m_bLabelPreformatted=item.m_bLabelPreformatted;
   FreeMemory();
-  m_strPath = item.GetPath();
+  m_strPath = item.m_strPath;
+  m_strDynPath = item.m_strDynPath;
   m_bIsParentFolder = item.m_bIsParentFolder;
   m_iDriveType = item.m_iDriveType;
   m_bIsShareOrDrive = item.m_bIsShareOrDrive;
@@ -486,6 +487,7 @@ void CFileItem::Reset()
   m_strDVDLabel.clear();
   m_strTitle.clear();
   m_strPath.clear();
+  m_strDynPath.clear();
   m_dateTime.Reset();
   m_strLockCode.clear();
   m_mimetype.clear();
@@ -510,6 +512,7 @@ void CFileItem::Reset()
   SetInvalid();
 }
 
+// do not archive dynamic path
 void CFileItem::Archive(CArchive& ar)
 {
   CGUIListItem::Archive(ar);
@@ -1717,6 +1720,38 @@ bool CFileItem::IsURL(const CURL& url) const
 bool CFileItem::IsPath(const std::string& path, bool ignoreURLOptions /* = false */) const
 {
   return URIUtils::PathEquals(m_strPath, path, false, ignoreURLOptions);
+}
+
+void CFileItem::SetDynURL(const CURL& url)
+{
+  m_strDynPath = url.Get();
+}
+
+const CURL CFileItem::GetDynURL() const
+{
+  if (!m_strDynPath.empty())
+  {
+    CURL url(m_strDynPath);
+    return url;
+  }
+  else
+  {
+    CURL url(m_strPath);
+    return url;
+  }
+}
+
+const std::string &CFileItem::GetDynPath() const
+{
+  if (!m_strDynPath.empty())
+    return m_strDynPath;
+  else
+    return m_strPath;
+}
+
+void CFileItem::SetDynPath(const std::string &path)
+{
+  m_strDynPath = path;
 }
 
 void CFileItem::SetCueDocument(const CCueDocumentPtr& cuePtr)

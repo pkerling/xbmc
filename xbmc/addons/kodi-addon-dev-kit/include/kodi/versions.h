@@ -107,14 +107,14 @@
 #define ADDON_INSTANCE_VERSION_INPUTSTREAM_XML_ID     "kodi.binary.instance.inputstream"
 #define ADDON_INSTANCE_VERSION_INPUTSTREAM_DEPENDS    "addon-instance/Inputstream.h"
 
-#define ADDON_INSTANCE_VERSION_PERIPHERAL             "1.3.3"
-#define ADDON_INSTANCE_VERSION_PERIPHERAL_MIN         "1.3.3"
+#define ADDON_INSTANCE_VERSION_PERIPHERAL             "1.3.4"
+#define ADDON_INSTANCE_VERSION_PERIPHERAL_MIN         "1.3.4"
 #define ADDON_INSTANCE_VERSION_PERIPHERAL_XML_ID      "kodi.binary.instance.peripheral"
 #define ADDON_INSTANCE_VERSION_PERIPHERAL_DEPENDS     "addon-instance/Peripheral.h" \
                                                       "addon-instance/PeripheralUtils.h"
 
-#define ADDON_INSTANCE_VERSION_PVR                    "5.3.0"
-#define ADDON_INSTANCE_VERSION_PVR_MIN                "5.3.0"
+#define ADDON_INSTANCE_VERSION_PVR                    "5.4.0"
+#define ADDON_INSTANCE_VERSION_PVR_MIN                "5.4.0"
 #define ADDON_INSTANCE_VERSION_PVR_XML_ID             "kodi.binary.instance.pvr"
 #define ADDON_INSTANCE_VERSION_PVR_DEPENDS            "xbmc_pvr_dll.h" \
                                                       "xbmc_pvr_types.h" \

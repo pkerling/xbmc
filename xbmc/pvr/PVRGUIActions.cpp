@@ -157,7 +157,8 @@ namespace PVR
       CSettings::SETTING_PVRRECORD_INSTANTRECORDACTION,
       CSettings::SETTING_PVRPLAYBACK_SWITCHTOFULLSCREEN,
       CSettings::SETTING_PVRPARENTAL_PIN,
-      CSettings::SETTING_PVRPARENTAL_ENABLED
+      CSettings::SETTING_PVRPARENTAL_ENABLED,
+      CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO
     })
   {
   }
@@ -988,6 +989,10 @@ namespace PVR
 
   void CPVRGUIActions::StartPlayback(CFileItem *item, bool bFullscreen) const
   {
+    const CPVRChannelPtr channel = item->GetPVRChannelInfoTag();
+    if (channel)
+      item->SetDynPath(CServiceBroker::GetPVRManager().Clients()->GetLiveStreamURL(channel));
+
     CApplicationMessenger::GetInstance().PostMsg(TMSG_MEDIA_PLAY, 0, 0, static_cast<void*>(item));
     CheckAndSwitchToFullscreen(bFullscreen);
   }
@@ -1089,8 +1094,6 @@ namespace PVR
     }
 
     // switch to channel or if recording present, ask whether to switch or play recording...
-    bool bSwitchSuccessful(false);
-
     if (channel && CheckParentalLock(channel))
     {
       const CPVRRecordingPtr recording(channel->GetRecording());
@@ -1116,25 +1119,21 @@ namespace PVR
       }
 
       StartPlayback(new CFileItem(channel), bFullscreen);
-      if (CServiceBroker::GetSettings().GetInt(CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO) > 0)
-      {
-        CServiceBroker::GetPVRManager().ShowPlayerInfo(CServiceBroker::GetSettings().GetInt(CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO));
-      }
+
+      int iChannelInfoDisplayTime = m_settings.GetIntValue(CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO);
+      if ( iChannelInfoDisplayTime > 0)
+        CServiceBroker::GetPVRManager().ShowPlayerInfo(iChannelInfoDisplayTime);
+
       return true;
     }
 
-    if (!bSwitchSuccessful)
-    {
-      std::string channelName = g_localizeStrings.Get(19029); // Channel
-      if (channel)
-        channelName = channel->ChannelName();
-      std::string msg = StringUtils::Format(g_localizeStrings.Get(19035).c_str(), channelName.c_str()); // CHANNELNAME could not be played. Check the log for details.
+    std::string channelName = g_localizeStrings.Get(19029); // Channel
+    if (channel)
+      channelName = channel->ChannelName();
+    std::string msg = StringUtils::Format(g_localizeStrings.Get(19035).c_str(), channelName.c_str()); // CHANNELNAME could not be played. Check the log for details.
 
-      CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error, g_localizeStrings.Get(19166), msg); // PVR information
-      return false;
-    }
-
-    return true;
+    CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Error, g_localizeStrings.Get(19166), msg); // PVR information
+    return false;
   }
 
   bool CPVRGUIActions::SwitchToChannel(PlaybackType type) const
