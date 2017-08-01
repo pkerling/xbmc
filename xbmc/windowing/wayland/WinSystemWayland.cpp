@@ -339,8 +339,8 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   // * Initialization (which ends here): Everything runs synchronously and init
   //   code that needs events processed must call roundtrip().
   //   This is done for simplicity because it is a lot easier than to make
-  //   everything thread-safe everywhere in the startup code, which is also
-  //   not really necessary.
+  //   everything event-based and thread-safe everywhere in the startup code,
+  //   which is also not really necessary.
   // * Runtime (which starts here): Every object creation from now on
   //   needs to take great care to be thread-safe:
   //   Since the event pump is always running now, there is a tiny window between
@@ -353,6 +353,12 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   //   the runtime of a callback. Luckily this applies to global binding like
   //   wl_output and wl_seat and thus to most if not all runtime object creation
   //   cases we have to support.
+  //   There is another problem when Wayland objects are destructed from the main
+  //   thread: An event handler could be running in parallel, resulting in certain
+  //   doom. So objects should only be deleted in response to compositor events, too.
+  //   They might be hiding behind class member variables, so be wary.
+  //   Note that this does not apply to global teardown since the event pump is
+  //   stopped then.
   CWinEventsWayland::SetDisplay(&m_connection->GetDisplay());
 
   return true;
