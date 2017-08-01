@@ -92,12 +92,6 @@ void CShellSurfaceXdgShellUnstableV6::AckConfigure(std::uint32_t serial)
 
 CShellSurfaceXdgShellUnstableV6::~CShellSurfaceXdgShellUnstableV6()
 {
-  // Unregister global event handlers
-  // FIXME there is still a race when the handler is being invoked at the moment,
-  // since it runs on a separate thread. This affects all global handlers that
-  // capture [this] and needs to get fixed somehow.
-  m_shell.on_ping() = nullptr;
-
   // xdg_shell is picky: must destroy toplevel role before surface
   m_xdgToplevel.proxy_release();
   m_xdgSurface.proxy_release();
