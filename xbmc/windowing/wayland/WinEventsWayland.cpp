@@ -68,12 +68,21 @@ public:
     Create();
   }
 
+  ~CWinEventsWaylandThread()
+  {
+    Stop();
+  }
+
   void Stop()
   {
     CLog::Log(LOGDEBUG, "Stopping Wayland message pump");
-    char c = 0;
-    write(m_pipeWrite, &c, 1);
-    WaitForThreadExit(0);
+    // Set m_bStop
+    StopThread(false);
+    InterruptPoll();
+    // Now wait for actual exit
+    StopThread(true);
+  }
+
   }
 
   wayland::display_t& GetDisplay()
@@ -82,6 +91,11 @@ public:
   }
 
 private:
+  void InterruptPoll()
+  {
+    char c = 0;
+    write(m_pipeWrite, &c, 1);
+  }
 
   void Process() override
   {
@@ -102,7 +116,7 @@ private:
       CLog::Log(LOGDEBUG, "Starting Wayland message pump");
 
       // Run until cancelled or error
-      while (true)
+      while (!m_bStop)
       {
         // dispatch() provides no way to cancel a blocked read from the socket
         // wl_display_disconnect would just close the socket, leading to problems
@@ -125,10 +139,9 @@ private:
           }
         }
 
-        if (cancelPoll.revents & POLLIN || cancelPoll.revents & POLLERR || cancelPoll.revents & POLLHUP || cancelPoll.revents & POLLNVAL)
+        if (cancelPoll.revents & POLLERR || cancelPoll.revents & POLLHUP || cancelPoll.revents & POLLNVAL)
         {
-          // We were cancelled, no need to dispatch events
-          break;
+          throw std::runtime_error("poll() signalled error condition on poll interruption socket");
         }
 
         if (waylandPoll.revents & POLLERR || waylandPoll.revents & POLLHUP || waylandPoll.revents & POLLNVAL)
@@ -173,7 +186,6 @@ void CWinEventsWayland::SetDisplay(wayland::display_t* display)
   else if (g_WlMessagePump)
   {
     // Stop if display is set to nullptr
-    g_WlMessagePump->Stop();
     g_WlMessagePump.reset();
   }
 }
