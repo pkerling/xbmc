@@ -11,7 +11,7 @@
 
 
 if(PKG_CONFIG_FOUND)
-  pkg_check_modules(PC_WAYLANDPP wayland-client++ wayland-egl++ wayland-cursor++ wayland-scanner++ QUIET)
+  pkg_check_modules(PC_WAYLANDPP wayland-client++>=0.1 wayland-egl++ wayland-cursor++ wayland-scanner++ QUIET)
   pkg_check_modules(PC_WAYLAND_PROTOCOLS wayland-protocols>=1.7 QUIET)
   # TODO: Remove check when CMake minimum version is bumped globally
   if(CMAKE_VERSION VERSION_EQUAL 3.4.0 OR CMAKE_VERSION VERSION_GREATER 3.4.0)
@@ -46,12 +46,14 @@ find_path(WAYLAND_PROTOCOLS_DIR NAMES unstable/xdg-shell/xdg-shell-unstable-v6.x
 include (FindPackageHandleStandardArgs)
 find_package_handle_standard_args (Waylandpp
   REQUIRED_VARS
-  WAYLANDPP_INCLUDE_DIR
-  WAYLANDPP_CLIENT_LIBRARY
-  WAYLANDPP_CURSOR_LIBRARY
-  WAYLANDPP_EGL_LIBRARY
-  WAYLANDPP_SCANNER
-  WAYLAND_PROTOCOLS_DIR)
+    WAYLANDPP_INCLUDE_DIR
+    WAYLANDPP_CLIENT_LIBRARY
+    WAYLANDPP_CURSOR_LIBRARY
+    WAYLANDPP_EGL_LIBRARY
+    WAYLANDPP_SCANNER
+    WAYLAND_PROTOCOLS_DIR
+  VERSION_VAR
+    PC_WAYLANDPP_wayland-client++_VERSION)
 
 if (WAYLANDPP_FOUND)
   set(WAYLANDPP_LIBRARIES ${WAYLANDPP_CLIENT_LIBRARY} ${WAYLANDPP_CURSOR_LIBRARY} ${WAYLANDPP_EGL_LIBRARY})
