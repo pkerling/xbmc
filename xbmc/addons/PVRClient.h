@@ -723,8 +723,40 @@ namespace PVR
     bool IsPlayingEncryptedChannel(void) const;
     bool IsPlayingRecording(void) const;
     bool IsPlaying(void) const;
-    CPVRRecordingPtr GetPlayingRecording(void) const;
+
+    /*!
+     * @brief Set the channel that is currently playing.
+     * @param channel The channel that is currently playing.
+     */
+    void SetPlayingChannel(const CPVRChannelPtr channel);
+
+    /*!
+     * @brief Clear the channel that is currently playing, if any.
+     */
+    void ClearPlayingChannel();
+
+    /*!
+     * @brief Get the channel that is currently playing.
+     * @return the channel that is currently playing, NULL otherwise.
+     */
     CPVRChannelPtr GetPlayingChannel() const;
+
+    /*!
+     * @brief Set the recording that is currently playing.
+     * @param recording The recording that is currently playing.
+     */
+    void SetPlayingRecording(const CPVRRecordingPtr recording);
+
+    /*!
+     * @brief Get the recording that is currently playing.
+     * @return The recording that is currently playing, NULL otherwise.
+     */
+    CPVRRecordingPtr GetPlayingRecording() const;
+
+    /*!
+     * @brief Clear the recording that is currently playing, if any.
+     */
+    void ClearPlayingRecording();
 
     static const char *ToString(const PVR_ERROR error);
 
@@ -752,6 +784,11 @@ namespace PVR
      * @brief is real-time stream?
      */
     bool IsRealTimeStream() const;
+
+    /*!
+     * @brief Get Stream times (will be moved to inputstream)
+     */
+    bool GetStreamTimes(PVR_STREAM_TIMES *times);
 
     /*!
      * @brief reads the client's properties

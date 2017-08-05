@@ -332,6 +332,7 @@ const std::string CSettings::SETTING_SERVICES_AIRPLAYPASSWORD = "services.airpla
 const std::string CSettings::SETTING_SERVICES_AIRPLAYVIDEOSUPPORT = "services.airplayvideosupport";
 const std::string CSettings::SETTING_SMB_WINSSERVER = "smb.winsserver";
 const std::string CSettings::SETTING_SMB_WORKGROUP = "smb.workgroup";
+const std::string CSettings::SETTING_SMB_MAXPROTOCOL = "smb.maxprotocol";
 const std::string CSettings::SETTING_VIDEOSCREEN_MONITOR = "videoscreen.monitor";
 const std::string CSettings::SETTING_VIDEOSCREEN_SCREEN = "videoscreen.screen";
 const std::string CSettings::SETTING_VIDEOSCREEN_RESOLUTION = "videoscreen.resolution";
@@ -643,18 +644,13 @@ void CSettings::InitializeDefaults()
 #endif // defined(TARGET_POSIX)
 
 #if defined(TARGET_WINDOWS)
-  #if defined(HAS_DX)
   std::static_pointer_cast<CSettingString>(GetSettingsManager()->GetSetting(CSettings::SETTING_MUSICPLAYER_VISUALISATION))->SetDefault("visualization.milkdrop");
-  #endif
-
-  #if !defined(HAS_GL)
   // We prefer a fake fullscreen mode (window covering the screen rather than dedicated fullscreen)
   // as it works nicer with switching to other applications. However on some systems vsync is broken
   // when we do this (eg non-Aero on ATI in particular) and on others (AppleTV) we can't get XBMC to
   // the front
   if (g_sysinfo.IsAeroDisabled())
     std::static_pointer_cast<CSettingBool>(GetSettingsManager()->GetSetting(CSettings::SETTING_VIDEOSCREEN_FAKEFULLSCREEN))->SetDefault(false);
-  #endif
 #endif
 
 #if !defined(TARGET_WINDOWS)
@@ -995,6 +991,7 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert(CSettings::SETTING_SERVICES_ESCONTINUOUSDELAY);
   settingSet.insert(CSettings::SETTING_SMB_WINSSERVER);
   settingSet.insert(CSettings::SETTING_SMB_WORKGROUP);
+  settingSet.insert(CSettings::SETTING_SMB_MAXPROTOCOL);
   GetSettingsManager()->RegisterCallback(&CNetworkServices::GetInstance(), settingSet);
 
   settingSet.clear();

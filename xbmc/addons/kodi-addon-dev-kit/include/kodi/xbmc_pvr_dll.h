@@ -529,14 +529,6 @@ extern "C"
   //@}
 
   /*!
-   * Delay to use when using switching channels for add-ons not providing an input stream.
-   * If the add-on does provide an input stream, then this method will not be called.
-   * Those add-ons can do that in OpenLiveStream() if needed.
-   * @return The delay in milliseconds.
-   */
-  unsigned int GetChannelSwitchDelay(void);
-
-  /*!
    * Check if the backend support pausing the currently playing stream
    * This will enable/disable the pause button in XBMC based on the return value
    * @return false if the PVR addon/backend does not support pausing, true if possible
@@ -630,6 +622,11 @@ extern "C"
   void OnPowerSavingDeactivated();
 
   /*!
+   * Get stream times. Intermediate, will be moved to inputstream
+   */
+  PVR_ERROR GetStreamTimes(PVR_STREAM_TIMES *times);
+
+  /*!
    * Called by XBMC to assign the function pointers of this add-on to pClient.
    * @param ptr The struct to assign the function pointers to.
    */
@@ -690,7 +687,6 @@ extern "C"
     pClient->toAddon.SignalStatus                   = SignalStatus;
     pClient->toAddon.GetDescrambleInfo              = GetDescrambleInfo;
     pClient->toAddon.GetLiveStreamURL               = GetLiveStreamURL;
-    pClient->toAddon.GetChannelSwitchDelay          = GetChannelSwitchDelay;
     pClient->toAddon.CanPauseStream                 = CanPauseStream;
     pClient->toAddon.PauseStream                    = PauseStream;
     pClient->toAddon.CanSeekStream                  = CanSeekStream;
@@ -724,5 +720,6 @@ extern "C"
     pClient->toAddon.OnSystemWake                   = OnSystemWake;
     pClient->toAddon.OnPowerSavingActivated         = OnPowerSavingActivated;
     pClient->toAddon.OnPowerSavingDeactivated       = OnPowerSavingDeactivated;
+    pClient->toAddon.GetStreamTimes                 = GetStreamTimes;
   };
 };

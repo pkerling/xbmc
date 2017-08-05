@@ -7360,7 +7360,7 @@ bool CGUIInfoManager::GetBool(int condition1, int contextWindow, const CGUIListI
       if (m_currentFile->HasPVRRecordingInfoTag())
       {
         CPVREpgInfoTagPtr epgTag = CServiceBroker::GetPVRManager().EpgContainer().GetTagById(m_currentFile->GetPVRRecordingInfoTag()->Channel(), m_currentFile->GetPVRRecordingInfoTag()->BroadcastUid());
-        bReturn = (epgTag && epgTag->IsActive() && epgTag->ChannelTag());
+        bReturn = (epgTag && epgTag->IsActive() && epgTag->Channel());
       }
       break;
     case VISUALISATION_HAS_PRESETS:
@@ -7970,8 +7970,7 @@ std::string CGUIInfoManager::GetMultiInfoLabel(const GUIInfo &info, int contextW
   }
   else if (info.m_info == PLAYER_START_TIME)
   {
-    CDateTime time(CDateTime::GetCurrentDateTime());
-    time -= CDateTimeSpan(0, 0, 0, static_cast<int>(GetPlayTime()));
+    CDateTime time(g_application.m_pPlayer->GetStartTime());
     return LocalizeTime(time, (TIME_FORMAT)info.GetData1());
   }
   else if (info.m_info == PLAYER_TIME_SPEED)
@@ -9083,13 +9082,8 @@ std::string CGUIInfoManager::GetVideoLabel(int item)
 
 int64_t CGUIInfoManager::GetPlayTime() const
 {
-  if (g_application.m_pPlayer->IsPlaying())
-  {
-    int64_t lPTS = (int64_t)(g_application.GetTime() * 1000);
-    if (lPTS < 0) lPTS = 0;
-    return lPTS;
-  }
-  return 0;
+  int64_t ret = lrint(g_application.GetTime() * 1000);
+  return ret;
 }
 
 std::string CGUIInfoManager::GetCurrentPlayTime(TIME_FORMAT format) const
@@ -9111,7 +9105,7 @@ std::string CGUIInfoManager::GetCurrentSeekTime(TIME_FORMAT format) const
 int CGUIInfoManager::GetTotalPlayTime() const
 {
   int iTotalTime = lrint(g_application.GetTotalTime());
-  return iTotalTime > 0 ? iTotalTime : 0;
+  return iTotalTime;
 }
 
 int CGUIInfoManager::GetPlayTimeRemaining() const
@@ -10328,8 +10322,8 @@ std::string CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, std::
       std::string number;
       if (item->HasPVRChannelInfoTag())
         number = StringUtils::Format("%i", item->GetPVRChannelInfoTag()->ChannelNumber());
-      if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasPVRChannel())
-        number = StringUtils::Format("%i", item->GetEPGInfoTag()->PVRChannelNumber());
+      if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasChannel())
+        number = StringUtils::Format("%i", item->GetEPGInfoTag()->ChannelNumber());
       if (item->HasPVRTimerInfoTag())
         number = StringUtils::Format("%i", item->GetPVRTimerInfoTag()->ChannelNumber());
 
@@ -10341,10 +10335,10 @@ std::string CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, std::
       std::string number;
       if (item->HasPVRChannelInfoTag())
         number = StringUtils::Format("%i", item->GetPVRChannelInfoTag()->SubChannelNumber());
-      if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasPVRChannel())
-        number = StringUtils::Format("%i", item->GetEPGInfoTag()->ChannelTag()->SubChannelNumber());
-      if (item->HasPVRTimerInfoTag())
-        number = StringUtils::Format("%i", item->GetPVRTimerInfoTag()->ChannelTag()->SubChannelNumber());
+      if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasChannel())
+        number = StringUtils::Format("%i", item->GetEPGInfoTag()->Channel()->SubChannelNumber());
+      if (item->HasPVRTimerInfoTag() && item->GetPVRTimerInfoTag()->HasChannel())
+        number = StringUtils::Format("%i", item->GetPVRTimerInfoTag()->Channel()->SubChannelNumber());
 
       return number;
     }
@@ -10354,10 +10348,10 @@ std::string CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, std::
       CPVRChannelPtr channel;
       if (item->HasPVRChannelInfoTag())
         channel = item->GetPVRChannelInfoTag();
-      else if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasPVRChannel())
-        channel = item->GetEPGInfoTag()->ChannelTag();
+      else if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasChannel())
+        channel = item->GetEPGInfoTag()->Channel();
       else if (item->HasPVRTimerInfoTag())
-        channel = item->GetPVRTimerInfoTag()->ChannelTag();
+        channel = item->GetPVRTimerInfoTag()->Channel();
 
       return channel ?
           channel->FormattedChannelNumber() :
@@ -10367,8 +10361,8 @@ std::string CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, std::
   case LISTITEM_CHANNEL_NAME:
     if (item->HasPVRChannelInfoTag())
       return item->GetPVRChannelInfoTag()->ChannelName();
-    if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasPVRChannel())
-      return item->GetEPGInfoTag()->PVRChannelName();
+    if (item->HasEPGInfoTag() && item->GetEPGInfoTag()->HasChannel())
+      return item->GetEPGInfoTag()->ChannelName();
     if (item->HasPVRRecordingInfoTag())
       return item->GetPVRRecordingInfoTag()->m_strChannelName;
     if (item->HasPVRTimerInfoTag())
@@ -10768,9 +10762,9 @@ bool CGUIInfoManager::GetItemBool(const CGUIListItem *item, int condition) const
       {
         return pItem->GetPVRChannelInfoTag()->IsEncrypted();
       }
-      else if (pItem->HasEPGInfoTag() && pItem->GetEPGInfoTag()->HasPVRChannel())
+      else if (pItem->HasEPGInfoTag() && pItem->GetEPGInfoTag()->HasChannel())
       {
-        return pItem->GetEPGInfoTag()->ChannelTag()->IsEncrypted();
+        return pItem->GetEPGInfoTag()->Channel()->IsEncrypted();
       }
     }
     else if (condition == LISTITEM_IS_STEREOSCOPIC)

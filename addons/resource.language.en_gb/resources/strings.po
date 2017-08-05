@@ -1179,6 +1179,7 @@ msgid "Fetching CD information"
 msgstr ""
 
 #: xbmc/dialogs/GUIDialogFileBrowser.cpp
+#: xbmc/games/dialogs/GUIDialogSelectGameClient.cpp
 #: xbmc/pvr/PVRGUIActions.cpp
 #: xbmc/video/dialogs/GUIDialogVideoInfo.cpp
 #: xbmc/music/windows/GUIWindowMusicBase.cpp
@@ -10080,7 +10081,7 @@ msgctxt "#19188"
 msgid "All your guide data will be cleared. Are you sure?"
 msgstr ""
 
-# empty string from id 19189 to 19190
+#empty strings from id 19189 to 19190
 
 #: addons/skin.estuary/xml/SettingsSystemInfo.xml
 msgctxt "#19191"
@@ -10637,7 +10638,7 @@ msgctxt "#19287"
 msgid "All channels"
 msgstr ""
 
-# empty string with id 19288
+#empty string with id 19288
 
 #. Label for button to hide a group in the group manager
 #: addons/skin.estuary/xml/DialogPVRGroupManager.xml
@@ -17084,7 +17085,13 @@ msgctxt "#35255"
 msgid "Browse all emulators"
 msgstr ""
 
-#empty strings from id 35256 to 35504
+#. Error message when a game client fails to install when a game is being launched
+#: xbmc/games/dialogs/GUIDialogSelectGameClient.cpp
+msgctxt "#35256"
+msgid "Failed to install add-on."
+msgstr ""
+
+#empty strings from id 35257 to 35504
 
 #. connection state "host unreachable"
 #: xbmc/pvr/addons/PVRClients.cpp
@@ -18090,7 +18097,7 @@ msgctxt "#36227"
 msgid "Switch to full screen display when starting playback of channels and recordings."
 msgstr ""
 
-# empty string with id 36228
+#empty string with id 36228
 
 #: system/settings/settings.xml
 msgctxt "#36229"
@@ -19638,7 +19645,7 @@ msgctxt "#36577"
 msgid "Specify the resolution for the 3D lookup table. Use a lower resolution for quick preview and higher resolution for more accurate picture. Using a high resolution may take seconds to prepare when parameters are changed or a new video is started."
 msgstr ""
 
-#empty strings from id 36578 to 36579
+#empty string with id 36578
 
 #. primaries labels
 #: xbmc/video/dialogs/GUIDialogVideoSettings.cpp
@@ -19863,7 +19870,49 @@ msgctxt "#36620"
 msgid "Enable high quality downscaling of pictures (uses more memory and has moderate performance impact)."
 msgstr ""
 
-#empty strings from id 36621 to 36899
+#. Label of a setting, allow the maximum smbclient protocol to be configured
+#: system/settings/settings.xml
+msgctxt "#36621"
+msgid "Maximum protocol version"
+msgstr ""
+
+#. Description of setting with label #36621 "Maximum protocol version"
+#: system/settings/settings.xml
+msgctxt "#36622"
+msgid "Set the maximum SMB protocol version to negotiate when making connections. Forcing SMBv2 or SMBv1 compatibility may be required with older NAS and Windows shares."
+msgstr ""
+
+#. Values for setting with label #36621 "Maximum protocol version" - none means "no protocol version is forced"
+#: system/settings/settings.xml
+msgctxt "#36623"
+msgid "None"
+msgstr ""
+
+#. Values for setting with label #36621 "Maximum protocol version"
+#: system/settings/settings.xml
+msgctxt "#36624"
+msgid "SMBv1"
+msgstr ""
+
+#. Values for setting with label #36621 "Maximum protocol version"
+#: system/settings/settings.xml
+msgctxt "#36625"
+msgid "SMBv2"
+msgstr ""
+
+#. Values for setting with label #36621 "Maximum protocol version"
+#: system/settings/settings.xml
+msgctxt "#36626"
+msgid "SMBv3"
+msgstr ""
+
+#. Label of a group, that allows configuration of the system SMB client
+#: system/settings/settings.xml
+msgctxt "#36627"
+msgid "Client"
+msgstr ""
+
+#empty strings from id 36628 to 36899
 
 #: xbmc/media/MediaType.cpp
 msgctxt "#36900"

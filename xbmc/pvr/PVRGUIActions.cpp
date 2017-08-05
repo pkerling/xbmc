@@ -336,7 +336,7 @@ namespace PVR
 
   bool CPVRGUIActions::AddTimer(const CPVRTimerInfoTagPtr &item) const
   {
-    if (!item->ChannelTag() && item->GetTimerType() && !item->GetTimerType()->IsEpgBasedTimerRule())
+    if (!item->Channel() && item->GetTimerType() && !item->GetTimerType()->IsEpgBasedTimerRule())
     {
       CLog::Log(LOGERROR, "CPVRGUIActions - %s - no channel given", __FUNCTION__);
       CGUIDialogOK::ShowAndGetInput(CVariant{19033}, CVariant{19109}); // "Information", "Couldn't save timer. Check the log for more information about this message."
@@ -349,7 +349,7 @@ namespace PVR
       return false;
     }
 
-    if (!CheckParentalLock(item->ChannelTag()))
+    if (!CheckParentalLock(item->Channel()))
       return false;
 
     return CServiceBroker::GetPVRManager().Timers()->AddTimer(item);
@@ -1121,7 +1121,7 @@ namespace PVR
       StartPlayback(new CFileItem(channel), bFullscreen);
 
       int iChannelInfoDisplayTime = m_settings.GetIntValue(CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO);
-      if ( iChannelInfoDisplayTime > 0)
+      if (iChannelInfoDisplayTime > 0)
         CServiceBroker::GetPVRManager().ShowPlayerInfo(iChannelInfoDisplayTime);
 
       return true;
@@ -1353,9 +1353,9 @@ namespace PVR
     {
       if (item->IsEPG())
       {
-        if (item->GetEPGInfoTag()->HasPVRChannel())
+        if (item->GetEPGInfoTag()->HasChannel())
         {
-          iClientID = item->GetEPGInfoTag()->ChannelTag()->ClientID();
+          iClientID = item->GetEPGInfoTag()->Channel()->ClientID();
           menuCategory = PVR_MENUHOOK_EPG;
         }
         else

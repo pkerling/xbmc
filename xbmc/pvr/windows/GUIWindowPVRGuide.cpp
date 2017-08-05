@@ -74,7 +74,7 @@ void CGUIWindowPVRGuideBase::Init()
     epgGridContainer->GoToNow();
   }
 
-  if (!m_refreshTimelineItemsThread)
+  if (epgGridContainer && !epgGridContainer->HasData())
   {
     CSingleLock lock(m_critSection);
     m_bRefreshTimelineItems = true; // force data update on first window open
@@ -563,12 +563,12 @@ void CGUIWindowPVRGuideBase::OnInputDone()
     for (const CFileItemPtr event : m_vecItems->GetList())
     {
       const CPVREpgInfoTagPtr tag(event->GetEPGInfoTag());
-      if (tag->HasPVRChannel() && tag->PVRChannelNumber() == iChannelNumber)
+      if (tag->HasChannel() && tag->ChannelNumber() == iChannelNumber)
       {
         CGUIEPGGridContainer* epgGridContainer = GetGridControl();
         if (epgGridContainer)
         {
-          epgGridContainer->SetChannel(tag->ChannelTag());
+          epgGridContainer->SetChannel(tag->Channel());
           return;
         }
       }

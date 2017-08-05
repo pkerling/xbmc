@@ -345,6 +345,7 @@ void CPVRClient::WriteClientTimerInfo(const CPVRTimerInfoTag &xbmcTimer, PVR_TIM
   addonTimer.iMarginEnd                = xbmcTimer.m_iMarginEnd;
   addonTimer.iGenreType                = epgTag ? epgTag->GenreType() : 0;
   addonTimer.iGenreSubType             = epgTag ? epgTag->GenreSubType() : 0;
+  strncpy(addonTimer.strSeriesLink, xbmcTimer.SeriesLink().c_str(), sizeof(addonTimer.strSeriesLink) - 1);
 }
 
 /*!
@@ -1311,6 +1312,13 @@ bool CPVRClient::IsPlaying(void) const
          IsPlayingRecording();
 }
 
+void CPVRClient::SetPlayingChannel(const CPVRChannelPtr channel)
+{
+  CSingleLock lock(m_critSection);
+  m_playingChannel = channel;
+  m_bIsPlayingTV = true;
+}
+
 CPVRChannelPtr CPVRClient::GetPlayingChannel() const
 {
   CSingleLock lock(m_critSection);
@@ -1320,6 +1328,20 @@ CPVRChannelPtr CPVRClient::GetPlayingChannel() const
   return CPVRChannelPtr();
 }
 
+void CPVRClient::ClearPlayingChannel()
+{
+  CSingleLock lock(m_critSection);
+  m_playingChannel.reset();
+  m_bIsPlayingTV = false;
+}
+
+void CPVRClient::SetPlayingRecording(const CPVRRecordingPtr recording)
+{
+  CSingleLock lock(m_critSection);
+  m_playingRecording = recording;
+  m_bIsPlayingRecording = true;
+}
+
 CPVRRecordingPtr CPVRClient::GetPlayingRecording(void) const
 {
   CSingleLock lock(m_critSection);
@@ -1327,6 +1349,13 @@ CPVRRecordingPtr CPVRClient::GetPlayingRecording(void) const
     return m_playingRecording;
 
   return CPVRRecordingPtr();
+}
+
+void CPVRClient::ClearPlayingRecording()
+{
+  CSingleLock lock(m_critSection);
+  m_playingRecording.reset();
+  m_bIsPlayingRecording = false;
 }
 
 bool CPVRClient::OpenStream(const CPVRChannelPtr &channel, bool bIsSwitchingChannel)
@@ -1347,15 +1376,6 @@ bool CPVRClient::OpenStream(const CPVRChannelPtr &channel, bool bIsSwitchingChan
     bReturn = m_struct.toAddon.OpenLiveStream(tag);
   }
 
-  if (bReturn)
-  {
-    CPVRChannelPtr currentChannel(CServiceBroker::GetPVRManager().ChannelGroups()->GetByUniqueID(channel->UniqueID(), channel->ClientID()));
-    CSingleLock lock(m_critSection);
-    m_playingChannel      = currentChannel;
-    m_bIsPlayingTV        = true;
-    m_bIsPlayingRecording = false;
-  }
-
   return bReturn;
 }
 
@@ -1372,14 +1392,6 @@ bool CPVRClient::OpenStream(const CPVRRecordingPtr &recording)
     bReturn = m_struct.toAddon.OpenRecordedStream(tag);
   }
 
-  if (bReturn)
-  {
-    CSingleLock lock(m_critSection);
-    m_playingRecording    = recording;
-    m_bIsPlayingTV        = false;
-    m_bIsPlayingRecording = true;
-  }
-
   return bReturn;
 }
 
@@ -1388,16 +1400,10 @@ void CPVRClient::CloseStream(void)
   if (IsPlayingLiveStream())
   {
     m_struct.toAddon.CloseLiveStream();
-
-    CSingleLock lock(m_critSection);
-    m_bIsPlayingTV = false;
   }
   else if (IsPlayingRecording())
   {
     m_struct.toAddon.CloseRecordedStream();
-
-    CSingleLock lock(m_critSection);
-    m_bIsPlayingRecording = false;
   }
 }
 
@@ -1482,6 +1488,17 @@ time_t CPVRClient::GetBufferTimeEnd(void) const
     time = m_struct.toAddon.GetBufferTimeEnd();
   }
   return time;
+}
+
+bool CPVRClient::GetStreamTimes(PVR_STREAM_TIMES *times)
+{
+  bool ret = false;
+  if (IsPlaying())
+  {
+    if (m_struct.toAddon.GetStreamTimes(times) == PVR_ERROR_NO_ERROR)
+      ret = true;
+  }
+  return ret;
 }
 
 bool CPVRClient::IsRealTimeStream(void) const

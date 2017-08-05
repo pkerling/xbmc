@@ -2932,8 +2932,9 @@ bool CApplication::PlayMedia(const CFileItem& item, const std::string &player, i
   //If item is a plugin, expand out now and run ourselves again
   if (item.IsPlugin())
   {
+    bool resume = item.m_lStartOffset == STARTOFFSET_RESUME;
     CFileItem item_new(item);
-    if (XFILE::CPluginDirectory::GetPluginResult(item.GetPath(), item_new))
+    if (XFILE::CPluginDirectory::GetPluginResult(item.GetPath(), item_new, resume))
       return PlayMedia(item_new, player, iPlaylist);
     return false;
   }
@@ -3211,8 +3212,9 @@ PlayBackRet CApplication::PlayFile(CFileItem item, const std::string& player, bo
 
   if (item.IsPlugin())
   { // we modify the item so that it becomes a real URL
+    bool resume = item.m_lStartOffset == STARTOFFSET_RESUME;
     CFileItem item_new(item);
-    if (XFILE::CPluginDirectory::GetPluginResult(item.GetPath(), item_new))
+    if (XFILE::CPluginDirectory::GetPluginResult(item.GetPath(), item_new, resume))
       return PlayFile(std::move(item_new), player, false);
     return PLAYBACK_FAIL;
   }
@@ -3515,6 +3517,8 @@ void CApplication::OnPlayBackEnded()
   CDarwinUtils::EnableOSScreenSaver(true);
 #endif
 
+  CServiceBroker::GetPVRManager().OnPlaybackEnded(m_itemCurrentFile);
+
   CVariant data(CVariant::VariantTypeObject);
   data["end"] = true;
   CAnnouncementManager::GetInstance().Announce(Player, "xbmc", "OnStop", m_itemCurrentFile, data);
@@ -3542,6 +3546,8 @@ void CApplication::OnPlayBackStarted()
   if (m_pPlayer->IsPlayingVideo())
     CDarwinUtils::EnableOSScreenSaver(false);
 #endif
+
+  CServiceBroker::GetPVRManager().OnPlaybackStarted(m_itemCurrentFile);
 
   CGUIMessage msg(GUI_MSG_PLAYBACK_STARTED, 0, 0);
   g_windowManager.SendThreadMessage(msg);
@@ -3581,6 +3587,8 @@ void CApplication::OnPlayBackStopped()
 #elif defined(TARGET_DARWIN_IOS)
   CDarwinUtils::EnableOSScreenSaver(true);
 #endif
+
+  CServiceBroker::GetPVRManager().OnPlaybackStopped(m_itemCurrentFile);
 
   CVariant data(CVariant::VariantTypeObject);
   data["end"] = false;
@@ -4241,7 +4249,7 @@ bool CApplication::OnMessage(CGUIMessage& message)
       // handle plugin://
       CURL url(file.GetPath());
       if (url.IsProtocol("plugin"))
-        XFILE::CPluginDirectory::GetPluginResult(url.Get(), file);
+        XFILE::CPluginDirectory::GetPluginResult(url.Get(), file, false);
 
       // Don't queue if next media type is different from current one
       if ((!file.IsVideo() && m_pPlayer->IsPlayingVideo())
@@ -4676,11 +4684,6 @@ std::shared_ptr<CFileItem> CApplication::CurrentFileItemPtr()
 CFileItem& CApplication::CurrentFileItem()
 {
   return *m_itemCurrentFile;
-}
-
-void CApplication::SetCurrentFileItem(const CFileItem& item)
-{
-  m_itemCurrentFile.reset(new CFileItem(item));
 }
 
 CFileItem& CApplication::CurrentUnstackedItem()
