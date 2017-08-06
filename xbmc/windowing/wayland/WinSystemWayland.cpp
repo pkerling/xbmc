@@ -59,7 +59,6 @@
 #endif
 
 using namespace KODI::WINDOWING;
-using namespace KODI::WINDOWING::LINUX;
 using namespace KODI::WINDOWING::WAYLAND;
 using namespace std::placeholders;
 
@@ -1078,10 +1077,10 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
     return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverIdleInhibitUnstableV1(m_connection->GetIdleInhibitManagerUnstableV1(), m_surface));
   }
 #if defined(HAVE_DBUS)
-  else if (COSScreenSaverFreedesktop::IsAvailable())
+  else if (KODI::WINDOWING::LINUX::COSScreenSaverFreedesktop::IsAvailable())
   {
     CLog::LogF(LOGINFO, "Using freedesktop.org DBus interface for screen saver inhibition");
-    return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverFreedesktop);
+    return std::unique_ptr<IOSScreenSaver>(new KODI::WINDOWING::LINUX::COSScreenSaverFreedesktop);
   }
 #endif
   else
