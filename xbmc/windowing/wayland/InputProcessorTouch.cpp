@@ -32,7 +32,7 @@ CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch)
     // Find free Kodi pointer number
     int kodiPointer = -1;
     // Not optimal, but irrelevant for the small number of iterations
-    for (int testPointer = 0; testPointer < TOUCH_MAX_POINTERS; testPointer++)
+    for (int testPointer = 0; testPointer < CGenericTouchInputHandler::MAX_POINTERS; testPointer++)
     {
       if (std::all_of(m_touchPoints.cbegin(), m_touchPoints.cend(),
                       [=](decltype(m_touchPoints)::value_type const& pair)
