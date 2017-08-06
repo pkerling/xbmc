@@ -64,7 +64,7 @@ bool CWinSystemWaylandEGLContextGL::SetFullScreen(bool fullScreen, RESOLUTION_IN
   if (m_nWidth != CRenderSystemGL::m_width || m_nHeight != CRenderSystemGL::m_height)
   {
     CLog::LogF(LOGDEBUG, "Resetting render system to %dx%d", m_nWidth, m_nHeight);
-    if (!CRenderSystemGL::ResetRenderSystem(m_nWidth, m_nHeight, fullScreen, res.fRefreshRate))
+    if (!CRenderSystemGL::ResetRenderSystem(m_nWidth, m_nHeight))
     {
       return false;
     }
