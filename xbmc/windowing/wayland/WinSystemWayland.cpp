@@ -52,8 +52,11 @@
 #include "utils/StringUtils.h"
 #include "VideoSyncWpPresentation.h"
 #include "WinEventsWayland.h"
-#include "windowing/linux/OSScreenSaverFreedesktop.h"
 #include "utils/TimeUtils.h"
+
+#if defined(HAVE_DBUS)
+# include "windowing/linux/OSScreenSaverFreedesktop.h"
+#endif
 
 using namespace KODI::WINDOWING;
 using namespace KODI::WINDOWING::LINUX;
@@ -1074,11 +1077,13 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
     CLog::LogF(LOGINFO, "Using idle-inhibit-unstable-v1 protocol for screen saver inhibition");
     return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverIdleInhibitUnstableV1(m_connection->GetIdleInhibitManagerUnstableV1(), m_surface));
   }
+#if defined(HAVE_DBUS)
   else if (COSScreenSaverFreedesktop::IsAvailable())
   {
     CLog::LogF(LOGINFO, "Using freedesktop.org DBus interface for screen saver inhibition");
     return std::unique_ptr<IOSScreenSaver>(new COSScreenSaverFreedesktop);
   }
+#endif
   else
   {
     CLog::LogF(LOGINFO, "No supported method for screen saver inhibition found");
