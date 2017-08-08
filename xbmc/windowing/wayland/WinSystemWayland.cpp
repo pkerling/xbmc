@@ -737,15 +737,6 @@ void CWinSystemWayland::ProcessMessages()
   }
 }
 
-void CWinSystemWayland::SetInhibitSkinReload(bool inhibit)
-{
-  m_inhibitSkinReload = inhibit;
-  if (!inhibit)
-  {
-    g_application.ReloadSkin();
-  }
-}
-
 void CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state)
 {
   m_windowDecorator->SetState(m_configuredSize, m_scale, state);

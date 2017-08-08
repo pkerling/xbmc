@@ -82,8 +82,6 @@ public:
 
   std::string GetClipboardText() override;
 
-  void SetInhibitSkinReload(bool inhibit);
-
   float GetSyncOutputRefreshRate();
   float GetDisplayLatency() override;
   float GetFrameLatencyAdjustment() override;
@@ -266,7 +264,6 @@ private:
   std::uint32_t m_lastAckedSerial = 0;
   /// Whether this is the first call to SetFullScreen
   bool m_isInitialSetFullScreen = true;
-  bool m_inhibitSkinReload = false;
 };
 
 
