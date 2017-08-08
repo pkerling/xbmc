@@ -75,6 +75,7 @@ public:
   int GetCurrentScreen() override;
 
   bool CanDoWindowed() override;
+  bool Minimize() override;
   
   bool HasCursor() override;
   void ShowOSMouse(bool show) override;

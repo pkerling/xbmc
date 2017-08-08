@@ -947,6 +947,11 @@ std::string CWinSystemWayland::UserFriendlyOutputName(std::shared_ptr<COutput> c
   return StringUtils::Join(parts, " ");
 }
 
+bool CWinSystemWayland::Minimize()
+{
+  m_shellSurface->SetMinimized();
+  return true;
+}
 
 bool CWinSystemWayland::HasCursor()
 {
