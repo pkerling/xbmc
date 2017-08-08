@@ -947,17 +947,6 @@ std::string CWinSystemWayland::UserFriendlyOutputName(std::shared_ptr<COutput> c
   return StringUtils::Join(parts, " ");
 }
 
-bool CWinSystemWayland::Hide()
-{
-  // wl_shell_surface does not really support this - wait for xdg_shell
-  return false;
-}
-
-bool CWinSystemWayland::Show(bool raise)
-{
-  // wl_shell_surface does not really support this - wait for xdg_shell
-  return true;
-}
 
 bool CWinSystemWayland::HasCursor()
 {
