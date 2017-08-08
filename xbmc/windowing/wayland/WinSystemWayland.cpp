@@ -1314,18 +1314,17 @@ std::unique_ptr<IOSScreenSaver> CWinSystemWayland::GetOSScreenSaverImpl()
       return ptr;
     }
   }
+
 #if defined(HAVE_DBUS)
-  else if (KODI::WINDOWING::LINUX::COSScreenSaverFreedesktop::IsAvailable())
+  if (KODI::WINDOWING::LINUX::COSScreenSaverFreedesktop::IsAvailable())
   {
     CLog::LogF(LOGINFO, "Using freedesktop.org DBus interface for screen saver inhibition");
     return std::unique_ptr<IOSScreenSaver>(new KODI::WINDOWING::LINUX::COSScreenSaverFreedesktop);
   }
 #endif
-  else
-  {
-    CLog::LogF(LOGINFO, "No supported method for screen saver inhibition found");
-    return nullptr;
-  }
+
+  CLog::LogF(LOGINFO, "No supported method for screen saver inhibition found");
+  return nullptr;
 }
 
 std::string CWinSystemWayland::GetClipboardText()
