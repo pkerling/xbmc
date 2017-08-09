@@ -69,6 +69,8 @@ public:
 
   bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop) override;
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
+  void FinishModeChange(RESOLUTION res) override;
+  void FinishWindowResize(int newWidth, int newHeight) override;
 
   void UpdateResolutions() override;
   int GetNumScreens() override;
@@ -142,7 +144,14 @@ private:
   void SendFocusChange(bool focus);
   void HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state);
   bool SetResolutionExternal(bool fullScreen, RESOLUTION_INFO const& res);
-  void SetResolutionInternal(CSizeInt size, std::int32_t scale, bool sizeIncludesDecoration);
+  void SetResolutionInternal(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration, bool mustAck = false, std::uint32_t configureSerial = 0u);
+  struct Sizes
+  {
+    CSizeInt surfaceSize;
+    CSizeInt bufferSize;
+    CSizeInt configuredSize;
+  };
+  Sizes CalculateSizes(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration);
   struct SizeUpdateInformation
   {
     bool surfaceSizeChanged : 1;
@@ -150,8 +159,9 @@ private:
     bool configuredSizeChanged : 1;
     bool bufferScaleChanged : 1;
   };
-  SizeUpdateInformation UpdateSizeVariables(CSizeInt configuredSize, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration = true);
+  SizeUpdateInformation UpdateSizeVariables(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration);
   void ApplySizeUpdate(SizeUpdateInformation update);
+  void ApplyNextState();
   
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
   std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
@@ -241,6 +251,7 @@ private:
   /// Set of outputs that show some part of our main surface as indicated by
   /// compositor
   std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
+  CCriticalSection m_surfaceOutputsMutex;
   /// Size of our surface in "surface coordinates" (i.e. without scaling applied)
   /// and without window decorations
   CSizeInt m_surfaceSize;
@@ -252,6 +263,15 @@ private:
   int m_scale = 1;
   /// Shell surface state last acked
   IShellSurface::StateBitset m_shellSurfaceState;
+  struct
+  {
+    bool mustBeAcked{false};
+    std::uint32_t configureSerial{};
+    CSizeInt configuredSize;
+    int scale{1};
+    IShellSurface::StateBitset shellSurfaceState;
+  } m_next;
+  bool m_waitingForApply{false};
 
   // Internal communication
   // ----------------------

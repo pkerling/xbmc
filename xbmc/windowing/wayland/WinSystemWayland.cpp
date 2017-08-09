@@ -240,7 +240,9 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     if (auto output = FindOutputByWaylandOutput(wloutput))
     {
       CLog::Log(LOGDEBUG, "Entering output \"%s\" with scale %d and %.3f dpi", UserFriendlyOutputName(output).c_str(), output->GetScale(), output->GetCurrentDpi());
+      CSingleLock lock(m_surfaceOutputsMutex);
       m_surfaceOutputs.emplace(output);
+      lock.Leave();
       UpdateBufferScale();
       UpdateTouchDpi();
     }
@@ -254,7 +256,9 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     if (auto output = FindOutputByWaylandOutput(wloutput))
     {
       CLog::Log(LOGDEBUG, "Leaving output \"%s\" with scale %d", UserFriendlyOutputName(output).c_str(), output->GetScale());
+      CSingleLock lock(m_surfaceOutputsMutex);
       m_surfaceOutputs.erase(output);
+      lock.Leave();
       UpdateBufferScale();
       UpdateTouchDpi();
     }
@@ -530,9 +534,10 @@ bool CWinSystemWayland::SetResolutionExternal(bool fullScreen, RESOLUTION_INFO c
   // We can honor the Kodi-requested size only if we are not bound by configure rules,
   // which applies for maximized and fullscreen states.
   // Also, setting an unconfigured size when just going fullscreen makes no sense.
-  bool mustHonorSize = m_shellSurfaceState.test(IShellSurface::STATE_MAXIMIZED) || m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || fullScreen;
+  // Give precedence to the size we have still pending, if any.
+  bool mustHonorSize = m_waitingForApply || m_shellSurfaceState.test(IShellSurface::STATE_MAXIMIZED) || m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN) || fullScreen;
 
-  CLog::LogF(LOGINFO, "Wayland asked to switch mode to %dx%d @%.3f Hz on output \"%s\" %s", res.iWidth, res.iHeight, res.fRefreshRate, res.strOutput.c_str(), fullScreen ? "full screen" : "windowed");
+  CLog::LogF(LOGINFO, "Kodi asked to switch mode to %dx%d @%.3f Hz on output \"%s\" %s", res.iWidth, res.iHeight, res.fRefreshRate, res.strOutput.c_str(), fullScreen ? "full screen" : "windowed");
 
   if (fullScreen)
   {
@@ -643,6 +648,14 @@ void CWinSystemWayland::ApplySizeUpdate(SizeUpdateInformation update)
 
 void CWinSystemWayland::ProcessMessages()
 {
+  if (m_waitingForApply)
+  {
+    // Do not put multiple size updates into the pipeline, this would only make
+    // it more complicated without any real benefit. Wait until the size was reconfigured,
+    // then process events again.
+    return;
+  }
+
   Actor::Message* message{};
   MessageHandle lastConfigureMessage;
   int skippedConfigures = -1;
@@ -664,16 +677,23 @@ void CWinSystemWayland::ProcessMessages()
         lastConfigureMessage = std::move(guard);
         break;
       case WinSystemWaylandProtocol::OUTPUT_HOTPLUG:
+      {
+        CLog::LogF(LOGDEBUG, "Output hotplug, re-reading resolutions");
+        UpdateResolutions();
+        CSingleLock lock(m_outputsMutex);
+        auto const& desktopRes = CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP);
+        auto output = FindOutputByUserFriendlyName(desktopRes.strOutput);
+        auto const& wlOutput = output->GetWaylandOutput();
         // Maybe the output that was added was the one we should be on?
-        if (m_bFullScreen)
+        if (m_bFullScreen && m_lastSetOutput != wlOutput)
         {
-          CLog::LogF(LOGDEBUG, "Output hotplug in full screen mode: Re-reading resolutions");
-          UpdateResolutions();
-          // This will call SetFullScreen(), which will match the output against
-          // the information from the resolution and call set_fullscreen on the
-          // surface if it changed.
-          g_graphicsContext.SetVideoResolution(g_graphicsContext.GetVideoResolution(), true);
+          CLog::LogF(LOGDEBUG, "Output hotplug resulted in monitor set in settings appearing, switching");
+          // Switch to this output
+          m_lastSetOutput = wlOutput;
+          m_shellSurface->SetFullScreen(wlOutput, desktopRes.fRefreshRate);
+          // SetOutput will result in a configure that updates the actual context size
         }
+      }
         break;
       case WinSystemWaylandProtocol::BUFFER_SCALE:
         // Never update buffer scale if not possible to set it
@@ -699,7 +719,7 @@ void CWinSystemWayland::ProcessMessages()
     // Wayland-announced size for rendering or corrupted graphics output will result.
     auto configure = reinterpret_cast<WinSystemWaylandProtocol::MsgConfigure*> (lastConfigureMessage.Get()->data);
     CLog::LogF(LOGDEBUG, "Configure serial %u: size %dx%d state %s", configure->serial, configure->surfaceSize.Width(), configure->surfaceSize.Height(), IShellSurface::StateToString(configure->state).c_str());
-    ApplyShellSurfaceState(configure->state);
+    
 
     CSizeInt size = configure->surfaceSize;
     bool sizeIncludesDecoration = true;
@@ -725,15 +745,13 @@ void CWinSystemWayland::ProcessMessages()
       }
     }
 
-    SetResolutionInternal(size, newScale, sizeIncludesDecoration);
-    AckConfigure(configure->serial);
+    SetResolutionInternal(size, newScale, configure->state, sizeIncludesDecoration, true, configure->serial);
   }
-
   // If we were also configured, scale is already taken care of. But it could
   // also be a scale change without configure, so apply that.
-  if (m_scale != newScale)
+  else if (m_scale != newScale)
   {
-    SetResolutionInternal(m_configuredSize, newScale, true);
+    SetResolutionInternal(m_configuredSize, newScale, m_shellSurfaceState, true, false);
   }
 }
 
@@ -775,89 +793,120 @@ void CWinSystemWayland::AckConfigure(std::uint32_t serial)
  * \param scale new buffer scale
  * \param sizeIncludesDecoration whether size includes the size of the window decorations if present
  */
-void CWinSystemWayland::SetResolutionInternal(CSizeInt size, std::int32_t scale, bool sizeIncludesDecoration)
+void CWinSystemWayland::SetResolutionInternal(CSizeInt size, std::int32_t scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration, bool mustAck, std::uint32_t configureSerial)
 {
-  bool fullScreen = m_shellSurfaceState.test(IShellSurface::STATE_FULLSCREEN);
-  auto updateResult = UpdateSizeVariables(size, scale, m_shellSurfaceState, sizeIncludesDecoration);
+  // This should never be called while a size set is pending
+  assert(!m_waitingForApply);
+
+  bool fullScreen = state.test(IShellSurface::STATE_FULLSCREEN);
+  auto sizes = CalculateSizes(size, scale, state, sizeIncludesDecoration);
+
+  CLog::LogF(LOGDEBUG, "Set size for serial %" PRIu32 ": %dx%d %s decoration at scale %d state %s", configureSerial, size.Width(), size.Height(), sizeIncludesDecoration ? "including" : "excluding", scale, IShellSurface::StateToString(state).c_str());
  
   // Get actual frame rate from monitor, take highest frame rate if multiple
-  // m_surfaceOutputs is only updated from event handling thread, so no lock
-  auto maxRefreshIt = std::max_element(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(), OutputCurrentRefreshRateComparer());
   float refreshRate = m_fRefreshRate;
-  if (maxRefreshIt != m_surfaceOutputs.cend())
   {
-    refreshRate = (*maxRefreshIt)->GetCurrentMode().GetRefreshInHz();
-    CLog::LogF(LOGDEBUG, "Resolved actual (maximum) refresh rate to %.3f Hz on output \"%s\"", refreshRate, UserFriendlyOutputName(*maxRefreshIt).c_str());
+    CSingleLock lock(m_surfaceOutputsMutex);
+    auto maxRefreshIt = std::max_element(m_surfaceOutputs.cbegin(), m_surfaceOutputs.cend(), OutputCurrentRefreshRateComparer());
+    if (maxRefreshIt != m_surfaceOutputs.cend())
+    {
+      refreshRate = (*maxRefreshIt)->GetCurrentMode().GetRefreshInHz();
+      CLog::LogF(LOGDEBUG, "Resolved actual (maximum) refresh rate to %.3f Hz on output \"%s\"", refreshRate, UserFriendlyOutputName(*maxRefreshIt).c_str());
+    }
   }
 
+  m_next.mustBeAcked = mustAck;
+  m_next.configureSerial = configureSerial;
+  m_next.configuredSize = sizes.configuredSize;
+  m_next.scale = scale;
+  m_next.shellSurfaceState = state;
+
   // Check if any parameters of the Kodi resolution configuration changed
-  if (refreshRate != m_fRefreshRate || updateResult.bufferSizeChanged || m_bFullScreen != fullScreen)
+  if (refreshRate != m_fRefreshRate || sizes.bufferSize != m_bufferSize || m_bFullScreen != fullScreen)
   {
-    // Update Kodi resolution
-
-    m_fRefreshRate = refreshRate;
-    m_bFullScreen = fullScreen;
-
-    RESOLUTION switchToRes = RES_INVALID;
-
-    // Find matching Kodi resolution member
-    if (!m_bFullScreen)
+    if (!fullScreen)
     {
-      switchToRes = RES_WINDOW;
-      SetWindowResolution(m_bufferSize.Width(), m_bufferSize.Height());
-      // Save window size: Use unscaled size so we can start with same size
-      // no matter what monitor we are placed on at start
-      CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_WIDTH, m_surfaceSize.Width());
-      CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_HEIGHT, m_surfaceSize.Height());
-      CServiceBroker::GetSettings().Save();
+      if (m_bFullScreen)
+      {
+        XBMC_Event msg{XBMC_MODECHANGE};
+        msg.mode.res = RES_WINDOW;
+        SetWindowResolution(sizes.bufferSize.Width(), sizes.bufferSize.Height());
+        CWinEvents::MessagePush(&msg);
+        m_waitingForApply = true;
+        CLog::LogF(LOGDEBUG, "Queued change to windowed mode size %dx%d", sizes.bufferSize.Width(), sizes.bufferSize.Height());
+      }
+      else
+      {
+        XBMC_Event msg{XBMC_VIDEORESIZE};
+        msg.resize = {sizes.bufferSize.Width(), sizes.bufferSize.Height()};
+        CWinEvents::MessagePush(&msg);
+        m_waitingForApply = true;
+        CLog::LogF(LOGDEBUG, "Queued change to windowed buffer size %dx%d", sizes.bufferSize.Width(), sizes.bufferSize.Height());
+      }
     }
     else
     {
-      switchToRes = FindMatchingCustomResolution(m_bufferSize, m_fRefreshRate);
-      if (switchToRes == RES_INVALID)
+      // Find matching Kodi resolution member
+      RESOLUTION res = FindMatchingCustomResolution(sizes.bufferSize, refreshRate);
+      if (res == RES_INVALID)
       {
         // Add new resolution if none found
         RESOLUTION_INFO newResInfo;
-        UpdateDesktopResolution(newResInfo, 0, m_bufferSize.Width(), m_bufferSize.Height(), m_fRefreshRate);
+        UpdateDesktopResolution(newResInfo, 0, sizes.bufferSize.Width(), sizes.bufferSize.Height(), refreshRate);
         newResInfo.strOutput = CDisplaySettings::GetInstance().GetCurrentResolutionInfo().strOutput; // we just assume the compositor put us on the right output
         CDisplaySettings::GetInstance().AddResolutionInfo(newResInfo);
         CDisplaySettings::GetInstance().ApplyCalibrations();
-        switchToRes = static_cast<RESOLUTION> (CDisplaySettings::GetInstance().ResolutionInfoSize() - 1);
+        res = static_cast<RESOLUTION> (CDisplaySettings::GetInstance().ResolutionInfoSize() - 1);
       }
+
+      XBMC_Event msg{XBMC_MODECHANGE};
+      msg.mode.res = res;
+      CWinEvents::MessagePush(&msg);
+      m_waitingForApply = true;
+      CLog::LogF(LOGDEBUG, "Queued change to resolution %d surface size %dx%d scale %d state %s", res, sizes.surfaceSize.Width(), sizes.surfaceSize.Height(), scale, IShellSurface::StateToString(state).c_str());
     }
-
-    // RES_DESKTOP does not change usually, it is still the current resolution
-    // of the selected output
-
-    assert(switchToRes != RES_INVALID);
-
-    // Force resolution update without going through SetFullScreen etc. since
-    // we take care of size update here
-    // FIXME Ideally this class would be completely decoupled from g_graphicsContext,
-    // but this is not possible at the moment before some refactoring is done.
-    g_graphicsContext.SetVideoResolution(switchToRes, true, false);
   }
-
-  ApplySizeUpdate(updateResult);
+  else
+  {
+    // Apply directly, Kodi resolution does not change
+    ApplyNextState();
+  }
 }
 
-/**
- * Calculate internal resolution from surface size and set variables
- *
- * \param next surface size
- * \param scale new buffer scale
- * \param state window state to determine whether decorations are enabled at all
- * \param sizeIncludesDecoration if true, given size includes potential window decorations
- * \return whether main buffer (not surface) size changed
- */
-CWinSystemWayland::SizeUpdateInformation CWinSystemWayland::UpdateSizeVariables(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration)
+void CWinSystemWayland::FinishModeChange(RESOLUTION res)
 {
-  CLog::LogF(LOGDEBUG, "Set size %dx%d scale %d %s decorations with state %s", size.Width(), size.Height(), scale, sizeIncludesDecoration ? "including" : "excluding", IShellSurface::StateToString(state).c_str());
+  auto& resInfo = CDisplaySettings::GetInstance().GetResolutionInfo(res);
 
-  auto oldSurfaceSize = m_surfaceSize;
-  auto oldBufferSize = m_bufferSize;
-  auto oldConfiguredSize = m_configuredSize;
-  auto oldBufferScale = m_scale;
+  ApplyNextState();
+  
+  m_fRefreshRate = resInfo.fRefreshRate;
+  m_bFullScreen = resInfo.bFullScreen;
+  m_waitingForApply = false;
+}
+
+void CWinSystemWayland::FinishWindowResize(int, int)
+{
+  ApplyNextState();
+  m_waitingForApply = false;
+}
+
+void CWinSystemWayland::ApplyNextState()
+{
+  CLog::LogF(LOGDEBUG, "Applying next state: serial %" PRIu32 " configured size %dx%d scale %d state %s", m_next.configureSerial, m_next.configuredSize.Width(), m_next.configuredSize.Height(), m_next.scale, IShellSurface::StateToString(m_next.shellSurfaceState).c_str());
+
+  ApplyShellSurfaceState(m_next.shellSurfaceState);
+  auto updateResult = UpdateSizeVariables(m_next.configuredSize, m_next.scale, m_next.shellSurfaceState, true);
+  ApplySizeUpdate(updateResult);
+
+  if (m_next.mustBeAcked)
+  {
+    AckConfigure(m_next.configureSerial);
+  }
+}
+
+CWinSystemWayland::Sizes CWinSystemWayland::CalculateSizes(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration)
+{
+  Sizes result;
 
   // Clamp to a sensible range
   constexpr int MIN_WIDTH = 300;
@@ -877,19 +926,46 @@ CWinSystemWayland::SizeUpdateInformation CWinSystemWayland::UpdateSizeVariables(
   // compositor or from Kodi), we need to calculate differently
   if (sizeIncludesDecoration)
   {
-    m_configuredSize = size;
-    m_surfaceSize = m_windowDecorator->CalculateMainSurfaceSize(size, state);
+    result.configuredSize = size;
+    result.surfaceSize = m_windowDecorator->CalculateMainSurfaceSize(size, state);
   }
   else
   {
-    m_surfaceSize = size;
-    m_configuredSize = m_windowDecorator->CalculateFullSurfaceSize(size, state);
+    result.surfaceSize = size;
+    result.configuredSize = m_windowDecorator->CalculateFullSurfaceSize(size, state);
   }
 
-  m_scale = scale;
-  m_bufferSize = m_surfaceSize * m_scale;
+  result.bufferSize = result.surfaceSize * scale;
 
-  auto changes = SizeUpdateInformation{m_surfaceSize != oldSurfaceSize, m_bufferSize != oldBufferSize, m_configuredSize != oldConfiguredSize, m_scale != oldBufferScale};
+  return result;
+}
+
+
+/**
+ * Calculate internal resolution from surface size and set variables
+ *
+ * \param next surface size
+ * \param scale new buffer scale
+ * \param state window state to determine whether decorations are enabled at all
+ * \param sizeIncludesDecoration if true, given size includes potential window decorations
+ * \return whether main buffer (not surface) size changed
+ */
+CWinSystemWayland::SizeUpdateInformation CWinSystemWayland::UpdateSizeVariables(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration)
+{
+  CLog::LogF(LOGDEBUG, "Set size %dx%d scale %d %s decorations with state %s", size.Width(), size.Height(), scale, sizeIncludesDecoration ? "including" : "excluding", IShellSurface::StateToString(state).c_str());
+
+  auto oldSurfaceSize = m_surfaceSize;
+  auto oldBufferSize = m_bufferSize;
+  auto oldConfiguredSize = m_configuredSize;
+  auto oldBufferScale = m_scale;
+
+  m_scale = scale;
+  auto sizes = CalculateSizes(size, scale, state, sizeIncludesDecoration);
+  m_surfaceSize = sizes.surfaceSize;
+  m_bufferSize = sizes.bufferSize;
+  m_configuredSize = sizes.configuredSize;
+
+  SizeUpdateInformation changes{m_surfaceSize != oldSurfaceSize, m_bufferSize != oldBufferSize, m_configuredSize != oldConfiguredSize, m_scale != oldBufferScale};
 
   if (changes.surfaceSizeChanged)
   {
