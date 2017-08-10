@@ -4,8 +4,7 @@ DEPS=Makefile
 # lib name, version
 LIBNAME=waylandpp
 VERSION=0.1.0
-#SOURCE=$(LIBNAME)-$(VERSION)
-SOURCE=feda0648fb78526bd7338f427734493282bc3594
+SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
 LIBDYLIB=$(PLATFORM)/src/libwayland-client++.so
@@ -26,8 +25,6 @@ else
 	export PKG_CONFIG=$(NATIVEPREFIX)/bin/pkg-config
 	export PKG_CONFIG_LIBDIR=$(PREFIX)/lib/pkgconfig
 endif
-
-BASE_URL=https://github.com/NilsBrause/waylandpp/archive
 
 SCONS=scons
 export CROSSCXX:=$(CXX)

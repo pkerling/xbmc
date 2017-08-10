@@ -20,8 +20,6 @@ else
 	DEPS += ../../Makefile.include
 endif
 
-BASE_URL=https://wayland.freedesktop.org/releases
-
 # configuration settings
 CONFIGURE=./configure --prefix=$(PREFIX)
 

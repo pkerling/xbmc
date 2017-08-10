@@ -8,7 +8,6 @@ PROJECTNAME=wayland
 VERSION=1.13.0
 SOURCE=$(PROJECTNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.xz
-BASE_URL=https://wayland.freedesktop.org/releases/
 
 # configuration settings
 CONFIGURE=./configure --prefix=$(PREFIX) --disable-libraries --disable-documentation --disable-dtd-validation

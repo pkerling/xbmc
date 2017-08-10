@@ -6,7 +6,6 @@ LIBNAME=wayland
 VERSION=1.13.0
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.xz
-BASE_URL=https://wayland.freedesktop.org/releases
 
 # configuration settings
 CONFIGURE=./configure --prefix=$(PREFIX) --with-host-scanner --disable-documentation --disable-dtd-validation

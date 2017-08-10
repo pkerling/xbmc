@@ -7,7 +7,6 @@ APPNAME=scons
 VERSION=2.5.1
 SOURCE=$(APPNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
-BASE_URL=http://prdownloads.sourceforge.net/scons/
 
 # configuration settings
 
