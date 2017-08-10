@@ -868,7 +868,7 @@ CWindowDecorator::Buffer CWindowDecorator::GetBuffer(CSizeInt size)
   void* data = static_cast<std::uint8_t*> (m_memory->Data()) + m_memoryAllocatedSize;
   m_memoryAllocatedSize += totalSize;
 
-  return { data, totalSize, size, std::move(buffer) };
+  return { data, static_cast<std::size_t> (totalSize), size, std::move(buffer) };
 }
 
 void CWindowDecorator::AllocateBuffers()
