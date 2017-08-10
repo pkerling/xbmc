@@ -18,13 +18,54 @@
  *
  */
 
-#include "messaging/ApplicationMessenger.h"
 #include "ShellSurfaceXdgShellUnstableV6.h"
+
+#include "messaging/ApplicationMessenger.h"
+#include "Registry.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
+namespace
+{
+
+IShellSurface::State ConvertStateFlag(wayland::zxdg_toplevel_v6_state flag)
+{
+  switch(flag)
+  {
+    case wayland::zxdg_toplevel_v6_state::activated:
+      return IShellSurface::STATE_ACTIVATED;
+    case wayland::zxdg_toplevel_v6_state::fullscreen:
+      return IShellSurface::STATE_FULLSCREEN;
+    case wayland::zxdg_toplevel_v6_state::maximized:
+      return IShellSurface::STATE_MAXIMIZED;
+    case wayland::zxdg_toplevel_v6_state::resizing:
+      return IShellSurface::STATE_RESIZING;
+    default:
+      throw std::runtime_error(std::string("Unknown xdg_toplevel state flag") + std::to_string(static_cast<std::underlying_type<decltype(flag)>::type> (flag)));
+  }
+}
+
+}
+
+CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(CConnection& connection, const wayland::surface_t& surface, std::string title, std::string class_)
+{
+  wayland::zxdg_shell_v6_t shell;
+  CRegistry registry(connection);
+  registry.RequestSingleton(shell, 1, 1, false);
+  registry.Bind();
+  
+  if (shell)
+  {
+    return new CShellSurfaceXdgShellUnstableV6(connection.GetDisplay(), shell, surface, title, class_);
+  }
+  else
+  {
+    return nullptr;
+  }
+}
+
 CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::display_t& display, const wayland::zxdg_shell_v6_t& shell, const wayland::surface_t& surface, std::string title, std::string app_id)
-: m_display(&display), m_shell(shell), m_surface(surface), m_xdgSurface(m_shell.get_xdg_surface(m_surface)), m_xdgToplevel(m_xdgSurface.get_toplevel())
+: m_display(display), m_shell(shell), m_surface(surface), m_xdgSurface(m_shell.get_xdg_surface(m_surface)), m_xdgToplevel(m_xdgSurface.get_toplevel())
 {
   m_shell.on_ping() = [this](std::uint32_t serial)
   {
@@ -32,30 +73,25 @@ CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::displa
   };
   m_xdgSurface.on_configure() = [this](std::uint32_t serial)
   {
-    // xdg_toplevel may send width/height 0 if it has no idea how big it wants the
-    // surface to be
-    if (m_configuredWidth != 0 && m_configuredHeight != 0)
-    {
-      InvokeOnConfigure(serial, m_configuredWidth, m_configuredHeight);
-    }
-    else
-    {
-      // WinSystem does not get the configure notification, so ack must be sent
-      // here
-      AckConfigure(serial);
-    }
+    InvokeOnConfigure(serial, m_configuredSize, m_configuredState);
   };
   m_xdgToplevel.on_close() = [this]()
   {
     MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
   };
-  m_xdgToplevel.on_configure() = [this](std::int32_t width, std::int32_t height, wayland::array_t)
+  m_xdgToplevel.on_configure() = [this](std::int32_t width, std::int32_t height, std::vector<wayland::zxdg_toplevel_v6_state> states)
   {
-    m_configuredWidth = width;
-    m_configuredHeight = height;
+    m_configuredSize.Set(width, height);
+    m_configuredState.reset();
+    for (auto state : states)
+    {
+      m_configuredState.set(ConvertStateFlag(state));
+    }
   };
   m_xdgToplevel.set_app_id(app_id);
   m_xdgToplevel.set_title(title);
+  // Set sensible minimum size
+  m_xdgToplevel.set_min_size(300, 200);
 }
 
 void CShellSurfaceXdgShellUnstableV6::Initialize()
@@ -64,7 +100,7 @@ void CShellSurfaceXdgShellUnstableV6::Initialize()
   // Don't do it in constructor since SetFullScreen might be called before
   m_surface.commit();
   // Make sure we get the initial configure before continuing
-  m_display->roundtrip();
+  m_display.roundtrip();
 }
 
 void CShellSurfaceXdgShellUnstableV6::AckConfigure(std::uint32_t serial)
@@ -74,12 +110,6 @@ void CShellSurfaceXdgShellUnstableV6::AckConfigure(std::uint32_t serial)
 
 CShellSurfaceXdgShellUnstableV6::~CShellSurfaceXdgShellUnstableV6()
 {
-  // Unregister global event handlers
-  // FIXME there is still a race when the handler is being invoked at the moment,
-  // since it runs on a separate thread. This affects all global handlers that
-  // capture [this] and needs to get fixed somehow.
-  m_shell.on_ping() = nullptr;
-
   // xdg_shell is picky: must destroy toplevel role before surface
   m_xdgToplevel.proxy_release();
   m_xdgSurface.proxy_release();
@@ -88,19 +118,46 @@ CShellSurfaceXdgShellUnstableV6::~CShellSurfaceXdgShellUnstableV6()
 void CShellSurfaceXdgShellUnstableV6::SetFullScreen(const wayland::output_t& output, float)
 {
   // xdg_shell does not support refresh rate setting at the moment
-  
-  // mutter has some problems with setting the same output again, so only
-  // call set_fullscreen() if the output changes
-  // https://bugzilla.gnome.org/show_bug.cgi?id=783709
-  if (output != m_currentOutput)
-  {
-    m_xdgToplevel.set_fullscreen(output);
-    m_currentOutput = output;
-  }
+  m_xdgToplevel.set_fullscreen(output);
 }
 
 void CShellSurfaceXdgShellUnstableV6::SetWindowed()
 {
-  m_currentOutput = wayland::output_t();
   m_xdgToplevel.unset_fullscreen();
+}
+
+void CShellSurfaceXdgShellUnstableV6::SetMaximized()
+{
+  m_xdgToplevel.set_maximized();
+}
+
+void CShellSurfaceXdgShellUnstableV6::UnsetMaximized()
+{
+  m_xdgToplevel.unset_maximized();
+}
+
+void CShellSurfaceXdgShellUnstableV6::SetMinimized()
+{
+  m_xdgToplevel.set_minimized();
+}
+
+void CShellSurfaceXdgShellUnstableV6::SetWindowGeometry(CRectInt geometry)
+{
+  m_xdgSurface.set_window_geometry(geometry.x1, geometry.y1, geometry.Width(), geometry.Height());
+}
+
+void CShellSurfaceXdgShellUnstableV6::StartMove(const wayland::seat_t& seat, std::uint32_t serial)
+{
+  m_xdgToplevel.move(seat, serial);
+}
+
+void CShellSurfaceXdgShellUnstableV6::StartResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge)
+{
+  // wl_shell shell_surface_resize is identical to xdg_shell resize_edge
+  m_xdgToplevel.resize(seat, serial, static_cast<std::uint32_t> (edge));
+}
+
+void CShellSurfaceXdgShellUnstableV6::ShowShellContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position)
+{
+  m_xdgToplevel.show_window_menu(seat, serial, position.x, position.y);
 }

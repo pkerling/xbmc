@@ -21,6 +21,7 @@
 
 #include <wayland-extra-protocols.hpp>
 
+#include "Connection.h"
 #include "threads/Event.h"
 #include "../OSScreenSaver.h"
 
@@ -35,7 +36,7 @@ class COSScreenSaverIdleInhibitUnstableV1 : public IOSScreenSaver
 {
 public:
   COSScreenSaverIdleInhibitUnstableV1(wayland::zwp_idle_inhibit_manager_v1_t const& manager, wayland::surface_t const& inhibitSurface);
-  bool IsSupported();
+  static COSScreenSaverIdleInhibitUnstableV1* TryCreate(CConnection& connection, wayland::surface_t const& inhibitSurface);
   void Inhibit() override;
   void Uninhibit() override;
 

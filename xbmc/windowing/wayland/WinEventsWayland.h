@@ -21,10 +21,14 @@
 
 #include <queue>
 
-#include <wayland-client.hpp>
-
 #include "threads/CriticalSection.h"
 #include "../WinEvents.h"
+
+namespace wayland
+{
+class event_queue_t;
+class display_t;
+}
 
 namespace KODI
 {
@@ -38,7 +42,10 @@ class CWinEventsWayland : public IWinEvents
 public:
   virtual bool MessagePump() override;
   virtual void MessagePush(XBMC_Event* ev) override;
+  /// Write buffered messages to the compositor
   static void Flush();
+  /// Do a roundtrip on the specified queue from the event processing thread
+  static void RoundtripQueue(wayland::event_queue_t const& queue);
   
 private:
   friend class CWinSystemWayland;

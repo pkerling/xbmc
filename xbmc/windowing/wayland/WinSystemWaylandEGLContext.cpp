@@ -38,7 +38,7 @@ bool CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGLint renderableType, EGL
     return false;
   }
 
-  if (!m_eglContext.CreateDisplay(m_connection->GetDisplay(), renderableType, apiType))
+  if (!m_eglContext.CreateDisplay(GetConnection()->GetDisplay(), renderableType, apiType))
   {
     return false;
   }
@@ -56,10 +56,10 @@ bool CWinSystemWaylandEGLContext::CreateNewWindow(const std::string& name,
     return false;
   }
 
-  // CWinSystemWayland::CreateNewWindow sets internal m_nWidth and m_nHeight
+  // CWinSystemWayland::CreateNewWindow sets internal m_bufferSize
   // to the resolution that should be used for the initial surface size
   // - the compositor might want something other than the resolution given
-  if (!m_eglContext.CreateSurface(m_surface, m_nWidth, m_nHeight))
+  if (!m_eglContext.CreateSurface(GetMainSurface(), GetBufferSize()))
   {
     return false;
   }
@@ -81,30 +81,14 @@ bool CWinSystemWaylandEGLContext::DestroyWindowSystem()
   return CWinSystemWayland::DestroyWindowSystem();
 }
 
-bool CWinSystemWaylandEGLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays)
+void CWinSystemWaylandEGLContext::SetContextSize(CSizeInt size)
 {
-  // FIXME See CWinSystemWayland::SetFullScreen()
-  CSingleLock lock(g_graphicsContext);
-
-  if (!CWinSystemWayland::SetFullScreen(fullScreen, res, blankOtherDisplays))
-  {
-    return false;
-  }
-
-  // Look only at m_nWidth and m_nHeight which represent the actual wl_surface
-  // size instead of res.iWidth and res.iHeight, which are only a "wish"
-
-  int currWidth, currHeight;
-  m_eglContext.GetAttachedSize(currWidth, currHeight);
-
   // Change EGL surface size if necessary
-  if (currWidth != m_nWidth || currHeight != m_nHeight)
+  if (m_eglContext.GetAttachedSize() != size)
   {
-    CLog::LogF(LOGDEBUG, "Updating egl_window size to %dx%d", m_nWidth, m_nHeight);
-    m_eglContext.Resize(m_nWidth, m_nHeight);
+    CLog::LogF(LOGDEBUG, "Updating egl_window size to %dx%d", size.Width(), size.Height());
+    m_eglContext.Resize(size);
   }
-
-  return true;
 }
 
 void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
@@ -142,9 +126,9 @@ void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
   {
     // For presentation feedback: Get notification of the next vblank even
     // when contents did not change
-    m_surface.commit();
+    GetMainSurface().commit();
     // Make sure it reaches the compositor
-    m_connection->GetDisplay().flush();
+    GetConnection()->GetDisplay().flush();
   }
 
   FinishFramePresentation();

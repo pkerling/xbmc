@@ -19,30 +19,55 @@
  */
 #pragma once
 
-#include "rendering/gles/RenderSystemGLES.h"
-#include "utils/GlobalsHandling.h"
-#include "WinSystemWaylandEGLContext.h"
+#include <memory>
+
+#include "FileHandle.h"
+#include "Mmap.h"
 
 namespace KODI
 {
-namespace WINDOWING
+namespace UTILS
 {
-namespace WAYLAND
+namespace POSIX
 {
 
-class CWinSystemWaylandEGLContextGLES : public CWinSystemWaylandEGLContext, public CRenderSystemGLES
+/**
+ * Get a chunk of shared memory of specified size
+ *
+ * The shared memory is automatically allocated, truncated to the correct size
+ * and memory-mapped.
+ */
+class CSharedMemory
 {
 public:
-  bool InitWindowSystem() override;
-protected:
-  void SetContextSize(CSizeInt size) override;
-  void SetVSyncImpl(bool enable) override;
-  void PresentRenderImpl(bool rendered) override;
+  CSharedMemory(std::size_t size);
+
+  std::size_t Size() const
+  {
+    return m_size;
+  }
+  void* Data() const
+  {
+    return m_mmap.Data();
+  }
+  int Fd() const
+  {
+    return m_fd;
+  }
+
+private:
+  CSharedMemory(CSharedMemory const& other) = delete;
+  CSharedMemory& operator=(CSharedMemory const& other) = delete;
+
+  CFileHandle Open();
+  CFileHandle OpenMemfd();
+  CFileHandle OpenShm();
+
+  std::size_t m_size;
+  CFileHandle m_fd;
+  CMmap m_mmap;
 };
 
 }
 }
 }
-
-XBMC_GLOBAL_REF(KODI::WINDOWING::WAYLAND::CWinSystemWaylandEGLContextGLES, g_Windowing);
-#define g_Windowing XBMC_GLOBAL_USE(KODI::WINDOWING::WAYLAND::CWinSystemWaylandEGLContextGLES)

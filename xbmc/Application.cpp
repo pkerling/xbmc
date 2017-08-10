@@ -315,8 +315,7 @@ bool CApplication::OnEvent(XBMC_Event& newEvent)
       {
         if (!g_advancedSettings.m_fullScreen)
         {
-          g_Windowing.SetWindowResolution(newEvent.resize.w, newEvent.resize.h);
-          g_graphicsContext.SetVideoResolution(RES_WINDOW, true);
+          g_graphicsContext.ApplyWindowResize(newEvent.resize.w, newEvent.resize.h);
           CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_WIDTH, newEvent.resize.w);
           CServiceBroker::GetSettings().SetInt(CSettings::SETTING_WINDOW_HEIGHT, newEvent.resize.h);
           CServiceBroker::GetSettings().Save();
@@ -327,6 +326,9 @@ bool CApplication::OnEvent(XBMC_Event& newEvent)
       {
         g_Windowing.OnMove(newEvent.move.x, newEvent.move.y);
       }
+      break;
+    case XBMC_MODECHANGE:
+      g_graphicsContext.ApplyModeChange(newEvent.mode.res);
       break;
     case XBMC_USEREVENT:
       CApplicationMessenger::GetInstance().PostMsg(static_cast<uint32_t>(newEvent.user.code));
@@ -1486,16 +1488,8 @@ bool CApplication::OnSettingsSaving() const
   return true;
 }
 
-void CApplication::ReloadSkin(bool confirm)
+void CApplication::ReloadSkin(bool confirm/*=false*/)
 {
-  // Skin will actually be reloaded on FrameMove and not immediately to avoid deadlocks
-  m_reloadSkinFlag = confirm ? ReloadSkinFlag::RELOAD_CONFIRM : ReloadSkinFlag::RELOAD_NO_CONFIRM;
-}
-
-void CApplication::ReloadSkinInternal(bool confirm)
-{
-  m_reloadSkinFlag = ReloadSkinFlag::NO_RELOAD;
-
   if (!g_SkinInfo || m_bInitializing)
     return; // Don't allow reload before skin is loaded by system
 
@@ -2453,7 +2447,7 @@ void CApplication::OnApplicationMessage(ThreadMessage* pMsg)
     break;
 
   case TMSG_SETVIDEORESOLUTION:
-    g_graphicsContext.SetVideoResolution(static_cast<RESOLUTION>(pMsg->param1), pMsg->param2 == 1);
+    g_graphicsContext.SetVideoResolution(static_cast<RESOLUTION>(pMsg->param1), pMsg->param2 & 1);
     break;
 
   case TMSG_TOGGLEFULLSCREEN:
@@ -2706,11 +2700,6 @@ void CApplication::FrameMove(bool processEvents, bool processGUI)
     if (fps > 0 && frameTime * fps < 1000)
       m_skipGuiRender = true;
 #endif
-
-    if (m_reloadSkinFlag != ReloadSkinFlag::NO_RELOAD)
-    {
-      ReloadSkinInternal(m_reloadSkinFlag == ReloadSkinFlag::RELOAD_CONFIRM);
-    }
 
     if (!m_bStop)
     {

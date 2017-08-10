@@ -41,7 +41,7 @@ namespace WAYLAND
 class CInputProcessorTouch
 {
 public:
-  explicit CInputProcessorTouch(wayland::touch_t const& touch);
+  CInputProcessorTouch(wayland::touch_t const& touch, wayland::surface_t const& surface);
   ~CInputProcessorTouch();
   void SetCoordinateScale(std::int32_t scale) { m_coordinateScale = scale; }
 
@@ -69,6 +69,7 @@ private:
   void AbortTouches();
 
   wayland::touch_t m_touch;
+  wayland::surface_t m_surface;
   std::int32_t m_coordinateScale{1};
 
   /// Map of wl_touch point id to data

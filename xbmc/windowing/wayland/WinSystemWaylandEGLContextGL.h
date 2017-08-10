@@ -34,8 +34,8 @@ class CWinSystemWaylandEGLContextGL : public CWinSystemWaylandEGLContext, public
 {
 public:
   bool InitWindowSystem() override;
-  bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
 protected:
+  void SetContextSize(CSizeInt size) override;
   void SetVSyncImpl(bool enable) override;
   void PresentRenderImpl(bool rendered) override;
 };

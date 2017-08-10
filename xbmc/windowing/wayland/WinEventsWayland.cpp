@@ -26,8 +26,12 @@
 #include <exception>
 #include <memory>
 #include <system_error>
+#include <vector>
+
+#include <wayland-client.hpp>
 
 #include "Application.h"
+#include "threads/CriticalSection.h"
 #include "threads/SingleLock.h"
 #include "threads/Thread.h"
 #include "utils/log.h"
@@ -53,8 +57,11 @@ class CWinEventsWaylandThread : CThread
   CFileHandle m_pipeRead;
   CFileHandle m_pipeWrite;
 
-public:
+  CCriticalSection m_roundtripQueueMutex;
+  std::atomic<wayland::event_queue_t*> m_roundtripQueue{nullptr};
+  CEvent m_roundtripQueueEvent;
 
+public:
   CWinEventsWaylandThread(wayland::display_t& display)
   : CThread("Wayland message pump"), m_display(display)
   {
@@ -68,12 +75,43 @@ public:
     Create();
   }
 
+  ~CWinEventsWaylandThread()
+  {
+    Stop();
+    // Wait for roundtrip invocation to finish
+    CSingleLock lock(m_roundtripQueueMutex);
+  }
+
   void Stop()
   {
     CLog::Log(LOGDEBUG, "Stopping Wayland message pump");
-    char c = 0;
-    write(m_pipeWrite, &c, 1);
-    WaitForThreadExit(0);
+    // Set m_bStop
+    StopThread(false);
+    InterruptPoll();
+    // Now wait for actual exit
+    StopThread(true);
+  }
+
+  void RoundtripQueue(wayland::event_queue_t const& queue)
+  {
+    wayland::event_queue_t queueCopy{queue};
+
+    // Serialize invocations of this function - it's used very rarely and usually
+    // not in parallel anyway, and doing it avoids lots of complications
+    CSingleLock lock(m_roundtripQueueMutex);
+
+    m_roundtripQueueEvent.Reset();
+    // We can just set the value here since there is no other writer in parallel
+    m_roundtripQueue.store(&queueCopy);
+    // Dispatching can happen now
+
+    // Make sure we don't wait for an event to happen on the socket
+    InterruptPoll();
+
+    if (m_bStop)
+      return;
+    
+    m_roundtripQueueEvent.Wait();
   }
 
   wayland::display_t& GetDisplay()
@@ -82,6 +120,11 @@ public:
   }
 
 private:
+  void InterruptPoll()
+  {
+    char c = 0;
+    write(m_pipeWrite, &c, 1);
+  }
 
   void Process() override
   {
@@ -102,7 +145,7 @@ private:
       CLog::Log(LOGDEBUG, "Starting Wayland message pump");
 
       // Run until cancelled or error
-      while (true)
+      while (!m_bStop)
       {
         // dispatch() provides no way to cancel a blocked read from the socket
         // wl_display_disconnect would just close the socket, leading to problems
@@ -125,10 +168,9 @@ private:
           }
         }
 
-        if (cancelPoll.revents & POLLIN || cancelPoll.revents & POLLERR || cancelPoll.revents & POLLHUP || cancelPoll.revents & POLLNVAL)
+        if (cancelPoll.revents & POLLERR || cancelPoll.revents & POLLHUP || cancelPoll.revents & POLLNVAL)
         {
-          // We were cancelled, no need to dispatch events
-          break;
+          throw std::runtime_error("poll() signalled error condition on poll interruption socket");
         }
 
         if (waylandPoll.revents & POLLERR || waylandPoll.revents & POLLHUP || waylandPoll.revents & POLLNVAL)
@@ -140,6 +182,12 @@ private:
         readIntent.read();
         // Dispatch default event queue
         m_display.dispatch_pending();
+
+        if (auto* roundtripQueue = m_roundtripQueue.exchange(nullptr))
+        {
+          m_display.roundtrip_queue(*roundtripQueue);
+          m_roundtripQueueEvent.Set();
+        }
       }
 
       CLog::Log(LOGDEBUG, "Wayland message pump stopped");
@@ -156,6 +204,9 @@ private:
       CLog::Log(LOGFATAL, "Exception in Wayland message pump, exiting: %s", e.what());
       std::terminate();
     }
+
+    // Wake up if someone is still waiting for roundtrip, won't happen anytime soon...
+    m_roundtripQueueEvent.Set();
   }
 };
 
@@ -173,7 +224,6 @@ void CWinEventsWayland::SetDisplay(wayland::display_t* display)
   else if (g_WlMessagePump)
   {
     // Stop if display is set to nullptr
-    g_WlMessagePump->Stop();
     g_WlMessagePump.reset();
   }
 }
@@ -183,6 +233,14 @@ void CWinEventsWayland::Flush()
   if (g_WlMessagePump)
   {
     g_WlMessagePump->GetDisplay().flush();
+  }
+}
+
+void CWinEventsWayland::RoundtripQueue(const wayland::event_queue_t& queue)
+{
+  if (g_WlMessagePump)
+  {
+    g_WlMessagePump->RoundtripQueue(queue);
   }
 }
 

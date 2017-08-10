@@ -41,8 +41,6 @@ public:
   bool DestroyWindow() override;
   bool DestroyWindowSystem() override;
 
-
-  bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
   EGLDisplay GetEGLDisplay() const;
 
 protected:
@@ -53,6 +51,7 @@ protected:
   bool InitWindowSystemEGL(EGLint renderableType, EGLint apiType);
 
   void PresentFrame(bool rendered);
+  void SetContextSize(CSizeInt size) override;
 
   CGLContextEGL m_eglContext;
 };

@@ -28,6 +28,7 @@
 #include "settings/DisplaySettings.h"
 #include "settings/lib/Setting.h"
 #include "settings/Settings.h"
+#include "utils/log.h"
 #include "windowing/WindowingFactory.h"
 #include "TextureManager.h"
 #include "input/InputManager.h"
@@ -360,7 +361,7 @@ void CGraphicContext::SetCalibrating(bool bOnOff)
 
 bool CGraphicContext::IsValidResolution(RESOLUTION res)
 {
-  if (res >= RES_WINDOW && (size_t) res <= CDisplaySettings::GetInstance().ResolutionInfoSize())
+  if (res >= RES_WINDOW && (size_t) res < CDisplaySettings::GetInstance().ResolutionInfoSize())
   {
     return true;
   }
@@ -377,7 +378,7 @@ void CGraphicContext::SetVideoResolution(RESOLUTION res, bool forceUpdate)
   }
   else
   {
-    CApplicationMessenger::GetInstance().SendMsg(TMSG_SETVIDEORESOLUTION, res, forceUpdate ? 1 : 0);
+    CApplicationMessenger::GetInstance().SendMsg(TMSG_SETVIDEORESOLUTION, res, forceUpdate);
   }
 }
 
@@ -410,10 +411,6 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
 
   Lock();
 
-  RESOLUTION_INFO info_org  = CDisplaySettings::GetInstance().GetResolutionInfo(res);
-
-  RESOLUTION_INFO info_mod = GetResInfo(res);
-
   // FIXME Wayland windowing needs some way to "deny" resolution updates since what Kodi
   // requests might not get actually set by the compositor.
   // So in theory, m_iScreenWidth etc. would not need to be updated at all before the
@@ -423,34 +420,32 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   int origScreenWidth = m_iScreenWidth, origScreenHeight = m_iScreenHeight, origScreenId = m_iScreenId;
   float origFPSOverride = m_fFPSOverride;
 
-  m_iScreenWidth = info_mod.iWidth;
-  m_iScreenHeight = info_mod.iHeight;
-  m_iScreenId = info_mod.iScreen;
-  m_Resolution = res;
-  m_fFPSOverride = 0;
+  UpdateInternalStateWithResolution(res);
+  RESOLUTION_INFO info_org  = CDisplaySettings::GetInstance().GetResolutionInfo(res);
 
-  bool switched = true;
+  bool switched;
   if (g_advancedSettings.m_fullScreen)
   {
 #if defined (TARGET_DARWIN) || defined (TARGET_WINDOWS)
     bool blankOtherDisplays = CServiceBroker::GetSettings().GetBool(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
-    g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
+    switched = g_Windowing.SetFullScreen(true,  info_org, blankOtherDisplays);
 #else
     switched = g_Windowing.SetFullScreen(true,  info_org, false);
-    // FIXME At the moment only Wayland expects the return value to be interpreted
-    // - all other windowing implementations might still assume that it does
-    // not matter what they return as it was before.
-    // This needs to get fixed when the resolution switching code is refactored.
-    if (g_Windowing.GetWinSystem() != WINDOW_SYSTEM_WAYLAND)
-    {
-      switched = true;
-    }
 #endif
   }
   else if (lastRes >= RES_DESKTOP )
-    g_Windowing.SetFullScreen(false, info_org, false);
+    switched = g_Windowing.SetFullScreen(false, info_org, false);
   else
-    g_Windowing.ResizeWindow(info_org.iWidth, info_org.iHeight, -1, -1);
+    switched = g_Windowing.ResizeWindow(info_org.iWidth, info_org.iHeight, -1, -1);
+
+  // FIXME At the moment only Wayland expects the return value to be interpreted
+  // - all other windowing implementations might still assume that it does
+  // not matter what they return as it was before.
+  // This needs to get fixed when the resolution switching code is refactored.
+  if (g_Windowing.GetWinSystem() != WINDOW_SYSTEM_WAYLAND)
+  {
+    switched = true;
+  }
 
   if (switched)
   {
@@ -486,6 +481,66 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   }
 
   Unlock();
+}
+
+void CGraphicContext::ApplyVideoResolution(RESOLUTION res)
+{
+  if (!IsValidResolution(res))
+  {
+    CLog::LogF(LOGWARNING, "Asked to apply invalid resolution %d, falling back to RES_DESKTOP", res);
+    res = RES_DESKTOP;
+  }
+
+  if (res >= RES_DESKTOP)
+  {
+    g_advancedSettings.m_fullScreen = true;
+    m_bFullScreenRoot = true;
+  }
+  else
+  {
+    g_advancedSettings.m_fullScreen = false;
+    m_bFullScreenRoot = false;
+  }
+
+  Lock();
+
+  UpdateInternalStateWithResolution(res);
+
+  m_scissors.SetRect(0, 0, (float)m_iScreenWidth, (float)m_iScreenHeight);
+
+  // make sure all stereo stuff are correctly setup
+  SetStereoView(RENDER_STEREO_VIEW_OFF);
+
+  // update anyone that relies on sizing information
+  RESOLUTION_INFO info_org  = CDisplaySettings::GetInstance().GetResolutionInfo(res);
+  CServiceBroker::GetInputManager().SetMouseResolution(info_org.iWidth, info_org.iHeight, 1, 1);
+  g_windowManager.SendMessage(GUI_MSG_NOTIFY_ALL, 0, 0, GUI_MSG_WINDOW_RESIZE);
+
+  Unlock();
+}
+
+void CGraphicContext::UpdateInternalStateWithResolution(RESOLUTION res)
+{
+  RESOLUTION_INFO info_mod = GetResInfo(res);
+
+  m_iScreenWidth = info_mod.iWidth;
+  m_iScreenHeight = info_mod.iHeight;
+  m_iScreenId = info_mod.iScreen;
+  m_Resolution = res;
+  m_fFPSOverride = 0;
+}
+
+void CGraphicContext::ApplyModeChange(RESOLUTION res)
+{
+  ApplyVideoResolution(res);
+  g_Windowing.FinishModeChange(res);
+}
+
+void CGraphicContext::ApplyWindowResize(int newWidth, int newHeight)
+{
+  g_Windowing.SetWindowResolution(newWidth, newHeight);
+  ApplyVideoResolution(RES_WINDOW);
+  g_Windowing.FinishWindowResize(newWidth, newHeight);
 }
 
 RESOLUTION CGraphicContext::GetVideoResolution() const

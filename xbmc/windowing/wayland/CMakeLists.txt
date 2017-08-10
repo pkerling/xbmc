@@ -10,6 +10,7 @@ set(SOURCES Connection.cpp
             InputProcessorPointer.h
             InputProcessorTouch.h
             OSScreenSaverIdleInhibitUnstableV1.cpp
+            Registry.cpp
             Seat.cpp
             SeatSelection.cpp
             ShellSurface.cpp
@@ -17,6 +18,7 @@ set(SOURCES Connection.cpp
             ShellSurfaceXdgShellUnstableV6.cpp
             VideoSyncWpPresentation.cpp
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.cpp
+            WindowDecorator.cpp
             WinEventsWayland.cpp
             WinSystemWayland.cpp
             WinSystemWaylandEGLContext.cpp)
@@ -28,6 +30,7 @@ set(HEADERS Connection.h
             InputProcessorPointer.cpp
             InputProcessorTouch.cpp
             OSScreenSaverIdleInhibitUnstableV1.h
+            Registry.h
             Seat.h
             SeatSelection.h
             ShellSurface.h
@@ -36,6 +39,7 @@ set(HEADERS Connection.h
             Signals.h
             VideoSyncWpPresentation.h
             ${WAYLAND_EXTRA_PROTOCOL_GENERATED_DIR}/wayland-extra-protocols.hpp
+            WindowDecorator.h
             WinEventsWayland.h
             WinSystemWayland.h
             WinSystemWaylandEGLContext.h)

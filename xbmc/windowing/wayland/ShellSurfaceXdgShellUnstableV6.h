@@ -19,6 +19,7 @@
  */
 #pragma once
 
+#include "Connection.h"
 #include "ShellSurface.h"
 
 #include <wayland-extra-protocols.hpp>
@@ -36,16 +37,6 @@ namespace WAYLAND
  */
 class CShellSurfaceXdgShellUnstableV6 : public IShellSurface
 {
-  wayland::display_t* m_display;
-  wayland::zxdg_shell_v6_t m_shell;
-  wayland::surface_t m_surface;
-  wayland::zxdg_surface_v6_t m_xdgSurface;
-  wayland::zxdg_toplevel_v6_t m_xdgToplevel;
-  
-  wayland::output_t m_currentOutput;
-  
-  std::int32_t m_configuredWidth = 0, m_configuredHeight = 0;
-  
 public:
   /**
    * Construct wl_shell_surface for given surface
@@ -59,12 +50,32 @@ public:
    */
   CShellSurfaceXdgShellUnstableV6(wayland::display_t& display, wayland::zxdg_shell_v6_t const& shell, wayland::surface_t const& surface, std::string title, std::string class_);
   virtual ~CShellSurfaceXdgShellUnstableV6();
+
+  static CShellSurfaceXdgShellUnstableV6* TryCreate(CConnection& connection, wayland::surface_t const& surface, std::string title, std::string class_);
   
   void Initialize() override;
   
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
+  void SetMaximized() override;
+  void UnsetMaximized() override;
+  void SetMinimized() override;
+  void SetWindowGeometry(CRectInt geometry) override;
   void AckConfigure(std::uint32_t serial) override;
+
+  void StartMove(const wayland::seat_t& seat, std::uint32_t serial) override;
+  void StartResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge) override;
+  void ShowShellContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position) override;
+
+private:
+  wayland::display_t& m_display;
+  wayland::zxdg_shell_v6_t m_shell;
+  wayland::surface_t m_surface;
+  wayland::zxdg_surface_v6_t m_xdgSurface;
+  wayland::zxdg_toplevel_v6_t m_xdgToplevel;
+
+  CSizeInt m_configuredSize;
+  StateBitset m_configuredState;
 };
 
 }

@@ -19,9 +19,9 @@
  */
 #pragma once
 
-#include "rendering/gles/RenderSystemGLES.h"
-#include "utils/GlobalsHandling.h"
-#include "WinSystemWaylandEGLContext.h"
+#include <cstdint>
+
+#include <wayland-client-protocol.hpp>
 
 namespace KODI
 {
@@ -30,19 +30,23 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CWinSystemWaylandEGLContextGLES : public CWinSystemWaylandEGLContext, public CRenderSystemGLES
+/**
+ * Handler for reacting to events originating in window decorations, such as
+ * moving the window by clicking and dragging
+ */
+class IWindowDecorationHandler
 {
 public:
-  bool InitWindowSystem() override;
-protected:
-  void SetContextSize(CSizeInt size) override;
-  void SetVSyncImpl(bool enable) override;
-  void PresentRenderImpl(bool rendered) override;
+  virtual void OnWindowMove(wayland::seat_t const& seat, std::uint32_t serial) = 0;
+  virtual void OnWindowResize(wayland::seat_t const& seat, std::uint32_t serial, wayland::shell_surface_resize edge) = 0;
+  virtual void OnWindowShowContextMenu(wayland::seat_t const& seat, std::uint32_t serial, CPointInt position) = 0;
+  virtual void OnWindowMinimize() = 0;
+  virtual void OnWindowMaximize() = 0;
+  virtual void OnWindowClose() = 0;
+
+  virtual ~IWindowDecorationHandler() = default;
 };
 
 }
 }
 }
-
-XBMC_GLOBAL_REF(KODI::WINDOWING::WAYLAND::CWinSystemWaylandEGLContextGLES, g_Windowing);
-#define g_Windowing XBMC_GLOBAL_USE(KODI::WINDOWING::WAYLAND::CWinSystemWaylandEGLContextGLES)

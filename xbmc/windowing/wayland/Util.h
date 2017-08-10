@@ -17,20 +17,25 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+#pragma once
 
-#include "Connection.h"
+#include <wayland-client.hpp>
 
-#include <cassert>
-
-using namespace KODI::WINDOWING::WAYLAND;
-
-CConnection::CConnection()
+namespace KODI
 {
-  m_display.reset(new wayland::display_t);
+namespace WINDOWING
+{
+namespace WAYLAND
+{
+
+struct WaylandCPtrCompare
+{
+  bool operator()(wayland::proxy_t const& p1, wayland::proxy_t const& p2)
+  {
+    return p1.c_ptr() < p2.c_ptr();
+  }
+};
+
 }
-
-wayland::display_t& CConnection::GetDisplay()
-{
-  assert(m_display);
-  return *m_display;
+}
 }

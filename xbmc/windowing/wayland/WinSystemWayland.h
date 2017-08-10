@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <ctime>
+#include <list>
 #include <map>
 #include <set>
 
@@ -35,6 +36,8 @@
 #include "Signals.h"
 #include "ShellSurface.h"
 #include "threads/CriticalSection.h"
+#include "utils/ActorProtocol.h"
+#include "WindowDecorationHandler.h"
 #include "windowing/WinSystem.h"
 
 class IDispResource;
@@ -46,7 +49,10 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-class CWinSystemWayland : public CWinSystemBase, IInputHandler, IConnectionHandler
+class CRegistry;
+class CWindowDecorator;
+
+class CWinSystemWayland : public CWinSystemBase, IInputHandler, IWindowDecorationHandler
 {
 public:
   CWinSystemWayland();
@@ -63,21 +69,20 @@ public:
 
   bool ResizeWindow(int newWidth, int newHeight, int newLeft, int newTop) override;
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
+  void FinishModeChange(RESOLUTION res) override;
+  void FinishWindowResize(int newWidth, int newHeight) override;
 
   void UpdateResolutions() override;
   int GetNumScreens() override;
   int GetCurrentScreen() override;
 
   bool CanDoWindowed() override;
-  bool Hide() override;
-  bool Show(bool raise = true) override;
+  bool Minimize() override;
   
   bool HasCursor() override;
   void ShowOSMouse(bool show) override;
 
   std::string GetClipboardText() override;
-
-  void SetInhibitSkinReload(bool inhibit);
 
   float GetSyncOutputRefreshRate();
   float GetDisplayLatency() override;
@@ -97,12 +102,22 @@ public:
 
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
+  CSizeInt GetBufferSize() const
+  {
+    return m_bufferSize;
+  }
+  std::unique_ptr<CConnection> const& GetConnection()
+  {
+    return m_connection;
+  }
+  wayland::surface_t GetMainSurface()
+  {
+    return m_surface;
+  }
 
   void PrepareFramePresentation();
   void FinishFramePresentation();
-
-  std::unique_ptr<CConnection> m_connection;
-  wayland::surface_t m_surface;
+  virtual void SetContextSize(CSizeInt size) = 0;
 
 private:
   // IInputHandler
@@ -111,16 +126,42 @@ private:
   void OnEvent(std::uint32_t seatGlobalName, InputType type, XBMC_Event& event) override;
   void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) override;
 
-  // IConnectionHandler
-  void OnSeatAdded(std::uint32_t name, wayland::seat_t& seat) override;
-  void OnOutputAdded(std::uint32_t name, wayland::output_t& output) override;
-  void OnGlobalRemoved(std::uint32_t name) override;
+  // IWindowDecorationHandler
+  void OnWindowMove(const wayland::seat_t& seat, std::uint32_t serial) override;
+  void OnWindowResize(const wayland::seat_t& seat, std::uint32_t serial, wayland::shell_surface_resize edge) override;
+  void OnWindowShowContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position) override;
+  void OnWindowClose() override;
+  void OnWindowMaximize() override;
+  void OnWindowMinimize() override;
+
+  // Registry handlers
+  void OnSeatAdded(std::uint32_t name, wayland::proxy_t&& seat);
+  void OnSeatRemoved(std::uint32_t name);
+  void OnOutputAdded(std::uint32_t name, wayland::proxy_t&& output);
+  void OnOutputRemoved(std::uint32_t name);
 
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
-  void HandleSurfaceConfigure(std::uint32_t serial, std::int32_t width, std::int32_t height);
-  bool ResetSurfaceSize(std::int32_t width, std::int32_t height, std::int32_t scale);
-  bool SetSizeFromSurfaceSize(std::int32_t surfaceWidth, std::int32_t surfaceHeight);
+  void HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state);
+  bool SetResolutionExternal(bool fullScreen, RESOLUTION_INFO const& res);
+  void SetResolutionInternal(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration, bool mustAck = false, std::uint32_t configureSerial = 0u);
+  struct Sizes
+  {
+    CSizeInt surfaceSize;
+    CSizeInt bufferSize;
+    CSizeInt configuredSize;
+  };
+  Sizes CalculateSizes(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration);
+  struct SizeUpdateInformation
+  {
+    bool surfaceSizeChanged : 1;
+    bool bufferSizeChanged : 1;
+    bool configuredSizeChanged : 1;
+    bool bufferScaleChanged : 1;
+  };
+  SizeUpdateInformation UpdateSizeVariables(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration);
+  void ApplySizeUpdate(SizeUpdateInformation update);
+  void ApplyNextState();
   
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
   std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
@@ -130,12 +171,29 @@ private:
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
   void UpdateBufferScale();
-  void ApplyBufferScale(std::int32_t scale);
+  void ApplyBufferScale();
   void UpdateTouchDpi();
+  void ApplyShellSurfaceState(IShellSurface::StateBitset state);
 
+  void ProcessMessages();
   void AckConfigure(std::uint32_t serial);
 
   timespec GetPresentationClockTime();
+
+  // Globals
+  // -------
+  std::unique_ptr<CConnection> m_connection;
+  std::unique_ptr<CRegistry> m_registry;
+  /**
+   * Registry used exclusively for wayland::seat_t
+   * 
+   * Use extra registry because seats can only be registered after the surface
+   * has been created
+   */
+  std::unique_ptr<CRegistry> m_seatRegistry;
+  wayland::compositor_t m_compositor;
+  wayland::shm_t m_shm;
+  wayland::presentation_t m_presentation;
   
   std::unique_ptr<IShellSurface> m_shellSurface;
   
@@ -147,6 +205,10 @@ private:
   /// outputs that did not receive their done event yet
   std::map<std::uint32_t, std::shared_ptr<COutput>> m_outputsInPreparation;
   CCriticalSection m_outputsMutex;
+
+  // Windowed mode
+  // -------------
+  std::unique_ptr<CWindowDecorator> m_windowDecorator;
 
   // Cursor
   // ------
@@ -184,22 +246,44 @@ private:
 
   // Surface state
   // -------------
-  std::string m_currentOutput;
+  wayland::surface_t m_surface;
+  wayland::output_t m_lastSetOutput;
   /// Set of outputs that show some part of our main surface as indicated by
   /// compositor
   std::set<std::shared_ptr<COutput>> m_surfaceOutputs;
-  /// Size of our surface in "surface coordinates", i.e. without scaling applied
-  std::int32_t m_surfaceWidth, m_surfaceHeight;
-  std::int32_t m_scale = 1;
+  CCriticalSection m_surfaceOutputsMutex;
+  /// Size of our surface in "surface coordinates" (i.e. without scaling applied)
+  /// and without window decorations
+  CSizeInt m_surfaceSize;
+  /// Size of the buffer that should back the surface (i.e. with scaling applied)
+  CSizeInt m_bufferSize;
+  /// Size of the whole window including window decorations as given by configure
+  CSizeInt m_configuredSize;
+  /// Scale in use for main surface buffer
+  int m_scale = 1;
+  /// Shell surface state last acked
+  IShellSurface::StateBitset m_shellSurfaceState;
+  struct
+  {
+    bool mustBeAcked{false};
+    std::uint32_t configureSerial{};
+    CSizeInt configuredSize;
+    int scale{1};
+    IShellSurface::StateBitset shellSurfaceState;
+  } m_next;
+  bool m_waitingForApply{false};
+
+  // Internal communication
+  // ----------------------
+  /// Protocol for communicating events to the main thread
+  Actor::Protocol m_protocol;
 
   // Configure state
   // ---------------
-  std::uint32_t m_currentConfigureSerial = 0;
   bool m_firstSerialAcked = false;
   std::uint32_t m_lastAckedSerial = 0;
   /// Whether this is the first call to SetFullScreen
   bool m_isInitialSetFullScreen = true;
-  bool m_inhibitSkinReload = false;
 };
 
 

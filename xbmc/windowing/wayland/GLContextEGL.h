@@ -27,6 +27,8 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
+#include "guilib/Geometry.h"
+
 namespace KODI
 {
 namespace WINDOWING
@@ -47,9 +49,9 @@ public:
                      EGLint renderableType,
                      EGLenum renderingApi);
 
-  bool CreateSurface(wayland::surface_t& surface, int width, int height);
-  void GetAttachedSize(int& width, int& height);
-  void Resize(int width, int height);
+  bool CreateSurface(wayland::surface_t const& surface, CSizeInt size);
+  CSizeInt GetAttachedSize();
+  void Resize(CSizeInt size);
   void DestroySurface();
   void Destroy();
   void SetVSync(bool enable);

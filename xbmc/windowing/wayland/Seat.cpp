@@ -75,12 +75,12 @@ void HandleCapabilityChange(CSeat* handler,
       processor.reset();
     }
   }
-};
+}
 
 }
 
-CSeat::CSeat(std::uint32_t globalName, wayland::seat_t const& seat, wayland::data_device_t const& dataDevice, IInputHandler& handler)
-: m_globalName{globalName}, m_seat{seat}, m_handler{handler}, m_selection{dataDevice}
+CSeat::CSeat(std::uint32_t globalName, wayland::seat_t const& seat, wayland::surface_t const& inputSurface, CConnection& connection, IInputHandler& handler)
+: m_globalName{globalName}, m_seat{seat}, m_inputSurface{inputSurface}, m_handler{handler}, m_selection{connection, seat}
 {
   m_seat.on_name() = [this](std::string name)
   {
@@ -121,7 +121,7 @@ void CSeat::HandleOnCapabilities(wayland::seat_capability caps)
 
 void CSeat::HandlePointerCapability(wayland::pointer_t const& pointer)
 {
-  m_pointer.reset(new CInputProcessorPointer(pointer, static_cast<IInputHandlerPointer&> (*this)));
+  m_pointer.reset(new CInputProcessorPointer(pointer, m_inputSurface, static_cast<IInputHandlerPointer&> (*this)));
   UpdateCoordinateScale();
 }
 
@@ -163,7 +163,7 @@ void CSeat::OnKeyboardEvent(XBMC_Event& event)
 
 void CSeat::HandleTouchCapability(wayland::touch_t const& touch)
 {
-  m_touch.reset(new CInputProcessorTouch(touch));
+  m_touch.reset(new CInputProcessorTouch(touch, m_inputSurface));
   UpdateCoordinateScale();
 }
 

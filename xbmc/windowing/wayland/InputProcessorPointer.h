@@ -24,6 +24,7 @@
 
 #include <wayland-client-protocol.hpp>
 
+#include "guilib/Geometry.h"
 #include "input/XBMC_keysym.h"
 #include "windowing/XBMC_events.h"
 
@@ -46,7 +47,7 @@ public:
 class CInputProcessorPointer
 {
 public:
-  CInputProcessorPointer(wayland::pointer_t const& pointer, IInputHandlerPointer& handler);
+  CInputProcessorPointer(wayland::pointer_t const& pointer, wayland::surface_t const& surface, IInputHandlerPointer& handler);
   void SetCoordinateScale(std::int32_t scale) { m_coordinateScale = scale; }
 
 private:
@@ -54,16 +55,18 @@ private:
   CInputProcessorPointer& operator=(CInputProcessorPointer const& other) = delete;
 
   std::uint16_t ConvertMouseCoordinate(double coord);
-  void SetMousePosFromSurface(double x, double y);
+  void SetMousePosFromSurface(CPointGen<double> position);
   void SendMouseMotion();
   void SendMouseButton(unsigned char button, bool pressed);
 
   wayland::pointer_t m_pointer;
+  wayland::surface_t m_surface;
   IInputHandlerPointer& m_handler;
 
+  bool m_pointerOnSurface{};
+
   // Pointer position in *scaled* coordinates
-  std::uint16_t m_pointerX{};
-  std::uint16_t m_pointerY{};
+  CPointGen<std::uint16_t> m_pointerPosition;
   std::int32_t m_coordinateScale{1};
 };
 

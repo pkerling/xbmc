@@ -131,7 +131,6 @@ private:
   float m_verticalShift;      // current vertical shift
   bool  m_nonLinearStretched;   // current non-linear stretch
 
-  bool m_resolutionChangeInProgress = false;
   bool m_resolutionChangeAborted;
   CCriticalSection m_critical;
 };

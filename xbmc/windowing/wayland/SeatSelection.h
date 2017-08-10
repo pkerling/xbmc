@@ -33,13 +33,15 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
+class CConnection;
+
 /**
  * Retrieve and accept selection (clipboard) offers on the data device of a seat
  */
 class CSeatSelection
 {
 public:
-  explicit CSeatSelection(wayland::data_device_t const& dataDevice);
+  CSeatSelection(CConnection& connection, wayland::seat_t const& seat);
   std::string GetSelectionText() const;
 
 private:
