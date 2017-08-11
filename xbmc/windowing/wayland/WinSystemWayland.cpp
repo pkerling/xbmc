@@ -279,11 +279,11 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   // Try with this resolution if compositor does not say otherwise
   UpdateSizeVariables({res.iWidth, res.iHeight}, m_scale, m_shellSurfaceState, false);
 
-  m_shellSurface.reset(CShellSurfaceXdgShellUnstableV6::TryCreate(*m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
+  m_shellSurface.reset(CShellSurfaceXdgShellUnstableV6::TryCreate(*this, *m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   if (!m_shellSurface)
   {
     CLog::LogF(LOGWARNING, "Compositor does not support xdg_shell unstable v6 protocol - falling back to wl_shell, not all features might work");
-    m_shellSurface.reset(new CShellSurfaceWlShell(*m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
+    m_shellSurface.reset(new CShellSurfaceWlShell(*this, *m_connection, m_surface, name, KODI::LINUX::DESKTOP_FILE_NAME));
   }
 
   if (fullScreen)
@@ -300,20 +300,11 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
     }
   }
 
-  // Just remember initial width/height for context creation
+  // Just remember initial width/height for context creation in OnConfigure
   // This is used for sizing the EGLSurface
-  m_shellSurface->OnConfigure() = [this](std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
-  {
-    CLog::LogFunction(LOGDEBUG, "CreateNewWindow", "Initial configure serial %u: size %dx%d state %s", serial, size.Width(), size.Height(), IShellSurface::StateToString(state).c_str());
-    m_shellSurfaceState = state;
-    if (!size.IsZero())
-    {
-      UpdateSizeVariables(size, m_scale, m_shellSurfaceState, true);
-    }
-    AckConfigure(serial);
-  };
-
+  m_shellSurfaceInitializing = true;
   m_shellSurface->Initialize();
+  m_shellSurfaceInitializing = false;
 
   // Apply window decorations if necessary
   m_windowDecorator->SetState(m_configuredSize, m_scale, m_shellSurfaceState);
@@ -321,9 +312,6 @@ bool CWinSystemWayland::CreateNewWindow(const std::string& name,
   // Update resolution with real size as it could have changed due to configure()
   UpdateDesktopResolution(res, 0, m_bufferSize.Width(), m_bufferSize.Height(), res.fRefreshRate);
   res.bFullScreen = fullScreen;
-
-  // Set real handler during runtime
-  m_shellSurface->OnConfigure() = std::bind(&CWinSystemWayland::HandleSurfaceConfigure, this, _1, _2, _3);
 
   m_seatRegistry.reset(new CRegistry{*m_connection});
   // version 2 adds name event -> optional
@@ -761,10 +749,23 @@ void CWinSystemWayland::ApplyShellSurfaceState(IShellSurface::StateBitset state)
   m_shellSurfaceState = state;
 }
 
-void CWinSystemWayland::HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
+void CWinSystemWayland::OnConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state)
 {
-  WinSystemWaylandProtocol::MsgConfigure msg{serial, size, state};
-  m_protocol.SendOutMessage(WinSystemWaylandProtocol::CONFIGURE, &msg, sizeof(msg));
+  if (m_shellSurfaceInitializing)
+  {
+    CLog::LogF(LOGDEBUG, "Initial configure serial %u: size %dx%d state %s", serial, size.Width(), size.Height(), IShellSurface::StateToString(state).c_str());
+    m_shellSurfaceState = state;
+    if (!size.IsZero())
+    {
+      UpdateSizeVariables(size, m_scale, m_shellSurfaceState, true);
+    }
+    AckConfigure(serial);
+  }
+  else
+  {
+    WinSystemWaylandProtocol::MsgConfigure msg{serial, size, state};
+    m_protocol.SendOutMessage(WinSystemWaylandProtocol::CONFIGURE, &msg, sizeof(msg));
+  }
 }
 
 void CWinSystemWayland::AckConfigure(std::uint32_t serial)
@@ -1447,4 +1448,9 @@ void CWinSystemWayland::OnWindowMaximize()
   {
     m_shellSurface->SetMaximized();
   }
+}
+
+void CWinSystemWayland::OnClose()
+{
+  KODI::MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
 }

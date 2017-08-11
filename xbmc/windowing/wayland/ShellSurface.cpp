@@ -45,16 +45,3 @@ std::string IShellSurface::StateToString(StateBitset state)
   }
   return parts.empty() ? "none" : StringUtils::Join(parts, ",");
 }
-
-IShellSurface::ConfigureHandler& IShellSurface::OnConfigure()
-{
-  return m_onConfigure;
-}
-
-void IShellSurface::InvokeOnConfigure(std::uint32_t serial, CSizeInt size, StateBitset state)
-{
-  if (m_onConfigure)
-  {
-    m_onConfigure(serial, size, state);
-  }
-}

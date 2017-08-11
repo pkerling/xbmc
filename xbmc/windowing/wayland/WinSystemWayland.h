@@ -52,7 +52,7 @@ namespace WAYLAND
 class CRegistry;
 class CWindowDecorator;
 
-class CWinSystemWayland : public CWinSystemBase, IInputHandler, IWindowDecorationHandler
+class CWinSystemWayland : public CWinSystemBase, IInputHandler, IWindowDecorationHandler, IShellSurfaceHandler
 {
 public:
   CWinSystemWayland();
@@ -134,6 +134,10 @@ private:
   void OnWindowMaximize() override;
   void OnWindowMinimize() override;
 
+  // IShellSurfaceHandler
+  void OnConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state) override;
+  void OnClose() override;
+
   // Registry handlers
   void OnSeatAdded(std::uint32_t name, wayland::proxy_t&& seat);
   void OnSeatRemoved(std::uint32_t name);
@@ -142,7 +146,6 @@ private:
 
   void LoadDefaultCursor();
   void SendFocusChange(bool focus);
-  void HandleSurfaceConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state);
   bool SetResolutionExternal(bool fullScreen, RESOLUTION_INFO const& res);
   void SetResolutionInternal(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration, bool mustAck = false, std::uint32_t configureSerial = 0u);
   struct Sizes
@@ -263,6 +266,8 @@ private:
   int m_scale = 1;
   /// Shell surface state last acked
   IShellSurface::StateBitset m_shellSurfaceState;
+  /// Whether the shell surface is waiting for initial configure
+  bool m_shellSurfaceInitializing{false};
   struct
   {
     bool mustBeAcked{false};

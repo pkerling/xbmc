@@ -41,13 +41,13 @@ IShellSurface::State ConvertStateFlag(wayland::zxdg_toplevel_v6_state flag)
     case wayland::zxdg_toplevel_v6_state::resizing:
       return IShellSurface::STATE_RESIZING;
     default:
-      throw std::runtime_error(std::string("Unknown xdg_toplevel state flag") + std::to_string(static_cast<std::underlying_type<decltype(flag)>::type> (flag)));
+      throw std::runtime_error(std::string("Unknown xdg_toplevel state flag ") + std::to_string(static_cast<std::underlying_type<decltype(flag)>::type> (flag)));
   }
 }
 
 }
 
-CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(CConnection& connection, const wayland::surface_t& surface, std::string title, std::string class_)
+CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(IShellSurfaceHandler& handler, CConnection& connection, const wayland::surface_t& surface, std::string const& title, std::string const& class_)
 {
   wayland::zxdg_shell_v6_t shell;
   CRegistry registry{connection};
@@ -56,7 +56,7 @@ CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(CCon
   
   if (shell)
   {
-    return new CShellSurfaceXdgShellUnstableV6(connection.GetDisplay(), shell, surface, title, class_);
+    return new CShellSurfaceXdgShellUnstableV6(handler, connection.GetDisplay(), shell, surface, title, class_);
   }
   else
   {
@@ -64,8 +64,8 @@ CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(CCon
   }
 }
 
-CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::display_t& display, const wayland::zxdg_shell_v6_t& shell, const wayland::surface_t& surface, std::string title, std::string app_id)
-: m_display(display), m_shell(shell), m_surface(surface), m_xdgSurface(m_shell.get_xdg_surface(m_surface)), m_xdgToplevel(m_xdgSurface.get_toplevel())
+CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(IShellSurfaceHandler& handler, wayland::display_t& display, const wayland::zxdg_shell_v6_t& shell, const wayland::surface_t& surface, std::string const& title, std::string const& app_id)
+: m_handler{handler}, m_display{display}, m_shell{shell}, m_surface{surface}, m_xdgSurface{m_shell.get_xdg_surface(m_surface)}, m_xdgToplevel{m_xdgSurface.get_toplevel()}
 {
   m_shell.on_ping() = [this](std::uint32_t serial)
   {
@@ -73,11 +73,11 @@ CShellSurfaceXdgShellUnstableV6::CShellSurfaceXdgShellUnstableV6(wayland::displa
   };
   m_xdgSurface.on_configure() = [this](std::uint32_t serial)
   {
-    InvokeOnConfigure(serial, m_configuredSize, m_configuredState);
+    m_handler.OnConfigure(serial, m_configuredSize, m_configuredState);
   };
   m_xdgToplevel.on_close() = [this]()
   {
-    MESSAGING::CApplicationMessenger::GetInstance().PostMsg(TMSG_QUIT);
+    m_handler.OnClose();
   };
   m_xdgToplevel.on_configure() = [this](std::int32_t width, std::int32_t height, std::vector<wayland::zxdg_toplevel_v6_state> states)
   {

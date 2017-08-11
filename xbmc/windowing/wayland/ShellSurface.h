@@ -21,7 +21,6 @@
 
 #include <bitset>
 #include <cstdint>
-#include <functional>
 
 #include <wayland-client.hpp>
 
@@ -34,6 +33,8 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
+class IShellSurfaceHandler;
+
 /**
  * Abstraction for shell surfaces to support multiple protocols
  * such as wl_shell (for compatibility) and xdg_shell (for features)
@@ -44,19 +45,6 @@ namespace WAYLAND
 class IShellSurface
 {
 public:
-  /**
-   * Construct shell surface over normal surface
-   * 
-   * The complete argument list depends on the shell implementation, but it
-   * will generally include a \ref wayland::surface_t that is used as
-   * base surface which is decorated with the corresponding shell surface role.
-   * 
-   * The event loop thread MUST NOT be running when constructors of implementing
-   * classes are called.
-   */
-  IShellSurface() {}
-  virtual ~IShellSurface() {}
-
   // Not enum class since it must be used like a bitfield
   enum State
   {
@@ -68,7 +56,6 @@ public:
   };
   using StateBitset = std::bitset<STATE_COUNT>;
   static std::string StateToString(StateBitset state);
-
   
   /**
    * Initialize shell surface
@@ -78,9 +65,6 @@ public:
    * already be called.
    */
   virtual void Initialize() = 0;
-
-  // size 0x0
-  using ConfigureHandler = std::function<void(std::uint32_t /* serial */, CSizeInt /* size */, StateBitset /* state */)>;
   
   virtual void SetFullScreen(wayland::output_t const& output, float refreshRate) = 0;
   virtual void SetWindowed() = 0;
@@ -89,21 +73,29 @@ public:
   virtual void SetMinimized() = 0;
   virtual void SetWindowGeometry(CRectInt geometry) = 0;
   
-  ConfigureHandler& OnConfigure();
   virtual void AckConfigure(std::uint32_t serial) = 0;
 
   virtual void StartMove(wayland::seat_t const& seat, std::uint32_t serial) = 0;
   virtual void StartResize(wayland::seat_t const& seat, std::uint32_t serial, wayland::shell_surface_resize edge) = 0;
   virtual void ShowShellContextMenu(wayland::seat_t const& seat, std::uint32_t serial, CPointInt position) = 0;
 
+  virtual ~IShellSurface() = default;
+
 protected:
-  void InvokeOnConfigure(std::uint32_t serial, CSizeInt size, StateBitset state);
+  IShellSurface() noexcept = default;
 
 private:
-  ConfigureHandler m_onConfigure;
-  
   IShellSurface(IShellSurface const& other) = delete;
   IShellSurface& operator=(IShellSurface const& other) = delete;
+};
+
+class IShellSurfaceHandler
+{
+public:
+  virtual void OnConfigure(std::uint32_t serial, CSizeInt size, IShellSurface::StateBitset state) = 0;
+  virtual void OnClose() = 0;
+
+  virtual ~IShellSurfaceHandler() = default;
 };
 
 }

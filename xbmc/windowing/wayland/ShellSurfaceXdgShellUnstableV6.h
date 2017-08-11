@@ -48,10 +48,10 @@ public:
    * \param class_ class of the surface, which should match the name of the
    *               .desktop file of the application
    */
-  CShellSurfaceXdgShellUnstableV6(wayland::display_t& display, wayland::zxdg_shell_v6_t const& shell, wayland::surface_t const& surface, std::string title, std::string class_);
+  CShellSurfaceXdgShellUnstableV6(IShellSurfaceHandler& handler, wayland::display_t& display, wayland::zxdg_shell_v6_t const& shell, wayland::surface_t const& surface, std::string const& title, std::string const& class_);
   virtual ~CShellSurfaceXdgShellUnstableV6() noexcept;
 
-  static CShellSurfaceXdgShellUnstableV6* TryCreate(CConnection& connection, wayland::surface_t const& surface, std::string title, std::string class_);
+  static CShellSurfaceXdgShellUnstableV6* TryCreate(IShellSurfaceHandler& handler, CConnection& connection, wayland::surface_t const& surface, std::string const& title, std::string const& class_);
   
   void Initialize() override;
   
@@ -68,6 +68,7 @@ public:
   void ShowShellContextMenu(const wayland::seat_t& seat, std::uint32_t serial, CPointInt position) override;
 
 private:
+  IShellSurfaceHandler& m_handler;
   wayland::display_t& m_display;
   wayland::zxdg_shell_v6_t m_shell;
   wayland::surface_t m_surface;
