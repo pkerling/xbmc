@@ -53,7 +53,7 @@ private:
   CInputProcessorPointer(CInputProcessorPointer const& other) = delete;
   CInputProcessorPointer& operator=(CInputProcessorPointer const& other) = delete;
 
-  std::uint16_t ConvertMouseCoordinate(double coord);
+  std::uint16_t ConvertMouseCoordinate(double coord) const;
   void SetMousePosFromSurface(CPointGen<double> position);
   void SendMouseMotion();
   void SendMouseButton(unsigned char button, bool pressed);
