@@ -63,7 +63,7 @@ class CWinEventsWaylandThread : CThread
 
 public:
   CWinEventsWaylandThread(wayland::display_t& display)
-  : CThread("Wayland message pump"), m_display(display)
+  : CThread("Wayland message pump"), m_display{display}
   {
     std::array<int, 2> fds;
     if (pipe(fds.data()) < 0)
@@ -210,7 +210,7 @@ private:
   }
 };
 
-std::unique_ptr<CWinEventsWaylandThread> g_WlMessagePump = nullptr;
+std::unique_ptr<CWinEventsWaylandThread> g_WlMessagePump{nullptr};
 
 }
 

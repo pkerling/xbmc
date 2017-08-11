@@ -44,7 +44,7 @@ COSScreenSaverIdleInhibitUnstableV1* COSScreenSaverIdleInhibitUnstableV1::TryCre
 }
 
 COSScreenSaverIdleInhibitUnstableV1::COSScreenSaverIdleInhibitUnstableV1(const wayland::zwp_idle_inhibit_manager_v1_t& manager, const wayland::surface_t& inhibitSurface)
-: m_manager(manager), m_surface(inhibitSurface)
+: m_manager{manager}, m_surface{inhibitSurface}
 {
   assert(m_manager);
   assert(m_surface);

@@ -94,7 +94,8 @@ public:
     CSizeInt size;
     std::int32_t refreshMilliHz;
     Mode(CSizeInt size, std::int32_t refreshMilliHz)
-      : size{size}, refreshMilliHz(refreshMilliHz) {}
+    : size{size}, refreshMilliHz(refreshMilliHz)
+    {}
 
     float GetRefreshInHz() const
     {
@@ -153,8 +154,8 @@ private:
   std::set<Mode> m_modes;
   // For std::set, insertion never invalidates existing iterators, and modes are
   // never removed, so the usage of iterators is safe
-  std::set<Mode>::iterator m_currentMode = m_modes.end();
-  std::set<Mode>::iterator m_preferredMode = m_modes.end();
+  std::set<Mode>::iterator m_currentMode{m_modes.end()};
+  std::set<Mode>::iterator m_preferredMode{m_modes.end()};
 };
 
 

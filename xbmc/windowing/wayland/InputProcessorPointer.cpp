@@ -102,7 +102,7 @@ CInputProcessorPointer::CInputProcessorPointer(wayland::pointer_t const& pointer
       // generates one scroll button event for XBMC
 
       // Negative is up
-      unsigned char xbmcButton = (wl_fixed_to_double(value) < 0.0) ? XBMC_BUTTON_WHEELUP : XBMC_BUTTON_WHEELDOWN;
+      auto xbmcButton = static_cast<unsigned char> ((value < 0.0) ? XBMC_BUTTON_WHEELUP : XBMC_BUTTON_WHEELDOWN);
       // Simulate a single click of the wheel-equivalent "button"
       SendMouseButton(xbmcButton, true);
       SendMouseButton(xbmcButton, false);
@@ -130,25 +130,14 @@ void CInputProcessorPointer::SetMousePosFromSurface(CPointGen<double> position)
 
 void CInputProcessorPointer::SendMouseMotion()
 {
-  XBMC_Event event;
-  event.type = XBMC_MOUSEMOTION;
-  event.motion =
-  {
-    .x = m_pointerPosition.x,
-    .y = m_pointerPosition.y
-  };
+  XBMC_Event event{XBMC_MOUSEMOTION};
+  event.motion = {m_pointerPosition.x, m_pointerPosition.y};
   m_handler.OnPointerEvent(event);
 }
 
 void CInputProcessorPointer::SendMouseButton(unsigned char button, bool pressed)
 {
-  XBMC_Event event;
-  event.type = static_cast<unsigned char> (pressed ? XBMC_MOUSEBUTTONDOWN : XBMC_MOUSEBUTTONUP);
-  event.button =
-  {
-    .button = button,
-    .x = m_pointerPosition.x,
-    .y = m_pointerPosition.y
-  };
+  XBMC_Event event{static_cast<unsigned char> (pressed ? XBMC_MOUSEBUTTONDOWN : XBMC_MOUSEBUTTONUP)};
+  event.button = {button, m_pointerPosition.x, m_pointerPosition.y};
   m_handler.OnPointerEvent(event);
 }

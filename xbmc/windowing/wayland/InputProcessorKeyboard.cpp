@@ -34,7 +34,7 @@ using namespace KODI::WINDOWING::WAYLAND;
 namespace
 {
 // Offset between keyboard codes of Wayland (effectively evdev) and xkb_keycode_t
-constexpr int WL_KEYBOARD_XKB_CODE_OFFSET = 8;
+constexpr int WL_KEYBOARD_XKB_CODE_OFFSET{8};
 }
 
 CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyboard, IInputHandlerKeyboard& handler)
@@ -146,8 +146,7 @@ XBMC_Event CInputProcessorKeyboard::SendKey(unsigned char scancode, XBMCKey key,
 {
   assert(m_keymap);
 
-  XBMC_Event event;
-  event.type = static_cast<unsigned char> (pressed ? XBMC_KEYDOWN : XBMC_KEYUP);
+  XBMC_Event event{static_cast<unsigned char> (pressed ? XBMC_KEYDOWN : XBMC_KEYUP)};
   event.key.keysym =
   {
     .scancode = scancode,

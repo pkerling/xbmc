@@ -237,7 +237,7 @@ private:
   static const int LATENCY_MOVING_AVERAGE_SIZE = 30;
   std::atomic<float> m_latencyMovingAverage;
   CSignalHandlerList<PresentationFeedbackHandler> m_presentationFeedbackHandlers;
-  std::uint64_t m_frameStartTime{};
+  std::int64_t m_frameStartTime{};
 
   // IDispResource
   // -------------

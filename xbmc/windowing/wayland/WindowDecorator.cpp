@@ -147,7 +147,7 @@ std::size_t PositionInBuffer(CWindowDecorator::Buffer& buffer, CPointInt positio
   {
     throw std::invalid_argument("Position out of bounds");
   }
-  std::size_t offset = buffer.size.Width() * position.y + position.x;
+  std::size_t offset{static_cast<std::size_t> (buffer.size.Width() * position.y + position.x)};
   if (offset * BYTES_PER_PIXEL >= buffer.dataSize)
   {
     throw std::invalid_argument("Position out of bounds");
@@ -203,7 +203,7 @@ void DrawRectangle(CWindowDecorator::Buffer& buffer, std::uint32_t color, CRectI
 
 void FillRectangle(CWindowDecorator::Buffer& buffer, std::uint32_t color, CRectInt rect)
 {
-  for (int y = rect.y1; y <= rect.y2; y++)
+  for (int y{rect.y1}; y <= rect.y2; y++)
   {
     DrawHorizontalLine(buffer, color, {rect.x1, y}, rect.Width());
   }
@@ -211,7 +211,7 @@ void FillRectangle(CWindowDecorator::Buffer& buffer, std::uint32_t color, CRectI
 
 void DrawHorizontalLine(CWindowDecorator::Surface& surface, std::uint32_t color, CPointInt position, int length)
 {
-  for (int i = 0; i < surface.scale; i++)
+  for (int i{0}; i < surface.scale; i++)
   {
     DrawHorizontalLine(surface.buffer, color, position * surface.scale + CPointInt{0, i}, length * surface.scale);
   }
@@ -219,7 +219,7 @@ void DrawHorizontalLine(CWindowDecorator::Surface& surface, std::uint32_t color,
 
 void DrawAngledLine(CWindowDecorator::Surface& surface, std::uint32_t color, CPointInt position, int length, int stride)
 {
-  for (int i = 0; i < surface.scale; i++)
+  for (int i{0}; i < surface.scale; i++)
   {
     DrawLineWithStride(surface.buffer, color, position * surface.scale + CPointInt{i, 0}, length * surface.scale, surface.buffer.size.Width() + stride);
   }
@@ -235,7 +235,7 @@ void DrawVerticalLine(CWindowDecorator::Surface& surface, std::uint32_t color, C
  */
 void DrawRectangle(CWindowDecorator::Surface& surface, std::uint32_t color, CRectInt rect)
 {
-  for (int i = 0; i < surface.scale; i++)
+  for (int i{0}; i < surface.scale; i++)
   {
     DrawRectangle(surface.buffer, color, {rect.P1() * surface.scale + CPointInt{i, i}, rect.P2() * surface.scale - CPointInt{i, i}});
   }
@@ -430,7 +430,7 @@ void CWindowDecorator::HandleSeatPointer(Seat& seat)
     // Reset first so we ignore events for surfaces we don't handle
    seat.currentSurface = SURFACE_COUNT;
    CSingleLock lock(m_mutex);
-   for (std::size_t i = 0; i < m_borderSurfaces.size(); i++)
+   for (std::size_t i{0}; i < m_borderSurfaces.size(); i++)
    {
      if (m_borderSurfaces[i].surface.wlSurface == surface)
       {
@@ -474,7 +474,7 @@ void CWindowDecorator::HandleSeatTouch(Seat& seat)
   seat.touch.on_down() = [this, &seat](std::uint32_t serial, std::uint32_t, wayland::surface_t surface, std::int32_t id, float x, float y)
   {
    CSingleLock lock(m_mutex);
-   for (std::size_t i = 0; i < m_borderSurfaces.size(); i++)
+   for (std::size_t i{0}; i < m_borderSurfaces.size(); i++)
    {
      if (m_borderSurfaces[i].surface.wlSurface == surface)
      {
@@ -528,7 +528,7 @@ void CWindowDecorator::UpdateSeatCursor(Seat& seat)
   {
     seat.cursor = m_compositor.create_surface();
   }
-  int calcScale = seat.cursor.can_set_buffer_scale() ? m_scale : 1;
+  int calcScale{seat.cursor.can_set_buffer_scale() ? m_scale : 1};
 
   seat.pointer.set_cursor(seat.pointerEnterSerial, seat.cursor, cursorImage.hotspot_x() / calcScale, cursorImage.hotspot_y() / calcScale);
   seat.cursor.attach(cursorImage.get_buffer(), 0, 0);
@@ -555,10 +555,10 @@ void CWindowDecorator::UpdateButtonHoverState()
     }
   }
 
-  bool changed = false;
+  bool changed{false};
   for (auto& button : m_buttons)
   {
-    bool wasHovered = button.hovered;
+    bool wasHovered{button.hovered};
     button.hovered = std::any_of(pointerPositions.cbegin(), pointerPositions.cend(), [&](CPoint point) { return button.position.PtInRect(CPointInt{point}); });
     changed = changed || (button.hovered != wasHovered);
   }
@@ -656,14 +656,14 @@ CSizeInt CWindowDecorator::CalculateFullSurfaceSize(CSizeInt size, IShellSurface
 
 void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBitset state)
 {
-  CSizeInt mainSurfaceSize = CalculateMainSurfaceSize(size, state);
+  CSizeInt mainSurfaceSize{CalculateMainSurfaceSize(size, state)};
   CSingleLock lock(m_mutex);
   if (mainSurfaceSize == m_mainSurfaceSize && scale == m_scale && state == m_windowState)
   {
     return;
   }
 
-  bool wasDecorations = IsDecorationActive();
+  bool wasDecorations{IsDecorationActive()};
   m_windowState = state;
 
   m_buttonColor = m_windowState.test(IShellSurface::STATE_ACTIVATED) ? BUTTON_COLOR_ACTIVE : BUTTON_COLOR_INACTIVE;
@@ -676,7 +676,7 @@ void CWindowDecorator::SetState(CSizeInt size, int scale, IShellSurface::StateBi
     {
       // Reload cursor theme
       CLog::Log(LOGDEBUG, "CWindowDecorator::SetState: Buffer scale changed, reloading cursor theme");
-      m_cursorTheme = wayland::cursor_theme_t();
+      m_cursorTheme = wayland::cursor_theme_t{};
       for (auto& seat : m_seats)
       {
         UpdateSeatCursor(seat.second);
@@ -786,8 +786,8 @@ void CWindowDecorator::ResetSurfaces()
         // Destroying the surface would cause some flicker because it takes effect
         // immediately, before the next commit on the main surface - just make it
         // invisible by attaching a NULL buffer
-        wlSurface.attach(wayland::buffer_t(), 0, 0);
-        wlSurface.set_opaque_region(wayland::region_t());
+        wlSurface.attach(wayland::buffer_t{}, 0, 0);
+        wlSurface.set_opaque_region(wayland::region_t{});
         wlSurface.commit();
       }
     }
@@ -865,7 +865,7 @@ CWindowDecorator::Buffer CWindowDecorator::GetBuffer(CSizeInt size)
   // argb8888 support is mandatory
   auto buffer = m_shmPool.create_buffer(m_memoryAllocatedSize, size.Width(), size.Height(), size.Width() * BYTES_PER_PIXEL, wayland::shm_format::argb8888);
 
-  void* data = static_cast<std::uint8_t*> (m_memory->Data()) + m_memoryAllocatedSize;
+  void* data{static_cast<std::uint8_t*> (m_memory->Data()) + m_memoryAllocatedSize};
   m_memoryAllocatedSize += totalSize;
 
   return { data, static_cast<std::size_t> (totalSize), size, std::move(buffer) };
@@ -873,7 +873,7 @@ CWindowDecorator::Buffer CWindowDecorator::GetBuffer(CSizeInt size)
 
 void CWindowDecorator::AllocateBuffers()
 {
-  for (std::size_t i = 0; i < m_borderSurfaces.size(); i++)
+  for (std::size_t i{0}; i < m_borderSurfaces.size(); i++)
   {
     if (!m_borderSurfaces[i].surface.buffer.data)
     {

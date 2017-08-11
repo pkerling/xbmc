@@ -111,7 +111,7 @@ private:
   friend class COSScreenSaverInhibitor;
   void RemoveInhibitor();
 
-  unsigned int m_inhibitionCount = 0;
+  unsigned int m_inhibitionCount{0u};
   std::unique_ptr<IOSScreenSaver> m_impl;
 };
 

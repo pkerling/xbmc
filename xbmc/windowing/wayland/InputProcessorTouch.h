@@ -60,7 +60,7 @@ private:
      */
     float x, y, size;
     TouchPoint(std::uint32_t initialEventTime, std::int32_t kodiPointerNumber, float x, float y, float size)
-    : lastEventTime(initialEventTime), kodiPointerNumber(kodiPointerNumber), x(x), y(y), size(size)
+    : lastEventTime{initialEventTime}, kodiPointerNumber{kodiPointerNumber}, x{x}, y{y}, size{size}
     {}
   };
 

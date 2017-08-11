@@ -27,7 +27,7 @@
 using namespace KODI::WINDOWING::WAYLAND;
 
 COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std::function<void()> doneHandler)
-: m_globalName(globalName), m_output(output), m_doneHandler(doneHandler)
+: m_globalName{globalName}, m_output{output}, m_doneHandler{doneHandler}
 {
   assert(m_output);
 

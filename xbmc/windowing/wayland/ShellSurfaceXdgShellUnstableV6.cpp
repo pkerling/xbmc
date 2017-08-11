@@ -50,7 +50,7 @@ IShellSurface::State ConvertStateFlag(wayland::zxdg_toplevel_v6_state flag)
 CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(CConnection& connection, const wayland::surface_t& surface, std::string title, std::string class_)
 {
   wayland::zxdg_shell_v6_t shell;
-  CRegistry registry(connection);
+  CRegistry registry{connection};
   registry.RequestSingleton(shell, 1, 1, false);
   registry.Bind();
   

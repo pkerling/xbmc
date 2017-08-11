@@ -29,7 +29,7 @@ using namespace std::placeholders;
 CShellSurfaceWlShell::CShellSurfaceWlShell(CConnection& connection, const wayland::surface_t& surface, std::string title, std::string class_)
 {
   {
-    CRegistry registry(connection);
+    CRegistry registry{connection};
     registry.RequestSingleton(m_shell, 1, 1);
     registry.Bind();
   }

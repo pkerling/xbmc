@@ -25,9 +25,7 @@
 using namespace KODI::UTILS::POSIX;
 
 CMmap::CMmap(void* addr, std::size_t length, int prot, int flags, int fildes, off_t offset)
-:
-  m_size(length),
-  m_memory(mmap(addr, length, prot, flags, fildes, offset))
+: m_size{length}, m_memory{mmap(addr, length, prot, flags, fildes, offset)}
 {
   if (m_memory == MAP_FAILED)
   {

@@ -131,8 +131,8 @@ std::string CSeatSelection::GetSelectionText() const
     return "";
   }
 
-  CFileHandle readFd(fds[0]);
-  CFileHandle writeFd(fds[1]);
+  CFileHandle readFd{fds[0]};
+  CFileHandle writeFd{fds[1]};
 
   m_currentSelection.receive(m_matchedMimeType, writeFd);
   lock.Leave();
@@ -156,7 +156,7 @@ std::string CSeatSelection::GetSelectionText() const
   std::array<char, MAX_SIZE> buffer;
 
   auto start = std::chrono::steady_clock::now();
-  std::size_t totalBytesRead = 0;
+  std::size_t totalBytesRead{0};
 
   do
   {
@@ -164,7 +164,7 @@ std::string CSeatSelection::GetSelectionText() const
     // Do not permit negative timeouts (would cause infinitely long poll)
     auto remainingTimeout = std::max(std::chrono::milliseconds(0), std::chrono::duration_cast<std::chrono::milliseconds> (TIMEOUT - (now - start))).count();
     // poll() for changes until poll signals POLLHUP and the remaining data was read
-    int ret = poll(&fd, 1, remainingTimeout);
+    int ret{poll(&fd, 1, remainingTimeout)};
     if (ret == 0)
     {
       // Timeout
@@ -191,7 +191,7 @@ std::string CSeatSelection::GetSelectionText() const
         CLog::LogF(LOGERROR, "Selection data is too big, aborting read");
         return "";
       }
-      ssize_t readBytes = read(fd.fd, buffer.data() + totalBytesRead, buffer.size() - totalBytesRead);
+      ssize_t readBytes{read(fd.fd, buffer.data() + totalBytesRead, buffer.size() - totalBytesRead)};
       if (readBytes < 0)
       {
         CLog::LogF(LOGERROR, "read() from selection pipe failed: %s", std::strerror(errno));

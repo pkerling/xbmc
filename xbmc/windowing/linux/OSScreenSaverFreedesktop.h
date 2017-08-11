@@ -40,7 +40,7 @@ public:
   void Uninhibit() override;
 
 private:
-  bool m_inhibited = false;
+  bool m_inhibited{false};
   std::uint32_t m_cookie;
 };
 
