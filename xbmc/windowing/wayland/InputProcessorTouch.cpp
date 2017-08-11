@@ -27,7 +27,7 @@ using namespace KODI::WINDOWING::WAYLAND;
 CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch, wayland::surface_t const& surface)
 : m_touch{touch}, m_surface{surface}
 {
-  m_touch.on_down() = [this](std::uint32_t serial, std::uint32_t time, wayland::surface_t surface, std::int32_t id, double x, double y)
+  m_touch.on_down() = [this](std::uint32_t, std::uint32_t time, wayland::surface_t surface, std::int32_t id, double x, double y)
   {
     if (surface != m_surface)
     {
@@ -56,7 +56,7 @@ CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch, waylan
       SendTouchPointEvent(TouchInputDown, it->second);
     }
   };
-  m_touch.on_up() = [this](std::uint32_t serial, std::uint32_t time, std::int32_t id)
+  m_touch.on_up() = [this](std::uint32_t, std::uint32_t time, std::int32_t id)
   {
     auto it = m_touchPoints.find(id);
     if (it != m_touchPoints.end())

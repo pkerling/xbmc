@@ -40,11 +40,11 @@ constexpr int WL_KEYBOARD_XKB_CODE_OFFSET{8};
 CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyboard, IInputHandlerKeyboard& handler)
 : m_keyboard{keyboard}, m_handler{handler}, m_keyRepeatTimer{std::bind(&CInputProcessorKeyboard::KeyRepeatTimeout, this)}
 {
-  m_keyboard.on_enter() = [this](std::uint32_t serial, wayland::surface_t surface, wayland::array_t keys)
+  m_keyboard.on_enter() = [this](std::uint32_t, wayland::surface_t, wayland::array_t)
   {
     m_handler.OnKeyboardEnter();
   };
-  m_keyboard.on_leave() = [this](std::uint32_t serial, wayland::surface_t surface)
+  m_keyboard.on_leave() = [this](std::uint32_t, wayland::surface_t)
   {
     m_keyRepeatTimer.Stop();
     m_handler.OnKeyboardLeave();
@@ -83,7 +83,7 @@ CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyb
       CLog::Log(LOGERROR, "Could not parse keymap from compositor: %s - continuing without keymap", e.what());
     }
   };
-  m_keyboard.on_key() = [this](std::uint32_t serial, std::uint32_t time, std::uint32_t key, wayland::keyboard_key_state state)
+  m_keyboard.on_key() = [this](std::uint32_t, std::uint32_t, std::uint32_t key, wayland::keyboard_key_state state)
   {
     if (!m_keymap)
     {
@@ -93,7 +93,7 @@ CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyb
 
     ConvertAndSendKey(key, state == wayland::keyboard_key_state::pressed);
   };
-  m_keyboard.on_modifiers() = [this](std::uint32_t serial, std::uint32_t modsDepressed, std::uint32_t modsLatched, std::uint32_t modsLocked, std::uint32_t group)
+  m_keyboard.on_modifiers() = [this](std::uint32_t, std::uint32_t modsDepressed, std::uint32_t modsLatched, std::uint32_t modsLocked, std::uint32_t group)
   {
     if (!m_keymap)
     {

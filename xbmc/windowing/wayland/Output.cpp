@@ -31,7 +31,7 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
 {
   assert(m_output);
 
-  m_output.on_geometry() = [this](std::int32_t x, std::int32_t y, std::int32_t physWidth, std::int32_t physHeight, wayland::output_subpixel subpixel, std::string const& make, std::string const& model, wayland::output_transform transform)
+  m_output.on_geometry() = [this](std::int32_t x, std::int32_t y, std::int32_t physWidth, std::int32_t physHeight, wayland::output_subpixel, std::string const& make, std::string const& model, wayland::output_transform)
   {
     CSingleLock lock(m_geometryCriticalSection);
     m_position = {x, y};

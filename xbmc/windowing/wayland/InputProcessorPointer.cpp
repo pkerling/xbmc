@@ -93,7 +93,7 @@ CInputProcessorPointer::CInputProcessorPointer(wayland::pointer_t const& pointer
       SendMouseButton(xbmcButton, pressed);
     }
   };
-  m_pointer.on_axis() = [this](std::uint32_t serial, wayland::pointer_axis axis, std::int32_t value)
+  m_pointer.on_axis() = [this](std::uint32_t, wayland::pointer_axis, double value)
   {
     if (m_pointerOnSurface)
     {
