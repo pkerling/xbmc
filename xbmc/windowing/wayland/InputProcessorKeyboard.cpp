@@ -26,7 +26,7 @@
 #include <limits>
 
 #include "utils/log.h"
-#include "utils/ScopeGuard.h"
+#include "utils/posix/FileHandle.h"
 #include "windowing/XkbcommonKeymap.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
@@ -58,7 +58,7 @@ CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyb
   };
   m_keyboard.on_keymap() = [this](wayland::keyboard_keymap_format format, int fd, std::uint32_t size)
   {
-    KODI::UTILS::CScopeGuard<int, -1, decltype(close)> fdGuard(close, fd);
+    KODI::UTILS::POSIX::CFileHandle fdGuard{fd};
 
     if (format != wayland::keyboard_keymap_format::xkb_v1)
     {
