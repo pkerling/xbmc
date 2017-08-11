@@ -22,7 +22,6 @@
 #include <atomic>
 #include <cstdint>
 #include <set>
-#include <stdexcept>
 #include <tuple>
 
 #include <wayland-client-protocol.hpp>

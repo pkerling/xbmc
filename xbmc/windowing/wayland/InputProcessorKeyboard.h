@@ -21,7 +21,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <functional>
 #include <memory>
 
 #include <wayland-client-protocol.hpp>

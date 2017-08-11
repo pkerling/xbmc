@@ -22,7 +22,6 @@
 #include <wayland-extra-protocols.hpp>
 
 #include "Connection.h"
-#include "threads/Event.h"
 #include "../OSScreenSaver.h"
 
 namespace KODI

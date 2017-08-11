@@ -23,6 +23,7 @@
 #include <cassert>
 #include <cmath>
 #include <set>
+#include <stdexcept>
 
 using namespace KODI::WINDOWING::WAYLAND;
 

@@ -20,7 +20,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 
 #include <wayland-client-protocol.hpp>
 
