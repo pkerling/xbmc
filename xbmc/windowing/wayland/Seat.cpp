@@ -89,7 +89,7 @@ CSeat::CSeat(std::uint32_t globalName, wayland::seat_t const& seat, wayland::sur
   m_seat.on_capabilities() = std::bind(&CSeat::HandleOnCapabilities, this, std::placeholders::_1);
 }
 
-CSeat::~CSeat() = default;
+CSeat::~CSeat() noexcept = default;
 
 void CSeat::HandleOnCapabilities(wayland::seat_capability caps)
 {

@@ -42,7 +42,7 @@ class CInputProcessorTouch
 {
 public:
   CInputProcessorTouch(wayland::touch_t const& touch, wayland::surface_t const& surface);
-  ~CInputProcessorTouch();
+  ~CInputProcessorTouch() noexcept;
   void SetCoordinateScale(std::int32_t scale) { m_coordinateScale = scale; }
 
 private:

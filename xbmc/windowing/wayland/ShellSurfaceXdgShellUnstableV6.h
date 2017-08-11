@@ -49,7 +49,7 @@ public:
    *               .desktop file of the application
    */
   CShellSurfaceXdgShellUnstableV6(wayland::display_t& display, wayland::zxdg_shell_v6_t const& shell, wayland::surface_t const& surface, std::string title, std::string class_);
-  virtual ~CShellSurfaceXdgShellUnstableV6();
+  virtual ~CShellSurfaceXdgShellUnstableV6() noexcept;
 
   static CShellSurfaceXdgShellUnstableV6* TryCreate(CConnection& connection, wayland::surface_t const& surface, std::string title, std::string class_);
   

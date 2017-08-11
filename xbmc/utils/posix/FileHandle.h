@@ -33,7 +33,7 @@ namespace POSIX
 class CFileHandle : public CScopeGuard<int, -1, decltype(close)>
 {
 public:
-  CFileHandle() : CScopeGuard(close, -1) {}
+  CFileHandle() noexcept : CScopeGuard(close, -1) {}
   explicit CFileHandle(int fd) : CScopeGuard(close, fd) {}
 };
 

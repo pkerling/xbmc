@@ -56,8 +56,8 @@ void COSScreenSaverManager::RemoveInhibitor()
   }
 }
 
-COSScreenSaverInhibitor::COSScreenSaverInhibitor()
 : m_active(false), m_manager(nullptr)
+COSScreenSaverInhibitor::COSScreenSaverInhibitor() noexcept
 {
 }
 
@@ -66,13 +66,13 @@ COSScreenSaverInhibitor::COSScreenSaverInhibitor(COSScreenSaverManager* manager)
 {
 }
 
-COSScreenSaverInhibitor::COSScreenSaverInhibitor(COSScreenSaverInhibitor&& other)
 : m_active(false), m_manager(nullptr)
+COSScreenSaverInhibitor::COSScreenSaverInhibitor(COSScreenSaverInhibitor&& other) noexcept
 {
   *this = std::move(other);
 }
 
-COSScreenSaverInhibitor& COSScreenSaverInhibitor::operator=(COSScreenSaverInhibitor&& other)
+COSScreenSaverInhibitor& COSScreenSaverInhibitor::operator=(COSScreenSaverInhibitor&& other) noexcept
 {
   Release();
   m_active = other.m_active;
@@ -101,7 +101,7 @@ void COSScreenSaverInhibitor::Release()
   }
 }
 
-COSScreenSaverInhibitor::~COSScreenSaverInhibitor()
+COSScreenSaverInhibitor::~COSScreenSaverInhibitor() noexcept
 {
   Release();
 }

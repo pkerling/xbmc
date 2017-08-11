@@ -56,7 +56,7 @@ class CWinSystemWayland : public CWinSystemBase, IInputHandler, IWindowDecoratio
 {
 public:
   CWinSystemWayland();
-  virtual ~CWinSystemWayland();
+  virtual ~CWinSystemWayland() noexcept;
 
   bool InitWindowSystem() override;
   bool DestroyWindowSystem() override;

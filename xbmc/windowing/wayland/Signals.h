@@ -54,9 +54,7 @@ class CSignalRegistration
   CSignalRegistration& operator=(CSignalRegistration const& other) = delete;
 
 public:
-  CSignalRegistration()
-  {
-  }
+  CSignalRegistration() noexcept = default;
 
   CSignalRegistration(CSignalRegistration&& other) noexcept
   {
@@ -71,7 +69,7 @@ public:
     return *this;
   }
 
-  ~CSignalRegistration()
+  ~CSignalRegistration() noexcept
   {
     Unregister();
   }

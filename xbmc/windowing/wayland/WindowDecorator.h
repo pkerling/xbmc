@@ -125,8 +125,7 @@ public:
     CSizeInt size{};
     wayland::buffer_t wlBuffer;
 
-    Buffer()
-    {}
+    Buffer() noexcept {}
 
     Buffer(void* data, std::size_t dataSize, CSizeInt size, wayland::buffer_t&& buffer)
     : data{data}, dataSize{dataSize}, size{size}, wlBuffer{std::move(buffer)}

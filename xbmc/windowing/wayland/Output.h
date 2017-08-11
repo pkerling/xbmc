@@ -46,7 +46,7 @@ class COutput
 {
 public:
   COutput(std::uint32_t globalName, wayland::output_t const & output, std::function<void()> doneHandler);
-  ~COutput();
+  ~COutput() noexcept;
   
   wayland::output_t const& GetWaylandOutput() const
   {

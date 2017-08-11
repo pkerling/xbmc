@@ -108,7 +108,7 @@ void CShellSurfaceXdgShellUnstableV6::AckConfigure(std::uint32_t serial)
   m_xdgSurface.ack_configure(serial);
 }
 
-CShellSurfaceXdgShellUnstableV6::~CShellSurfaceXdgShellUnstableV6()
+CShellSurfaceXdgShellUnstableV6::~CShellSurfaceXdgShellUnstableV6() noexcept
 {
   // xdg_shell is picky: must destroy toplevel role before surface
   m_xdgToplevel.proxy_release();

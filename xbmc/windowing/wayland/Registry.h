@@ -45,7 +45,7 @@ namespace WAYLAND
 class CRegistry
 {
 public:
-  explicit CRegistry(CConnection& connection) noexcept;
+  explicit CRegistry(CConnection& connection);
 
   /**
    * Request a static singleton global to be bound to a proxy

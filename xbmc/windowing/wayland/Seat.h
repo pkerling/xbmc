@@ -104,7 +104,7 @@ public:
    * \param handler handler that receives events from this seat, must not be null
    */
   CSeat(std::uint32_t globalName, wayland::seat_t const & seat, wayland::surface_t const& inputSurface, CConnection& connection, IInputHandler& handler);
-  ~CSeat();
+  ~CSeat() noexcept;
   std::uint32_t GetGlobalName() const
   {
     return m_globalName;

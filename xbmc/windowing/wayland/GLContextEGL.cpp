@@ -48,7 +48,7 @@ CGLContextEGL::CGLContextEGL()
   m_eglCreatePlatformWindowSurfaceEXT = CEGLUtils::GetRequiredProcAddress<PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC>("eglCreatePlatformWindowSurfaceEXT");
 }
 
-CGLContextEGL::~CGLContextEGL()
+CGLContextEGL::~CGLContextEGL() noexcept
 {
   Destroy();
 }
@@ -204,7 +204,7 @@ void CGLContextEGL::SwapBuffers()
   {
     // For now we just hard fail if this fails
     // Theoretically, EGL_CONTEXT_LOST could be handled, but it needs to be checked
-    // whether egl implemenatations actually use it (mesa does not)
+    // whether egl implementations actually use it (mesa does not)
     CEGLUtils::LogError("eglSwapBuffers failed");
     throw std::runtime_error("eglSwapBuffers failed");
   }

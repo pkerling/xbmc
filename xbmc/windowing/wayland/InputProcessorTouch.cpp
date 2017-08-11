@@ -96,7 +96,7 @@ CInputProcessorTouch::CInputProcessorTouch(wayland::touch_t const& touch, waylan
   };
 }
 
-CInputProcessorTouch::~CInputProcessorTouch()
+CInputProcessorTouch::~CInputProcessorTouch() noexcept
 {
   AbortTouches();
 }

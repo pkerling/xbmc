@@ -68,7 +68,7 @@ COutput::COutput(std::uint32_t globalName, wayland::output_t const & output, std
   };
 }
 
-COutput::~COutput()
+COutput::~COutput() noexcept
 {
   // Reset event handlers - someone might still hold a reference to the output_t,
   // causing events to be dispatched. They should not go to a deleted class.

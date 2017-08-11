@@ -47,7 +47,7 @@ void TryBind(wayland::registry_t& registry, wayland::proxy_t& target, std::uint3
 
 }
 
-CRegistry::CRegistry(CConnection& connection) noexcept
+CRegistry::CRegistry(CConnection& connection)
 : m_connection{connection}
 {
 }

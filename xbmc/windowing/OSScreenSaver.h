@@ -42,10 +42,10 @@ class COSScreenSaverManager;
 class COSScreenSaverInhibitor
 {
 public:
-  COSScreenSaverInhibitor();
-  COSScreenSaverInhibitor(COSScreenSaverInhibitor&& other);
-  COSScreenSaverInhibitor& operator=(COSScreenSaverInhibitor&& other);
-  ~COSScreenSaverInhibitor();
+  COSScreenSaverInhibitor() noexcept;
+  COSScreenSaverInhibitor(COSScreenSaverInhibitor&& other) noexcept;
+  COSScreenSaverInhibitor& operator=(COSScreenSaverInhibitor&& other) noexcept;
+  ~COSScreenSaverInhibitor() noexcept;
   void Release();
   bool IsActive() const;
   operator bool() const;

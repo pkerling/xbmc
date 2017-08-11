@@ -43,11 +43,11 @@ class CGLContextEGL
 {
 public:
   CGLContextEGL();
-  virtual ~CGLContextEGL();
 
   bool CreateDisplay(wayland::display_t& display,
                      EGLint renderableType,
                      EGLenum renderingApi);
+  ~CGLContextEGL() noexcept;
 
   bool CreateSurface(wayland::surface_t const& surface, CSizeInt size);
   CSizeInt GetAttachedSize();

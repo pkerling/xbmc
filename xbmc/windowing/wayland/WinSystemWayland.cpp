@@ -150,7 +150,7 @@ CWinSystemWayland::CWinSystemWayland()
   m_eWindowSystem = WINDOW_SYSTEM_WAYLAND;
 }
 
-CWinSystemWayland::~CWinSystemWayland()
+CWinSystemWayland::~CWinSystemWayland() noexcept
 {
   DestroyWindowSystem();
 }
