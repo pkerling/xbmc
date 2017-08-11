@@ -34,7 +34,7 @@ namespace WAYLAND
 class CVideoSyncWpPresentation : public CVideoSync
 {
 public:
-  CVideoSyncWpPresentation(void* clock);
+  explicit CVideoSyncWpPresentation(void* clock);
 
   float GetFps() override;
   bool Setup(PUPDATECLOCK func) override;

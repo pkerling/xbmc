@@ -219,7 +219,7 @@ private:
     std::string cursorName;
     wayland::surface_t cursor;
 
-    Seat(wayland::seat_t&& seat)
+    explicit Seat(wayland::seat_t seat)
     : seat{std::move(seat)}
     {}
   };

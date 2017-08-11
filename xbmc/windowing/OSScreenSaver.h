@@ -96,7 +96,7 @@ public:
   /**
    * Create manager with backing OS-specific implementation
    */
-  COSScreenSaverManager(std::unique_ptr<IOSScreenSaver>&& impl);
+  explicit COSScreenSaverManager(std::unique_ptr<IOSScreenSaver> impl);
   /**
    * Create inhibitor that prevents the OS screen saver from becoming active as
    * long as it is alive

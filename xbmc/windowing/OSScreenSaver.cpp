@@ -24,7 +24,7 @@
 
 using namespace KODI::WINDOWING;
 
-COSScreenSaverManager::COSScreenSaverManager(std::unique_ptr<IOSScreenSaver>&& impl)
+COSScreenSaverManager::COSScreenSaverManager(std::unique_ptr<IOSScreenSaver> impl)
 : m_impl{std::move(impl)}
 {
 }

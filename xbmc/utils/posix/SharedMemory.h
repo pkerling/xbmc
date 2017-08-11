@@ -40,7 +40,7 @@ namespace POSIX
 class CSharedMemory
 {
 public:
-  CSharedMemory(std::size_t size);
+  explicit CSharedMemory(std::size_t size);
 
   std::size_t Size() const
   {
