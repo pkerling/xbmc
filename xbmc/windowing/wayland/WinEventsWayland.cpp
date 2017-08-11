@@ -192,7 +192,7 @@ private:
 
       CLog::Log(LOGDEBUG, "Wayland message pump stopped");
     }
-    catch (std::exception& e)
+    catch (std::exception const& e)
     {
       // FIXME CThread::OnException is very badly named and should probably go away
       // FIXME Thread exception handling is seriously broken:

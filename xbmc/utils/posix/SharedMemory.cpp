@@ -49,7 +49,7 @@ CFileHandle CSharedMemory::Open()
   {
     fd = OpenMemfd();
   }
-  catch (std::system_error& error)
+  catch (std::system_error const& error)
   {
     if (error.code() == std::errc::function_not_supported)
     {

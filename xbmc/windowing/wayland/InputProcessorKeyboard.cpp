@@ -78,7 +78,7 @@ CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyb
 
       m_keymap = m_xkbContext->KeymapFromSharedMemory(fd, size);
     }
-    catch(std::exception& e)
+    catch(std::exception const& e)
     {
       CLog::Log(LOGERROR, "Could not parse keymap from compositor: %s - continuing without keymap", e.what());
     }

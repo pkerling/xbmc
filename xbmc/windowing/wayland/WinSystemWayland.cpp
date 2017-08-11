@@ -1048,7 +1048,7 @@ void CWinSystemWayland::LoadDefaultCursor()
     {
       cursor = m_cursorTheme.get_cursor("default");
     }
-    catch (std::exception& e)
+    catch (std::exception const& e)
     {
       CLog::Log(LOGWARNING, "Could not load default cursor from theme, continuing without OS cursor");
     }
