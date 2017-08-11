@@ -53,7 +53,6 @@ enum class InputType
 class IInputHandler
 {
 public:
-  virtual ~IInputHandler() {}
   /**
    * Handle input event
    * \param seatGlobalName numeric Wayland global name of the seat the event occured on
@@ -86,6 +85,8 @@ public:
    * \param serial Wayland protocol message serial that must be sent back in set_cursor
    */
   virtual void OnSetCursor(wayland::pointer_t& pointer, std::uint32_t serial) {}
+
+  virtual ~IInputHandler() = default;
 };
 
 /**
@@ -103,8 +104,9 @@ public:
    * \param connection connection for retrieving additional globals
    * \param handler handler that receives events from this seat, must not be null
    */
-  CSeat(std::uint32_t globalName, wayland::seat_t const & seat, wayland::surface_t const& inputSurface, CConnection& connection, IInputHandler& handler);
+  CSeat(std::uint32_t globalName, wayland::seat_t const& seat, wayland::surface_t const& inputSurface, CConnection& connection, IInputHandler& handler);
   ~CSeat() noexcept;
+  
   std::uint32_t GetGlobalName() const
   {
     return m_globalName;
