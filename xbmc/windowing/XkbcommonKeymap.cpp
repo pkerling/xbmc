@@ -194,7 +194,7 @@ static const std::map<xkb_keycode_t, XBMCKey> XkbKeycodeXBMCMappings = {
 }
 
 CXkbcommonContext::CXkbcommonContext(xkb_context_flags flags)
-: m_context(xkb_context_new(flags))
+: m_context{xkb_context_new(flags), XkbContextDeleter()}
 {
   if (!m_context)
   {
@@ -202,29 +202,27 @@ CXkbcommonContext::CXkbcommonContext(xkb_context_flags flags)
   }
 }
 
-CXkbcommonContext::~CXkbcommonContext()
+void CXkbcommonContext::XkbContextDeleter::operator()(xkb_context* ctx) const
 {
-  xkb_context_unref(m_context);
+  xkb_context_unref(ctx);
 }
 
-CXkbcommonKeymap*
-CXkbcommonContext::KeymapFromSharedMemory(int fd, std::size_t size)
+std::unique_ptr<CXkbcommonKeymap> CXkbcommonContext::KeymapFromSharedMemory(int fd, std::size_t size)
 {
   CMmap mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
   auto keymapString = static_cast<const char *> (mmap.Data());
 
-  xkb_keymap* keymap = xkb_keymap_new_from_string(m_context, keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS);
+  std::unique_ptr<xkb_keymap, CXkbcommonKeymap::XkbKeymapDeleter> keymap{xkb_keymap_new_from_string(m_context.get(), keymapString, XKB_KEYMAP_FORMAT_TEXT_V1, XKB_KEYMAP_COMPILE_NO_FLAGS), CXkbcommonKeymap::XkbKeymapDeleter()};
 
   if (!keymap)
   {
     throw std::runtime_error("Failed to compile keymap");
   }
 
-  return new CXkbcommonKeymap(keymap);
+  return std::unique_ptr<CXkbcommonKeymap>{new CXkbcommonKeymap(std::move(keymap))};
 }
 
-CXkbcommonKeymap*
-CXkbcommonContext::KeymapFromNames(const std::string& rules, const std::string& model, const std::string& layout, const std::string& variant, const std::string& options)
+std::unique_ptr<CXkbcommonKeymap> CXkbcommonContext::KeymapFromNames(const std::string& rules, const std::string& model, const std::string& layout, const std::string& variant, const std::string& options)
 {
   xkb_rule_names names = {
     rules.c_str(),
@@ -234,20 +232,19 @@ CXkbcommonContext::KeymapFromNames(const std::string& rules, const std::string& 
     options.c_str()
   };
 
-  xkb_keymap* keymap = xkb_keymap_new_from_names(m_context, &names, XKB_KEYMAP_COMPILE_NO_FLAGS);
+  std::unique_ptr<xkb_keymap, CXkbcommonKeymap::XkbKeymapDeleter> keymap{xkb_keymap_new_from_names(m_context.get(), &names, XKB_KEYMAP_COMPILE_NO_FLAGS), CXkbcommonKeymap::XkbKeymapDeleter()};
 
   if (!keymap)
   {
     throw std::runtime_error("Failed to compile keymap");
   }
 
-  return new CXkbcommonKeymap(keymap);
+  return std::unique_ptr<CXkbcommonKeymap>{new CXkbcommonKeymap(std::move(keymap))};
 }
 
-xkb_state*
-CXkbcommonKeymap::CreateXkbStateFromKeymap(xkb_keymap* keymap)
+std::unique_ptr<xkb_state, CXkbcommonKeymap::XkbStateDeleter> CXkbcommonKeymap::CreateXkbStateFromKeymap(xkb_keymap* keymap)
 {
-  xkb_state *state = xkb_state_new(keymap);
+  std::unique_ptr<xkb_state, XkbStateDeleter> state{xkb_state_new(keymap), XkbStateDeleter()};
 
   if (!state)
   {
@@ -257,16 +254,14 @@ CXkbcommonKeymap::CreateXkbStateFromKeymap(xkb_keymap* keymap)
   return state;
 }
 
-CXkbcommonKeymap::CXkbcommonKeymap(xkb_keymap* keymap)
-:
-m_keymap(keymap),
-m_state(CreateXkbStateFromKeymap(keymap))
+CXkbcommonKeymap::CXkbcommonKeymap(std::unique_ptr<xkb_keymap, XkbKeymapDeleter> keymap)
+: m_keymap{std::move(keymap)}, m_state{CreateXkbStateFromKeymap(m_keymap.get())}
 {
   // Lookup modifier indices and create new map - this is more efficient
   // than looking the modifiers up by name each time
   for (auto const& nameMapping : ModifierNameXBMCMappings)
   {
-    xkb_mod_index_t index = xkb_keymap_mod_get_index(m_keymap, nameMapping.name);
+    xkb_mod_index_t index = xkb_keymap_mod_get_index(m_keymap.get(), nameMapping.name);
     if (index != XKB_MOD_INVALID)
     {
       m_modifierMappings.emplace_back(index, nameMapping.xbmc);
@@ -274,26 +269,29 @@ m_state(CreateXkbStateFromKeymap(keymap))
   }
 }
 
-CXkbcommonKeymap::~CXkbcommonKeymap()
+void CXkbcommonKeymap::XkbStateDeleter::operator()(xkb_state* state) const
 {
-  xkb_state_unref(m_state);
-  xkb_keymap_unref(m_keymap);
+  xkb_state_unref(state);
 }
 
-xkb_keysym_t
-CXkbcommonKeymap::KeysymForKeycode(xkb_keycode_t code) const
+void CXkbcommonKeymap::XkbKeymapDeleter::operator()(xkb_keymap* keymap) const
 {
-  return xkb_state_key_get_one_sym(m_state, code);
+  xkb_keymap_unref(keymap);
+}
+
+xkb_keysym_t CXkbcommonKeymap::KeysymForKeycode(xkb_keycode_t code) const
+{
+  return xkb_state_key_get_one_sym(m_state.get(), code);
 }
 
 xkb_mod_mask_t CXkbcommonKeymap::CurrentModifiers() const
 {
-  return xkb_state_serialize_mods(m_state, XKB_STATE_MODS_EFFECTIVE);
+  return xkb_state_serialize_mods(m_state.get(), XKB_STATE_MODS_EFFECTIVE);
 }
 
 void CXkbcommonKeymap::UpdateMask(xkb_mod_mask_t depressed, xkb_mod_mask_t latched, xkb_mod_mask_t locked, xkb_mod_mask_t group)
 {
-  xkb_state_update_mask(m_state, depressed, latched, locked, 0, 0, group);
+  xkb_state_update_mask(m_state.get(), depressed, latched, locked, 0, 0, group);
 }
 
 XBMCMod CXkbcommonKeymap::ActiveXBMCModifiers() const
@@ -344,10 +342,10 @@ XBMCKey CXkbcommonKeymap::XBMCKeyForKeycode(xkb_keycode_t code) const
 
 std::uint32_t CXkbcommonKeymap::UnicodeCodepointForKeycode(xkb_keycode_t code) const
 {
-  return xkb_state_key_get_utf32(m_state, code);
+  return xkb_state_key_get_utf32(m_state.get(), code);
 }
 
 bool CXkbcommonKeymap::ShouldKeycodeRepeat(xkb_keycode_t code) const
 {
-  return xkb_keymap_key_repeats(m_keymap, code);
+  return xkb_keymap_key_repeats(m_keymap.get(), code);
 }

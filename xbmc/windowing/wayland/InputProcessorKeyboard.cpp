@@ -76,7 +76,7 @@ CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyb
         m_xkbContext.reset(new CXkbcommonContext);
       }
 
-      m_keymap.reset(m_xkbContext->KeymapFromSharedMemory(fd, size));
+      m_keymap = m_xkbContext->KeymapFromSharedMemory(fd, size);
     }
     catch(std::exception& e)
     {

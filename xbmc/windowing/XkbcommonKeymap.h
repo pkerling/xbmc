@@ -50,14 +50,15 @@ namespace WINDOWING
 class CXkbcommonKeymap
 {
 public:
+  struct XkbKeymapDeleter
+  {
+    void operator()(xkb_keymap* keymap) const;
+  };
+
   /**
    * Construct for known xkb_keymap
-   * 
-   * The new instance takes ownership of the provided keymap, i.e. it is unref'ed on
-   * destruction
    */
-  explicit CXkbcommonKeymap(xkb_keymap* keymap);
-  ~CXkbcommonKeymap();
+  explicit CXkbcommonKeymap(std::unique_ptr<xkb_keymap, XkbKeymapDeleter> keymap);
   
   /**
    * Get xkb keysym for keycode - only a single keysym is supported
@@ -99,20 +100,21 @@ public:
   static XBMCKey XBMCKeyForKeysym(xkb_keysym_t sym);
   
 private:
-  // Uncopyable because of owned C pointers
-  CXkbcommonKeymap(CXkbcommonKeymap const& other) = delete;
-  CXkbcommonKeymap& operator=(CXkbcommonKeymap const& other) = delete;
+  struct XkbStateDeleter
+  {
+    void operator()(xkb_state* state) const;
+  };
+  static std::unique_ptr<xkb_state, XkbStateDeleter> CreateXkbStateFromKeymap(xkb_keymap* keymap);
   
-  static xkb_state * CreateXkbStateFromKeymap(xkb_keymap *keymap);
-  
-  xkb_keymap* m_keymap = nullptr;
-  xkb_state* m_state = nullptr;
+  std::unique_ptr<xkb_keymap, XkbKeymapDeleter> m_keymap;
+  std::unique_ptr<xkb_state, XkbStateDeleter> m_state;
 
   struct ModifierMapping
   {
     xkb_mod_index_t xkb;
     XBMCMod xbmc;
-    ModifierMapping(xkb_mod_index_t xkb, XBMCMod xbmc) : xkb(xkb), xbmc(xbmc)
+    ModifierMapping(xkb_mod_index_t xkb, XBMCMod xbmc)
+    : xkb{xkb}, xbmc{xbmc}
     {}
   };
   std::vector<ModifierMapping> m_modifierMappings;
@@ -122,7 +124,6 @@ class CXkbcommonContext
 {
 public:
   explicit CXkbcommonContext(xkb_context_flags flags = XKB_CONTEXT_NO_FLAGS);
-  ~CXkbcommonContext();
   
   /**
    * Opens a shared memory region and parses the data in it to an
@@ -131,20 +132,15 @@ public:
    * This function does not own the file descriptor. It must not be closed
    * from this function.
    */
-  CXkbcommonKeymap* KeymapFromSharedMemory(int fd, std::size_t size);
-  CXkbcommonKeymap* KeymapFromNames(const std::string &rules, const std::string &model, const std::string &layout, const std::string &variant, const std::string &options);
-  
-  xkb_context* GetCPtr()
-  {
-    return m_context;
-  }
+  std::unique_ptr<CXkbcommonKeymap> KeymapFromSharedMemory(int fd, std::size_t size);
+  std::unique_ptr<CXkbcommonKeymap> KeymapFromNames(const std::string &rules, const std::string &model, const std::string &layout, const std::string &variant, const std::string &options);
 
 private:
-  // Uncopyable because of owned C pointer
-  CXkbcommonContext(CXkbcommonContext const& other) = delete;
-  CXkbcommonContext& operator=(CXkbcommonContext const& other) = delete;
-  
-  xkb_context* m_context;
+  struct XkbContextDeleter
+  {
+    void operator()(xkb_context* ctx) const;
+  };
+  std::unique_ptr<xkb_context, XkbContextDeleter> m_context;
 };
 
 
