@@ -43,12 +43,9 @@ class CGLContextEGL
 {
 public:
   CGLContextEGL();
-
-  bool CreateDisplay(wayland::display_t& display,
-                     EGLint renderableType,
-                     EGLenum renderingApi);
   ~CGLContextEGL() noexcept;
 
+  bool CreateDisplay(wayland::display_t& display, EGLint renderableType, EGLenum renderingApi);
   bool CreateSurface(wayland::surface_t const& surface, CSizeInt size);
   CSizeInt GetAttachedSize();
   void Resize(CSizeInt size);
@@ -57,15 +54,20 @@ public:
   void SetVSync(bool enable);
   void SwapBuffers();
 
-  wayland::egl_window_t m_nativeWindow;
-  EGLDisplay m_eglDisplay = EGL_NO_DISPLAY;
-  EGLSurface m_eglSurface = EGL_NO_SURFACE;
-  EGLContext m_eglContext = EGL_NO_CONTEXT;
-  EGLConfig m_eglConfig = nullptr;
+  EGLDisplay GetEGLDisplay() const
+  {
+    return m_eglDisplay;
+  }
   
 private:
   CGLContextEGL(CGLContextEGL const& other) = delete;
   CGLContextEGL& operator=(CGLContextEGL const& other) = delete;
+
+  wayland::egl_window_t m_nativeWindow;
+  EGLDisplay m_eglDisplay{EGL_NO_DISPLAY};
+  EGLSurface m_eglSurface{EGL_NO_SURFACE};
+  EGLContext m_eglContext{EGL_NO_CONTEXT};
+  EGLConfig m_eglConfig{};
   
   std::set<std::string> m_clientExtensions;
   

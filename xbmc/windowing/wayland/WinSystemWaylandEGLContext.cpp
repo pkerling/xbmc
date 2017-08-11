@@ -136,5 +136,5 @@ void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
 
 EGLDisplay CWinSystemWaylandEGLContext::GetEGLDisplay() const
 {
-  return m_eglContext.m_eglDisplay;
+  return m_eglContext.GetEGLDisplay();
 }

@@ -43,7 +43,7 @@ bool CWinSystemWaylandEGLContextGL::InitWindowSystem()
   
 #if defined(HAVE_LIBVA)
   bool general, hevc;
-  CRendererVAAPI::Register(GetVaDisplay(), m_eglContext.m_eglDisplay, general, hevc);
+  CRendererVAAPI::Register(GetVaDisplay(), m_eglContext.GetEGLDisplay(), general, hevc);
   if (general)
   {
     VAAPI::CDecoder::Register(hevc);
