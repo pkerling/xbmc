@@ -19,15 +19,15 @@
  *
  */
 
+#include <memory>
+#include <utility>
+#include <vector>
+
 #include "XBDateTime.h"
 #include "settings/lib/ISettingCallback.h"
 
 #include "pvr/PVRTypes.h"
 #include "pvr/channels/PVRChannel.h"
-
-#include <memory>
-#include <utility>
-#include <vector>
 
 class CFileItem;
 typedef std::shared_ptr<CFileItem> CFileItemPtr;
@@ -76,7 +76,7 @@ namespace PVR
      * @brief Create a new channel group instance from a channel group provided by an add-on.
      * @param group The channel group provided by the add-on.
      */
-    CPVRChannelGroup(const PVR_CHANNEL_GROUP &group);
+    explicit CPVRChannelGroup(const PVR_CHANNEL_GROUP &group);
 
     /*!
      * @brief Copy constructor
@@ -421,7 +421,7 @@ namespace PVR
      */
     CDateTime GetLastEPGDate(void) const;
 
-    bool UpdateChannel(const CFileItem &channel, bool bHidden, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const std::string &strChannelName, const std::string &strIconPath, const std::string &strStreamURL, bool bUserSetIcon = false);
+    bool UpdateChannel(const CFileItem &channel, bool bHidden, bool bEPGEnabled, bool bParentalLocked, int iEPGSource, int iChannelNumber, const std::string &strChannelName, const std::string &strIconPath, bool bUserSetIcon = false);
 
     /*!
      * @brief Get a channel given the channel number on the client.

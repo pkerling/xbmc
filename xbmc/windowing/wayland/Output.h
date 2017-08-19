@@ -46,7 +46,7 @@ class COutput
 public:
   COutput(std::uint32_t globalName, wayland::output_t const & output, std::function<void()> doneHandler);
   ~COutput() noexcept;
-  
+
   wayland::output_t const& GetWaylandOutput() const
   {
     return m_output;
@@ -87,7 +87,7 @@ public:
   {
     return m_scale;
   }
-  
+
   struct Mode
   {
     CSizeInt size;
@@ -100,44 +100,44 @@ public:
     {
       return refreshMilliHz / 1000.0f;
     }
-    
+
     std::tuple<std::int32_t, std::int32_t, std::int32_t> AsTuple() const
     {
       return std::make_tuple(size.Width(), size.Height(), refreshMilliHz);
     }
-    
+
     // Comparison operator needed for std::set
     bool operator<(const Mode& right) const
     {
       return AsTuple() < right.AsTuple();
     }
-    
+
     bool operator==(const Mode& right) const
     {
       return AsTuple() == right.AsTuple();
     }
-    
+
     bool operator!=(const Mode& right) const
     {
       return !(*this == right);
     }
   };
-  
+
   std::set<Mode> const& GetModes() const
   {
     return m_modes;
   }
   Mode const& GetCurrentMode() const;
   Mode const& GetPreferredMode() const;
-  
+
   float GetPixelRatioForMode(Mode const& mode) const;
   float GetDpiForMode(Mode const& mode) const;
   float GetCurrentDpi() const;
-  
+
 private:
   COutput(COutput const& other) = delete;
   COutput& operator=(COutput const& other) = delete;
-  
+
   std::uint32_t m_globalName;
   wayland::output_t m_output;
   std::function<void()> m_doneHandler;

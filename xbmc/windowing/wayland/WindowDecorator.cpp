@@ -35,8 +35,6 @@ using namespace KODI::UTILS::POSIX;
 using namespace KODI::WINDOWING::WAYLAND;
 using namespace std::placeholders;
 
-// FIXME thread safety on destruction
-
 namespace
 {
 

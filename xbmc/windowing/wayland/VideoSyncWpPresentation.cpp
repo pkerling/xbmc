@@ -68,10 +68,7 @@ void CVideoSyncWpPresentation::HandlePresentation(timespec tv, std::uint32_t ref
 {
   auto mscDiff = msc - m_lastMsc;
 
-  if (g_advancedSettings.CanLogComponent(LOGAVTIMING))
-  {
-    CLog::Log(LOGDEBUG, "VideoSyncWpPresentation: tv %" PRIu64 ".%09" PRIu64 " s next refresh in +%" PRIu32 " ns (fps %f) sync output id %" PRIu32 " fps %f msc %" PRIu64 " mscdiff %" PRIu64, static_cast<std::uint64_t> (tv.tv_sec), static_cast<std::uint64_t> (tv.tv_nsec), refresh, 1.0e9 / refresh, syncOutputID, syncOutputRefreshRate, msc, mscDiff);
-  }
+  CLog::Log(LOGDEBUG, LOGAVTIMING, "VideoSyncWpPresentation: tv %" PRIu64 ".%09" PRIu64 " s next refresh in +%" PRIu32 " ns (fps %f) sync output id %" PRIu32 " fps %f msc %" PRIu64 " mscdiff %" PRIu64, static_cast<std::uint64_t> (tv.tv_sec), static_cast<std::uint64_t> (tv.tv_nsec), refresh, 1.0e9 / refresh, syncOutputID, syncOutputRefreshRate, msc, mscDiff);
 
   if (m_fps != syncOutputRefreshRate || (m_syncOutputID != 0 && m_syncOutputID != syncOutputID))
   {

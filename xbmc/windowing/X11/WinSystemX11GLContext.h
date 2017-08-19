@@ -50,7 +50,7 @@ public:
   EGLSurface GetEGLSurface() const;
   EGLContext GetEGLContext() const;
   EGLConfig GetEGLConfig() const;
-  
+
   void* GetVaDisplay();
 
 protected:

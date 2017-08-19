@@ -33,12 +33,13 @@
  * number of the tag reported by the PVR backend and can not be played!
  */
 
+#include "XBDateTime.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "pvr/PVRTypes.h"
-#include "pvr/timers/PVRTimerType.h"
 #include "threads/CriticalSection.h"
 #include "utils/ISerializable.h"
-#include "XBDateTime.h"
+
+#include "pvr/PVRTypes.h"
+#include "pvr/timers/PVRTimerType.h"
 
 class CVariant;
 
@@ -47,7 +48,7 @@ namespace PVR
   class CPVRTimerInfoTag : public ISerializable
   {
   public:
-    CPVRTimerInfoTag(bool bRadio = false);
+    explicit CPVRTimerInfoTag(bool bRadio = false);
     CPVRTimerInfoTag(const PVR_TIMER &timer, const CPVRChannelPtr &channel, unsigned int iClientId);
 
     ~CPVRTimerInfoTag(void) override;

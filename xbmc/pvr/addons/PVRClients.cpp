@@ -28,13 +28,14 @@
 #include "cores/IPlayer.h"
 #include "guilib/LocalizeStrings.h"
 #include "messaging/ApplicationMessenger.h"
-#include "pvr/channels/PVRChannelGroupInternal.h"
-#include "pvr/channels/PVRChannelGroups.h"
+#include "utils/log.h"
+
 #include "pvr/PVRJobs.h"
 #include "pvr/PVRManager.h"
+#include "pvr/channels/PVRChannelGroupInternal.h"
+#include "pvr/channels/PVRChannelGroups.h"
 #include "pvr/recordings/PVRRecordings.h"
 #include "pvr/timers/PVRTimers.h"
-#include "utils/log.h"
 
 using namespace ADDON;
 using namespace PVR;
@@ -1043,13 +1044,22 @@ bool CPVRClients::GetPlayingClient(PVR_CLIENT &client) const
   return GetCreatedClient(GetPlayingClientID(), client);
 }
 
-std::string CPVRClients::GetLiveStreamURL(const CPVRChannelPtr &channel)
+bool CPVRClients::FillChannelStreamFileItem(CFileItem &fileItem)
 {
   PVR_CLIENT client;
-  if (GetCreatedClient(channel->ClientID(), client))
-    return client->GetLiveStreamURL(channel);
+  if (GetCreatedClient(fileItem.GetPVRChannelInfoTag()->ClientID(), client))
+    return client->FillChannelStreamFileItem(fileItem);
 
-  return std::string();
+  return false;
+}
+
+bool CPVRClients::FillRecordingStreamFileItem(CFileItem &fileItem)
+{
+  PVR_CLIENT client;
+  if (GetCreatedClient(fileItem.GetPVRRecordingInfoTag()->ClientID(), client))
+    return client->FillRecordingStreamFileItem(fileItem);
+
+  return false;
 }
 
 bool CPVRClients::OpenStream(const CPVRChannelPtr &channel, bool bIsSwitchingChannel)

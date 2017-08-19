@@ -155,7 +155,7 @@ public:
   *          - it's a default and a forced sub (could lead to users seeing forced subs in a foreign language!), or
   *          - its language matches the preferred subtitle's language (unequal to "original stream's language")
   */
-  PredicateSubtitleFilter(std::string& lang)
+  explicit PredicateSubtitleFilter(const std::string& lang)
     : audiolang(lang),
       original(StringUtils::EqualsNoCase(CServiceBroker::GetSettings().GetString(CSettings::SETTING_LOCALE_SUBTITLELANGUAGE), "original")),
       nosub(StringUtils::EqualsNoCase(CServiceBroker::GetSettings().GetString(CSettings::SETTING_LOCALE_SUBTITLELANGUAGE), "none")),
@@ -261,7 +261,7 @@ private:
   bool subson;
   PredicateSubtitleFilter filter;
 public:
-  PredicateSubtitlePriority(std::string& lang)
+  explicit PredicateSubtitlePriority(const std::string& lang)
     : audiolang(lang),
       original(StringUtils::EqualsNoCase(CServiceBroker::GetSettings().GetString(CSettings::SETTING_LOCALE_SUBTITLELANGUAGE), "original")),
       subson(CMediaSettings::GetInstance().GetCurrentVideoSettings().m_SubtitleOn),
@@ -4715,7 +4715,7 @@ void CVideoPlayer::UpdatePlayState(double timeout)
       }
     }
 
-    state.time = DVD_TIME_TO_MSEC(m_clock.GetClock(false));
+    state.time = m_clock.GetClock(false) * 1000 / DVD_TIME_BASE;
     state.timeMax = m_pDemuxer->GetStreamLength();
   }
 
@@ -4758,7 +4758,7 @@ void CVideoPlayer::UpdatePlayState(double timeout)
 
         state.time_offset = DVD_MSEC_TO_TIME(dispTime) - state.dts;
       }
-      state.time += DVD_TIME_TO_MSEC(state.time_offset);
+      state.time += state.time_offset * 1000 / DVD_TIME_BASE;
       state.timeMax = pDisplayTime->GetTotalTime();
     }
     else

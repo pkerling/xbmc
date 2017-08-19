@@ -30,7 +30,7 @@
 #include "utils/log.h"
 #include "utils/posix/Mmap.h"
 
-using namespace KODI::WINDOWING;
+using namespace KODI::WINDOWING::WAYLAND;
 using namespace KODI::UTILS::POSIX;
 
 namespace
@@ -126,7 +126,7 @@ static const std::map<xkb_keycode_t, XBMCKey> XkbKeycodeXBMCMappings = {
   { XKB_KEY_Page_Up, XBMCK_PAGEUP },
   { XKB_KEY_Page_Down, XBMCK_PAGEDOWN },
 
-  // Function keys  
+  // Function keys
   { XKB_KEY_F1, XBMCK_F1 },
   { XKB_KEY_F2, XBMCK_F2 },
   { XKB_KEY_F3, XBMCK_F3 },
@@ -159,7 +159,7 @@ static const std::map<xkb_keycode_t, XBMCKey> XkbKeycodeXBMCMappings = {
   { XKB_KEY_Super_L, XBMCK_LSUPER },
   // XKB does not have XBMCK_MODE/"Alt Gr" - probably equal to XKB_KEY_Alt_R
   { XKB_KEY_Multi_key, XBMCK_COMPOSE },
-  
+
   // Miscellaneous function keys
   { XKB_KEY_Help, XBMCK_HELP },
   { XKB_KEY_Print, XBMCK_PRINT },
@@ -179,7 +179,7 @@ static const std::map<xkb_keycode_t, XBMCKey> XkbKeycodeXBMCMappings = {
   { XKB_KEY_XF86Favorites, XBMCK_FAVORITES },
   { XKB_KEY_XF86HomePage, XBMCK_HOMEPAGE },
   // Unmapped: XBMCK_CONFIG, XBMCK_EPG
-  
+
   // Media keys
   { XKB_KEY_XF86Eject, XBMCK_EJECT },
   // XBMCK_STOP clashes with XBMCK_MEDIA_STOP
@@ -322,7 +322,7 @@ XBMCKey CXkbcommonKeymap::XBMCKeyForKeysym(xkb_keysym_t sym)
     // Rest of ASCII printable character range is code-compatible
     return static_cast<XBMCKey> (sym);
   }
-  
+
   // Try mapping
   auto mapping = XkbKeycodeXBMCMappings.find(sym);
   if (mapping != XkbKeycodeXBMCMappings.end())

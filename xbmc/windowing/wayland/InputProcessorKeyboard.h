@@ -28,15 +28,12 @@
 #include "input/XBMC_keysym.h"
 #include "threads/Timer.h"
 #include "windowing/XBMC_events.h"
+#include "XkbcommonKeymap.h"
 
 namespace KODI
 {
 namespace WINDOWING
 {
-
-class CXkbcommonContext;
-class CXkbcommonKeymap;
-
 namespace WAYLAND
 {
 

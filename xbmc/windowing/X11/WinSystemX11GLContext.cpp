@@ -267,9 +267,10 @@ std::unique_ptr<CVideoSync> CWinSystemX11GLContext::GetVideoSync(void *clock)
   return pVSync;
 }
 
-#if defined(HAVE_LIBVA)
 void* CWinSystemX11GLContext::GetVaDisplay()
 {
+#if defined(HAVE_LIBVA)
   return vaGetDisplay(m_dpy);
-}
 #endif
+  return nullptr;
+}

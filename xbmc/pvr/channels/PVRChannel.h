@@ -19,6 +19,10 @@
  *
  */
 
+#include <memory>
+#include <string>
+#include <utility>
+
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
 #include "threads/CriticalSection.h"
 #include "utils/ISerializable.h"
@@ -26,10 +30,6 @@
 #include "utils/Observer.h"
 
 #include "pvr/PVRTypes.h"
-
-#include <memory>
-#include <string>
-#include <utility>
 
 class CVariant;
 class CFileItemList;
@@ -54,7 +54,7 @@ namespace PVR
 
   public:
     /*! @brief Create a new channel */
-    CPVRChannel(bool bRadio = false);
+    explicit CPVRChannel(bool bRadio = false);
     CPVRChannel(const PVR_CHANNEL &channel, unsigned int iClientId);
 
   private:

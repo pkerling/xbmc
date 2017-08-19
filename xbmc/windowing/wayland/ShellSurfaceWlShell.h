@@ -29,16 +29,13 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-/**
- * Abstraction for shell surfaces to support multiple protocols
- * such as wl_shell (for compatibility) and xdg_shell (for features)
- */
 class CShellSurfaceWlShell : public IShellSurface
 {
 public:
   /**
    * Construct wl_shell_surface for given surface
-   * 
+   *
+   * \parma handler shell surface handler
    * \param connection connection global
    * \param surface surface to make shell surface for
    * \param title title of the surfae
@@ -46,9 +43,9 @@ public:
    *               .desktop file of the application
    */
   CShellSurfaceWlShell(IShellSurfaceHandler& handler, CConnection& connection, wayland::surface_t const& surface, std::string title, std::string class_);
-  
+
   void Initialize() override;
-  
+
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
   void SetMaximized() override;

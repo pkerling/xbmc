@@ -152,12 +152,12 @@ public:
   CSignalRegistration Register(ManagedT const& handler)
   {
     CSingleLock lock(m_data->m_handlerCriticalSection);
-    bool inserted = false;
+    bool inserted{false};
     while(!inserted)
     {
       inserted = m_data->m_handlers.emplace(++m_lastRegistrationId, handler).second;
     }
-    return CSignalRegistration(m_data, m_lastRegistrationId);
+    return {m_data, m_lastRegistrationId};
   }
 
   /**

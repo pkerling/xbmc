@@ -90,7 +90,7 @@ void CRegistry::Bind()
 
   auto displayProxy = m_connection.GetDisplay().proxy_create_wrapper();
   displayProxy.set_queue(registryRoundtripQueue);
-  
+
   m_registry = displayProxy.get_registry();
 
   m_registry.on_global() = [this] (std::uint32_t name, std::string interface, std::uint32_t version)

@@ -18,20 +18,21 @@
  *
  */
 
+#include "PVRContextMenus.h"
+
 #include "ContextMenuItem.h"
 #include "ServiceBroker.h"
-#include "epg/EpgInfoTag.h"
 #include "guilib/GUIWindowManager.h"
-#include "pvr/addons/PVRClients.h"
-#include "pvr/channels/PVRChannel.h"
+#include "utils/URIUtils.h"
+
 #include "pvr/PVRGUIActions.h"
 #include "pvr/PVRManager.h"
+#include "pvr/addons/PVRClients.h"
+#include "pvr/channels/PVRChannel.h"
+#include "pvr/epg/EpgInfoTag.h"
 #include "pvr/recordings/PVRRecording.h"
 #include "pvr/recordings/PVRRecordingsPath.h"
 #include "pvr/timers/PVRTimers.h"
-#include "utils/URIUtils.h"
-
-#include "PVRContextMenus.h"
 
 namespace PVR
 {
@@ -41,7 +42,7 @@ namespace PVR
     class clazz : public CStaticContextMenuAction \
     { \
     public: \
-      clazz(uint32_t label) : CStaticContextMenuAction(label) {} \
+      explicit clazz(uint32_t label) : CStaticContextMenuAction(label) {} \
       bool IsVisible(const CFileItem &item) const override; \
       bool Execute(const CFileItemPtr &item) const override; \
     };

@@ -31,7 +31,6 @@
 #include "SeatSelection.h"
 #include "threads/Timer.h"
 #include "windowing/XBMC_events.h"
-#include "windowing/XkbcommonKeymap.h"
 
 namespace KODI
 {
@@ -74,13 +73,13 @@ public:
   virtual void OnLeave(std::uint32_t seatGlobalName, InputType type) {}
   /**
    * Handle request for setting the cursor
-   * 
+   *
    * When the client gains pointer focus for a surface, a cursor image must be
    * attached to the pointer. Otherwise the previous pointer image would
    * be used.
-   * 
+   *
    * This request is sent in addition to \ref OnEnter for \ref InputType::POINTER.
-   * 
+   *
    * \param pointer pointer instance that needs its cursor set
    * \param serial Wayland protocol message serial that must be sent back in set_cursor
    */
@@ -106,7 +105,7 @@ public:
    */
   CSeat(std::uint32_t globalName, wayland::seat_t const& seat, wayland::surface_t const& inputSurface, CConnection& connection, IInputHandler& handler);
   ~CSeat() noexcept;
-  
+
   std::uint32_t GetGlobalName() const
   {
     return m_globalName;
@@ -136,7 +135,7 @@ public:
 private:
   CSeat(CSeat const& other) = delete;
   CSeat& operator=(CSeat const& other) = delete;
-  
+
   void HandleOnCapabilities(wayland::seat_capability caps);
   void HandlePointerCapability(wayland::pointer_t const& pointer);
   void HandleKeyboardCapability(wayland::keyboard_t const& keyboard);
@@ -151,7 +150,7 @@ private:
   void OnPointerEvent(XBMC_Event& event) override;
 
   void UpdateCoordinateScale();
-  
+
   std::uint32_t m_globalName;
   wayland::seat_t m_seat;
   wayland::surface_t m_inputSurface;
@@ -159,7 +158,7 @@ private:
   std::int32_t m_coordinateScale{1};
 
   IInputHandler& m_handler;
-  
+
   std::unique_ptr<CInputProcessorPointer> m_pointer;
   std::unique_ptr<CInputProcessorKeyboard> m_keyboard;
   std::unique_ptr<CInputProcessorTouch> m_touch;

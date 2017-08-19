@@ -197,7 +197,7 @@ protected:
   CEvent m_stateEvent;
 
   /// Display latency tweak value from AdvancedSettings for the current refresh rate
-  /// in seconds
+  /// in milliseconds
   double m_latencyTweak = 0.0;
   /// Display latency updated in PrepareNextRender in DVD clock units, includes m_latencyTweak
   double m_displayLatency = 0.0;

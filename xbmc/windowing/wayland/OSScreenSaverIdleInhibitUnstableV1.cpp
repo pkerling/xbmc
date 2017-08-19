@@ -29,7 +29,7 @@ using namespace KODI::WINDOWING::WAYLAND;
 COSScreenSaverIdleInhibitUnstableV1* COSScreenSaverIdleInhibitUnstableV1::TryCreate(CConnection& connection, wayland::surface_t const& inhibitSurface)
 {
   wayland::zwp_idle_inhibit_manager_v1_t manager;
-  CRegistry registry(connection);
+  CRegistry registry{connection};
   registry.RequestSingleton(manager, 1, 1, false);
   registry.Bind();
 

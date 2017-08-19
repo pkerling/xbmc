@@ -26,7 +26,6 @@
 #include <exception>
 #include <memory>
 #include <system_error>
-#include <vector>
 
 #include <wayland-client.hpp>
 
@@ -44,7 +43,7 @@ namespace
 {
 /**
  * Thread for processing Wayland events
- * 
+ *
  * While not strictly needed, reading from the Wayland display file descriptor
  * and dispatching the resulting events is done in an extra thread here.
  * Sometime in the future, MessagePump() might be gone and then the
@@ -110,7 +109,7 @@ public:
 
     if (m_bStop)
       return;
-    
+
     m_roundtripQueueEvent.Wait();
   }
 
@@ -199,7 +198,7 @@ private:
       // Exceptions will be swallowed and do not terminate the program.
       // Even XbmcCommons::UncheckedException which claims to be there for just this
       // purpose does not cause termination, the log message will just be slightly different.
-      
+
       // But here, going on would be meaningless, so do a hard exit
       CLog::Log(LOGFATAL, "Exception in Wayland message pump, exiting: %s", e.what());
       std::terminate();

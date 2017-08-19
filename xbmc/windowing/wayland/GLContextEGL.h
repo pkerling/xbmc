@@ -58,7 +58,7 @@ public:
   {
     return m_eglDisplay;
   }
-  
+
 private:
   CGLContextEGL(CGLContextEGL const& other) = delete;
   CGLContextEGL& operator=(CGLContextEGL const& other) = delete;
@@ -68,9 +68,9 @@ private:
   EGLSurface m_eglSurface{EGL_NO_SURFACE};
   EGLContext m_eglContext{EGL_NO_CONTEXT};
   EGLConfig m_eglConfig{};
-  
+
   std::set<std::string> m_clientExtensions;
-  
+
   PFNEGLGETPLATFORMDISPLAYEXTPROC m_eglGetPlatformDisplayEXT = nullptr;
   PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC m_eglCreatePlatformWindowSurfaceEXT = nullptr;
 };

@@ -41,7 +41,7 @@ public:
    */
   CMmap(void* addr, std::size_t length, int prot, int flags, int fildes, off_t offset);
   ~CMmap();
-  
+
   void* Data() const
   {
     return m_memory;
@@ -50,11 +50,11 @@ public:
   {
     return m_size;
   }
-  
+
 private:
   CMmap(CMmap const& other) = delete;
   CMmap& operator=(CMmap const& other) = delete;
-  
+
   std::size_t m_size;
   void* m_memory;
 };

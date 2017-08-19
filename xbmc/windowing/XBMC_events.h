@@ -80,7 +80,8 @@ typedef struct XBMC_MoveEvent {
 	int y;		/* New y position */
 } XBMC_MoveEvent;
 
-struct XBMC_ModeChangeEvent {
+struct XBMC_ModeChangeEvent
+{
   RESOLUTION res;
 };
 

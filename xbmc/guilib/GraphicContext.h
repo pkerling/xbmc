@@ -123,10 +123,10 @@ public:
   void SetVideoResolution(RESOLUTION res, bool forceUpdate = false);
   /**
    * Update graphic context resolution with data from specific RESOLUTION
-   * 
+   *
    * This should be called in response to a mode change initiated by windowing.
    * Windowing will be informed of the completion of the change.
-   * 
+   *
    * \param res resolution to change to
    */
   void ApplyModeChange(RESOLUTION res);

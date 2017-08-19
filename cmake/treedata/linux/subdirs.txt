@@ -9,5 +9,5 @@ xbmc/storage/linux         storage/linux
 xbmc/filesystem/posix      filesystem/posix
 xbmc/utils/posix           utils_posix
 xbmc/platform/posix        posix
-xbmc/windowing/linux       windowing/linux
 xbmc/cores/VideoPlayer/Process/rbpi cores/VideoPlayer/Process/rbpi
+xbmc/windowing/linux       windowing/linux

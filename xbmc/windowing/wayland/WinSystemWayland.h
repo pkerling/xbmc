@@ -78,7 +78,7 @@ public:
 
   bool CanDoWindowed() override;
   bool Minimize() override;
-  
+
   bool HasCursor() override;
   void ShowOSMouse(bool show) override;
 
@@ -88,15 +88,15 @@ public:
   float GetDisplayLatency() override;
   float GetFrameLatencyAdjustment() override;
   std::unique_ptr<CVideoSync> GetVideoSync(void* clock) override;
-  
+
   void* GetVaDisplay();
-  
+
   void Register(IDispResource* resource);
   void Unregister(IDispResource* resource);
 
   using PresentationFeedbackHandler = std::function<void(timespec /* tv */, std::uint32_t /* refresh */, std::uint32_t /* sync output id */, float /* sync output fps */, std::uint64_t /* msc */)>;
   CSignalRegistration RegisterOnPresentationFeedback(PresentationFeedbackHandler handler);
-  
+
   // Like CWinSystemX11
   void GetConnectedOutputs(std::vector<std::string>* outputs);
 
@@ -165,11 +165,11 @@ private:
   SizeUpdateInformation UpdateSizeVariables(CSizeInt size, int scale, IShellSurface::StateBitset state, bool sizeIncludesDecoration);
   void ApplySizeUpdate(SizeUpdateInformation update);
   void ApplyNextState();
-  
+
   std::string UserFriendlyOutputName(std::shared_ptr<COutput> const& output);
   std::shared_ptr<COutput> FindOutputByUserFriendlyName(std::string const& name);
   std::shared_ptr<COutput> FindOutputByWaylandOutput(wayland::output_t const& output);
-  
+
   // Called when wl_output::done is received for an output, i.e. associated
   // information like modes is available
   void OnOutputDone(std::uint32_t name);
@@ -189,7 +189,7 @@ private:
   std::unique_ptr<CRegistry> m_registry;
   /**
    * Registry used exclusively for wayland::seat_t
-   * 
+   *
    * Use extra registry because seats can only be registered after the surface
    * has been created
    */
@@ -197,9 +197,9 @@ private:
   wayland::compositor_t m_compositor;
   wayland::shm_t m_shm;
   wayland::presentation_t m_presentation;
-  
+
   std::unique_ptr<IShellSurface> m_shellSurface;
-  
+
   // Seat handling
   // -------------
   std::map<std::uint32_t, CSeat> m_seatProcessors;
@@ -215,7 +215,7 @@ private:
 
   // Cursor
   // ------
-  bool m_osCursorVisible = true;
+  bool m_osCursorVisible{true};
   wayland::cursor_theme_t m_cursorTheme;
   wayland::buffer_t m_cursorBuffer;
   wayland::cursor_image_t m_cursorImage;
@@ -237,7 +237,7 @@ private:
   std::uint32_t m_syncOutputID;
   /// Refresh rate of sync output returned by wp_presentation
   std::atomic<float> m_syncOutputRefreshRate{0.0f};
-  static const int LATENCY_MOVING_AVERAGE_SIZE = 30;
+  static constexpr int LATENCY_MOVING_AVERAGE_SIZE{30};
   std::atomic<float> m_latencyMovingAverage;
   CSignalHandlerList<PresentationFeedbackHandler> m_presentationFeedbackHandlers;
   std::int64_t m_frameStartTime{};
@@ -263,7 +263,7 @@ private:
   /// Size of the whole window including window decorations as given by configure
   CSizeInt m_configuredSize;
   /// Scale in use for main surface buffer
-  int m_scale = 1;
+  int m_scale{1};
   /// Shell surface state last acked
   IShellSurface::StateBitset m_shellSurfaceState;
   /// Whether the shell surface is waiting for initial configure
@@ -285,10 +285,10 @@ private:
 
   // Configure state
   // ---------------
-  bool m_firstSerialAcked = false;
-  std::uint32_t m_lastAckedSerial = 0;
+  bool m_firstSerialAcked{false};
+  std::uint32_t m_lastAckedSerial{0u};
   /// Whether this is the first call to SetFullScreen
-  bool m_isInitialSetFullScreen = true;
+  bool m_isInitialSetFullScreen{true};
 };
 
 

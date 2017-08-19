@@ -31,20 +31,22 @@ namespace KODI
 {
 namespace WINDOWING
 {
+namespace WAYLAND
+{
 
 /**
  * A wrapper class around an xkbcommon keymap and state tracker.
- * 
+ *
  * This class knows about some common modifier combinations and keeps
  * track of the currently pressed keys and modifiers. It also has
  * some utility functions to transform hardware keycodes into
  * a common representation.
- * 
+ *
  * Since this class is keeping track of all the pressed and depressed
  * modifiers, IT MUST ALWAYS BE KEPT UP TO DATE WITH ANY NEWLY
  * PRESSED MODIFIERS. Undefined behaviour will result if it is not
  * kept up to date.
- * 
+ *
  * Instances can be easily created from keymap strings with \ref CXkbcommonContext
  */
 class CXkbcommonKeymap
@@ -59,7 +61,7 @@ public:
    * Construct for known xkb_keymap
    */
   explicit CXkbcommonKeymap(std::unique_ptr<xkb_keymap, XkbKeymapDeleter> keymap);
-  
+
   /**
    * Get xkb keysym for keycode - only a single keysym is supported
    */
@@ -67,7 +69,7 @@ public:
   /**
    * Updates the currently depressed, latched, locked and group
    * modifiers for a keyboard being tracked.
-   * 
+   *
    * This function must be called whenever modifiers change, or the state will
    * be wrong and keysym translation will be off.
    */
@@ -96,16 +98,16 @@ public:
    * Check whether a given keycode should have key repeat
    */
   bool ShouldKeycodeRepeat(xkb_keycode_t code) const;
-  
+
   static XBMCKey XBMCKeyForKeysym(xkb_keysym_t sym);
-  
+
 private:
   struct XkbStateDeleter
   {
     void operator()(xkb_state* state) const;
   };
   static std::unique_ptr<xkb_state, XkbStateDeleter> CreateXkbStateFromKeymap(xkb_keymap* keymap);
-  
+
   std::unique_ptr<xkb_keymap, XkbKeymapDeleter> m_keymap;
   std::unique_ptr<xkb_state, XkbStateDeleter> m_state;
 
@@ -124,11 +126,11 @@ class CXkbcommonContext
 {
 public:
   explicit CXkbcommonContext(xkb_context_flags flags = XKB_CONTEXT_NO_FLAGS);
-  
+
   /**
    * Opens a shared memory region and parses the data in it to an
    * xkbcommon keymap.
-   * 
+   *
    * This function does not own the file descriptor. It must not be closed
    * from this function.
    */
@@ -144,5 +146,6 @@ private:
 };
 
 
+}
 }
 }

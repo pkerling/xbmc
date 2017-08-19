@@ -19,6 +19,11 @@
  *
  */
 
+#include <atomic>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "FileItem.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
 #include "interfaces/IAnnouncer.h"
@@ -34,11 +39,6 @@
 #include "pvr/PVRTypes.h"
 #include "pvr/epg/EpgContainer.h"
 #include "pvr/recordings/PVRRecording.h"
-
-#include <atomic>
-#include <memory>
-#include <string>
-#include <vector>
 
 class CGUIDialogExtendedProgressBar;
 class CGUIDialogProgressBarHandle;
@@ -337,6 +337,13 @@ namespace PVR
      * @return The current group or the group containing all channels if it's not set.
      */
     CPVRChannelGroupPtr GetPlayingGroup(bool bRadio = false);
+
+    /*!
+     * @brief Fill the file item for a recording or a channel with the properties required for playback. Values are obtained from the PVR backend.
+     * @param fileItem The file item to be filled. Item must contain either a pvr recording or a pvr channel.
+     * @return True if the stream properties have been set, false otherwiese.
+     */
+    bool FillStreamFileItem(CFileItem &fileItem);
 
     /*!
      * @brief Let the background thread create epg tags for all channels.

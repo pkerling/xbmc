@@ -41,8 +41,8 @@ CGLContextEGL::CGLContextEGL()
   }
 
   // Theoretically it is possible to use eglGetDisplay() and eglCreateWindowSurface,
-  // but then the EGL library basically has to guess which platform we want 
-  // if it supports multiple which is usually the case - 
+  // but then the EGL library basically has to guess which platform we want
+  // if it supports multiple which is usually the case -
   // it's better and safer to make it explicit
   m_eglGetPlatformDisplayEXT = CEGLUtils::GetRequiredProcAddress<PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
   m_eglCreatePlatformWindowSurfaceEXT = CEGLUtils::GetRequiredProcAddress<PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC>("eglCreatePlatformWindowSurfaceEXT");
@@ -112,7 +112,7 @@ bool CGLContextEGL::CreateDisplay(wayland::display_t& display,
 bool CGLContextEGL::CreateSurface(wayland::surface_t const& surface, CSizeInt size)
 {
   m_nativeWindow = wayland::egl_window_t(surface, size.Width(), size.Height());
-    
+
   m_eglSurface = m_eglCreatePlatformWindowSurfaceEXT(m_eglDisplay,
                                                      m_eglConfig,
                                                      m_nativeWindow, nullptr);
@@ -161,7 +161,7 @@ void CGLContextEGL::Resize(CSizeInt size)
 void CGLContextEGL::Destroy()
 {
   DestroySurface();
-  
+
   if (m_eglDisplay != EGL_NO_DISPLAY)
   {
     eglTerminate(m_eglDisplay);
@@ -183,7 +183,7 @@ void CGLContextEGL::DestroySurface()
     eglDestroySurface(m_eglDisplay, m_eglSurface);
     m_eglSurface = EGL_NO_SURFACE;
   }
-  
+
   m_nativeWindow = wayland::egl_window_t();
 }
 

@@ -173,7 +173,7 @@ extern "C" {
     struct INPUTSTREAM_IDS (__cdecl* get_stream_ids)(const AddonInstance_InputStream* instance);
     struct INPUTSTREAM_INFO (__cdecl* get_stream)(const AddonInstance_InputStream* instance, int streamid);
     void (__cdecl* enable_stream)(const AddonInstance_InputStream* instance, int streamid, bool enable);
-    void(__cdecl* open_stream)(const AddonInstance_InputStream* instance, int streamid);
+    bool(__cdecl* open_stream)(const AddonInstance_InputStream* instance, int streamid);
     void (__cdecl* demux_reset)(const AddonInstance_InputStream* instance);
     void (__cdecl* demux_abort)(const AddonInstance_InputStream* instance);
     void (__cdecl* demux_flush)(const AddonInstance_InputStream* instance);
@@ -218,7 +218,7 @@ namespace addon
   class CInstanceInputStream : public IAddonInstance
   {
   public:
-    CInstanceInputStream(KODI_HANDLE instance)
+    explicit CInstanceInputStream(KODI_HANDLE instance)
       : IAddonInstance(ADDON_INSTANCE_INPUTSTREAM)
     {
       if (CAddonBase::m_interface->globalSingleInstance != nullptr)
@@ -278,7 +278,7 @@ namespace addon
     * @param streamid unique id of stream
     * @remarks
     */
-    virtual void OpenStream(int streamid) = 0;
+    virtual bool OpenStream(int streamid) = 0;
 
     /*!
      * Reset the demultiplexer in the add-on.
@@ -513,9 +513,9 @@ namespace addon
       instance->toAddon.addonInstance->EnableStream(streamid, enable);
     }
 
-    inline static void ADDON_OpenStream(const AddonInstance_InputStream* instance, int streamid)
+    inline static bool ADDON_OpenStream(const AddonInstance_InputStream* instance, int streamid)
     {
-      instance->toAddon.addonInstance->OpenStream(streamid);
+      return instance->toAddon.addonInstance->OpenStream(streamid);
     }
 
     inline static void ADDON_DemuxReset(const AddonInstance_InputStream* instance)

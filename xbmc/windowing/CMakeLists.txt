@@ -14,10 +14,7 @@ if(CORE_SYSTEM_NAME STREQUAL linux AND NOT MIR_FOUND)
   list(APPEND HEADERS WinEventsLinux.h)
 endif()
 
-if(CORE_PLATFORM_NAME_LC STREQUAL wayland)
-  list(APPEND SOURCES XkbcommonKeymap.cpp)
-  list(APPEND HEADERS XkbcommonKeymap.h)
-elseif(CORE_PLATFORM_NAME_LC STREQUAL rbpi)
+if(CORE_PLATFORM_NAME_LC STREQUAL rbpi)
   add_subdirectory(rpi)
 endif()
 

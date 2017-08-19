@@ -39,8 +39,8 @@ bool CWinSystemWaylandEGLContextGL::InitWindowSystem()
     return false;
   }
 
-  CLinuxRendererGL::Register();  
-  
+  CLinuxRendererGL::Register();
+
 #if defined(HAVE_LIBVA)
   bool general, hevc;
   CRendererVAAPI::Register(GetVaDisplay(), m_eglContext.GetEGLDisplay(), general, hevc);

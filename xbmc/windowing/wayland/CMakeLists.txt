@@ -21,7 +21,8 @@ set(SOURCES Connection.cpp
             WindowDecorator.cpp
             WinEventsWayland.cpp
             WinSystemWayland.cpp
-            WinSystemWaylandEGLContext.cpp)
+            WinSystemWaylandEGLContext.cpp
+            XkbcommonKeymap.cpp)
 
 set(HEADERS Connection.h
             Output.h
@@ -42,7 +43,8 @@ set(HEADERS Connection.h
             WindowDecorator.h
             WinEventsWayland.h
             WinSystemWayland.h
-            WinSystemWaylandEGLContext.h)
+            WinSystemWaylandEGLContext.h
+            XkbcommonKeymap.h)
 
 if(OPENGL_FOUND)
   list(APPEND SOURCES WinSystemWaylandEGLContextGL.cpp)

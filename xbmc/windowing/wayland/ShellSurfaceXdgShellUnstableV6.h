@@ -31,18 +31,15 @@ namespace WINDOWING
 namespace WAYLAND
 {
 
-/**
- * Abstraction for shell surfaces to support multiple protocols
- * such as wl_shell (for compatibility) and xdg_shell (for features)
- */
 class CShellSurfaceXdgShellUnstableV6 : public IShellSurface
 {
 public:
   /**
-   * Construct wl_shell_surface for given surface
-   * 
+   * Construct xdg_shell toplevel object for given surface
+   *
+   * \param handler the shell surface handler
    * \param display the wl_display global (for initial roundtrip)
-   * \param shell wl_shell global
+   * \param shell the zxdg_shell_v6 global
    * \param surface surface to make shell surface for
    * \param title title of the surfae
    * \param class_ class of the surface, which should match the name of the
@@ -52,9 +49,9 @@ public:
   virtual ~CShellSurfaceXdgShellUnstableV6() noexcept;
 
   static CShellSurfaceXdgShellUnstableV6* TryCreate(IShellSurfaceHandler& handler, CConnection& connection, wayland::surface_t const& surface, std::string const& title, std::string const& class_);
-  
+
   void Initialize() override;
-  
+
   void SetFullScreen(wayland::output_t const& output, float refreshRate) override;
   void SetWindowed() override;
   void SetMaximized() override;

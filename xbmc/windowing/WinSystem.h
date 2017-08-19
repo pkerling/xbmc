@@ -34,14 +34,14 @@ enum WindowSystemType
   WINDOW_SYSTEM_OSX,
   WINDOW_SYSTEM_IOS,
   WINDOW_SYSTEM_X11,
-  WINDOW_SYSTEM_WAYLAND,
   WINDOW_SYSTEM_MIR,
   WINDOW_SYSTEM_GBM,
   WINDOW_SYSTEM_SDL,
   WINDOW_SYSTEM_EGL,
   WINDOW_SYSTEM_RPI,
   WINDOW_SYSTEM_AML,
-  WINDOW_SYSTEM_ANDROID
+  WINDOW_SYSTEM_ANDROID,
+  WINDOW_SYSTEM_WAYLAND
 };
 
 struct RESOLUTION_WHR
@@ -148,7 +148,7 @@ public:
   virtual void EnableTextInput(bool bEnable) {}
   virtual bool IsTextInputEnabled() { return false; }
 
-  virtual std::string GetClipboardText(void) { return ""; }
+  virtual std::string GetClipboardText(void);
 
 protected:
   void UpdateDesktopResolution(RESOLUTION_INFO& newRes, int screen, int width, int height, float refreshRate, uint32_t dwFlags = 0);

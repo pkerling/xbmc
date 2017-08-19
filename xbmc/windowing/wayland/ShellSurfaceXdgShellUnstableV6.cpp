@@ -53,7 +53,7 @@ CShellSurfaceXdgShellUnstableV6* CShellSurfaceXdgShellUnstableV6::TryCreate(IShe
   CRegistry registry{connection};
   registry.RequestSingleton(shell, 1, 1, false);
   registry.Bind();
-  
+
   if (shell)
   {
     return new CShellSurfaceXdgShellUnstableV6(handler, connection.GetDisplay(), shell, surface, title, class_);

@@ -46,11 +46,11 @@ public:
   static void Flush();
   /// Do a roundtrip on the specified queue from the event processing thread
   static void RoundtripQueue(wayland::event_queue_t const& queue);
-  
+
 private:
   friend class CWinSystemWayland;
   static void SetDisplay(wayland::display_t* display);
-  
+
   CCriticalSection m_queueMutex;
   std::queue<XBMC_Event> m_queue;
 };

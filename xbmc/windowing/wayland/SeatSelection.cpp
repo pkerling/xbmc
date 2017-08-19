@@ -56,7 +56,7 @@ CSeatSelection::CSeatSelection(CConnection& connection, wayland::seat_t const& s
 {
   wayland::data_device_manager_t manager;
   {
-    CRegistry registry(connection);
+    CRegistry registry{connection};
     registry.RequestSingleton(manager, 1, 3, false);
     registry.Bind();
   }
@@ -123,7 +123,7 @@ std::string CSeatSelection::GetSelectionText() const
   {
     return "";
   }
-  
+
   std::array<int, 2> fds;
   if (pipe(fds.data()) != 0)
   {

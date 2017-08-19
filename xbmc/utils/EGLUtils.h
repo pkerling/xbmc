@@ -42,7 +42,7 @@ public:
     }
     return p;
   }
-  
+
 private:
   CEGLUtils();
 };

@@ -143,7 +143,7 @@ bool CInputStreamAddon::Open()
     props.m_nCountInfoValues++;
   }
 
-  props.m_strURL = m_item.GetPath().c_str();
+  props.m_strURL = m_item.GetDynPath().c_str();
 
   std::string libFolder = URIUtils::GetDirectory(Addon()->Path());
   std::string profileFolder = CSpecialProtocol::TranslatePath(Addon()->Profile());
@@ -401,12 +401,12 @@ void CInputStreamAddon::EnableStream(int streamId, bool enable)
   m_struct.toAddon.enable_stream(&m_struct, streamId, enable);
 }
 
-void CInputStreamAddon::OpenStream(int streamId)
+bool CInputStreamAddon::OpenStream(int streamId)
 {
   if (!m_struct.toAddon.open_stream)
-    return;
+    return false;
 
-  m_struct.toAddon.open_stream(&m_struct, streamId);
+  return m_struct.toAddon.open_stream(&m_struct, streamId);
 }
 
 int CInputStreamAddon::GetNrOfStreams() const

@@ -27,7 +27,6 @@
 
 #include "utils/log.h"
 #include "utils/posix/FileHandle.h"
-#include "windowing/XkbcommonKeymap.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -108,9 +107,9 @@ CInputProcessorKeyboard::CInputProcessorKeyboard(wayland::keyboard_t const& keyb
 
 void CInputProcessorKeyboard::ConvertAndSendKey(std::uint32_t scancode, bool pressed)
 {
-  std::uint32_t xkbCode = scancode + WL_KEYBOARD_XKB_CODE_OFFSET;
-  XBMCKey xbmcKey = m_keymap->XBMCKeyForKeycode(xkbCode);
-  std::uint32_t utf32 = m_keymap->UnicodeCodepointForKeycode(xkbCode);
+  std::uint32_t xkbCode{scancode + WL_KEYBOARD_XKB_CODE_OFFSET};
+  XBMCKey xbmcKey{m_keymap->XBMCKeyForKeycode(xkbCode)};
+  std::uint32_t utf32{m_keymap->UnicodeCodepointForKeycode(xkbCode)};
 
   if (utf32 > std::numeric_limits<std::uint16_t>::max())
   {
@@ -125,7 +124,7 @@ void CInputProcessorKeyboard::ConvertAndSendKey(std::uint32_t scancode, bool pre
     scancode = 0;
   }
 
-  XBMC_Event event = SendKey(scancode, xbmcKey, static_cast<std::uint16_t> (utf32), pressed);
+  XBMC_Event event{SendKey(scancode, xbmcKey, static_cast<std::uint16_t> (utf32), pressed)};
 
   if (pressed && m_keymap->ShouldKeycodeRepeat(xkbCode) && m_keyRepeatInterval > 0)
   {

@@ -378,7 +378,7 @@ void CGraphicContext::SetVideoResolution(RESOLUTION res, bool forceUpdate)
   }
   else
   {
-    CApplicationMessenger::GetInstance().SendMsg(TMSG_SETVIDEORESOLUTION, res, forceUpdate);
+    CApplicationMessenger::GetInstance().SendMsg(TMSG_SETVIDEORESOLUTION, res, forceUpdate ? 1 : 0);
   }
 }
 
@@ -417,13 +417,15 @@ void CGraphicContext::SetVideoResolutionInternal(RESOLUTION res, bool forceUpdat
   // change is confirmed.
   // But other windowing code expects these variables to be already set when
   // SetFullScreen() is called, so set them anyway and remember the old values.
-  int origScreenWidth = m_iScreenWidth, origScreenHeight = m_iScreenHeight, origScreenId = m_iScreenId;
+  int origScreenWidth = m_iScreenWidth;
+  int origScreenHeight = m_iScreenHeight;
+  int origScreenId = m_iScreenId;
   float origFPSOverride = m_fFPSOverride;
 
   UpdateInternalStateWithResolution(res);
   RESOLUTION_INFO info_org  = CDisplaySettings::GetInstance().GetResolutionInfo(res);
 
-  bool switched;
+  bool switched = false;
   if (g_advancedSettings.m_fullScreen)
   {
 #if defined (TARGET_DARWIN) || defined (TARGET_WINDOWS)

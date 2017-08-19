@@ -30,12 +30,12 @@ namespace
 
 /**
  * Handle change of availability of a wl_seat input capability
- * 
+ *
  * This checks whether the capability is currently available with the wl_seat
  * and whether it was bound to a processor. If there is a mismatch between
  * these two, the processor is destroyed if a capability was removed or created
  * if a capability was added.
- * 
+ *
  * \param handler CSeat instance
  * \param caps new capabilities
  * \param cap capability to check for

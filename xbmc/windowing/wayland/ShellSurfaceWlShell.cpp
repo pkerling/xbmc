@@ -34,7 +34,7 @@ CShellSurfaceWlShell::CShellSurfaceWlShell(IShellSurfaceHandler& handler, CConne
     registry.RequestSingleton(m_shell, 1, 1);
     registry.Bind();
   }
-  
+
   m_shellSurface = m_shell.get_shell_surface(surface);
 
   m_surfaceState.set(STATE_ACTIVATED);

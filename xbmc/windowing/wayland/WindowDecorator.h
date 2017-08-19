@@ -90,7 +90,7 @@ public:
    * window decorations) by subtracting the decoration size
    *
    * Decorations will be disabled if state includes STATE_FULLSCREEN
-   * 
+   *
    * Call only from main thread
    */
   void SetState(CSizeInt size, int scale, IShellSurface::StateBitset state);
@@ -148,7 +148,7 @@ public:
 private:
   CWindowDecorator(CWindowDecorator const& other) = delete;
   CWindowDecorator& operator=(CWindowDecorator const& other) = delete;
-  
+
   void Reset(bool reallocate);
 
   // These functions should not be called directly as they may leave internal

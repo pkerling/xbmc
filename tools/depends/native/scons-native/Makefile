@@ -10,8 +10,6 @@ ARCHIVE=$(SOURCE).tar.gz
 
 # configuration settings
 
-CONFIGURE=./bootstrap --prefix=$(NATIVEPREFIX) --system-curl
-
 CLEAN_FILES=$(ARCHIVE) $(PLATFORM)
 
 all: .installed-$(PLATFORM)

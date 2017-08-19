@@ -37,9 +37,9 @@ class CConnection
 {
 public:
   CConnection();
-  
+
   wayland::display_t& GetDisplay();
-  
+
 private:
   std::unique_ptr<wayland::display_t> m_display;
 };

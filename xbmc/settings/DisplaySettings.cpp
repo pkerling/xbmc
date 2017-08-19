@@ -804,7 +804,7 @@ void CDisplaySettings::SettingOptionsMonitorsFiller(SettingConstPtr setting, std
     }
     list.push_back(std::make_pair(monitor, monitor));
   }
-  
+
   if (!foundMonitor && !current.empty())
   {
     // Add current value so no monitor change is triggered when entering the settings screen and
