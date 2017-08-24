@@ -4,27 +4,13 @@
 
 # Kodi fork for Google Summer of Code 2017 project: Wayland Support
 
-This is my fork of Kodi where I will be coding on my Google Summer of Code project of adding (back) Wayland support.
-
-Feel free to participate in discussions either directly here on GitHub (issues/pull requests) or the [Kodi community forum thread](http://forum.kodi.tv/showthread.php?tid=309254) and report bugs or features that you would like to see integrated.
-
-## Compiling with Wayland
-
-To build Kodi with the Wayland windowing system backend, please roughly follow `docs/README.linux` with the following exceptions.
-
-Before actually compiling, you will additionally need to
-
-* install your distribution's develoment packages for Wayland, e.g. `libwayland-dev` on Debian/Ubuntu, and the `wayland-protocols` package and
-* build and install waylandpp from https://github.com/pkerling/waylandpp/ - please follow the build instructions in the repository.
-
-To enable Wayland, you must run CMake with `-DCORE_PLATFORM_NAME=wayland`, i.e. to build run
-
-    $ mkdir kodi-build && cd kodi-build
-    $ cmake .. -DCORE_PLATFORM_NAME=wayland -DCMAKE_INSTALL_PREFIX=/usr/local
-    $ cmake --build .
+This originally was my fork of Kodi where I coded on my Google Summer of Code 2017 project of adding (back) Wayland support. All work done for GSoC was [merged](https://github.com/xbmc/xbmc/pull/12664) into Kodi mainline during the final stage of the project. See the updated [README](https://github.com/xbmc/xbmc/blob/master/docs/README.linux) for instructions on how to build Kodi for Wayland. Now, this repository is just for my personal development.
 
 ## Useful links
 
+* [Final work product submission](https://forum.kodi.tv/showthread.php?tid=309254&pid=2636174#pid2636174)
+* [Final pull request](https://github.com/xbmc/xbmc/pull/12664)
+* [Progress update on Kodi blog](https://kodi.tv/article/gsoc-2017-update-wayland-support)
 * [Original proposal and discussion thread in Kodi community forums](http://forum.kodi.tv/showthread.php?tid=309254&pid=2552143#pid2552143)
 * [Project page at Google Summer of Code homepage](https://summerofcode.withgoogle.com/projects/#4913542374359040)
 
