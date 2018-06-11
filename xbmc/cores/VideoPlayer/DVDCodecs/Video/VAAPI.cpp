@@ -1102,12 +1102,28 @@ bool CDecoder::ConfigVAAPI()
     pixelFormat = VA_FOURCC_P010;
   }
 
-  VASurfaceAttrib attribs[1], *attrib;
+  VASurfaceAttrib attribs[2], *attrib;
   attrib = attribs;
   attrib->flags = VA_SURFACE_ATTRIB_SETTABLE;
   attrib->type = VASurfaceAttribPixelFormat;
   attrib->value.type = VAGenericValueTypeInteger;
   attrib->value.value.i = pixelFormat;
+  attrib++;
+
+  attrib->flags = VA_SURFACE_ATTRIB_SETTABLE;
+  attrib->type = VASurfaceAttribUsageHint;
+  attrib->value.type = VAGenericValueTypeInteger;
+#if VA_CHECK_VERSION(1, 1, 1)
+  if ((m_vaapiConfig.surfaceWidth * m_vaapiConfig.surfaceHeight) > (1920 * 1080))
+    // Very unlikely that we will need VAAPI de-interlacing for >FullHD content, so tell the driver we
+    // intend to export the surface
+    attrib->value.value.i = VA_SURFACE_ATTRIB_USAGE_HINT_EXPORT;
+  else
+    attrib->value.value.i = VA_SURFACE_ATTRIB_USAGE_HINT_GENERIC;
+#else
+  attrib->value.value.i = VA_SURFACE_ATTRIB_USAGE_HINT_GENERIC;
+#endif
+  attrib++;
 
   VASurfaceID surfaces[32];
   int nb_surfaces = m_vaapiConfig.maxReferences;
@@ -1117,7 +1133,7 @@ bool CDecoder::ConfigVAAPI()
                                      m_vaapiConfig.surfaceHeight,
                                      surfaces,
                                      nb_surfaces,
-                                     attribs, 1)))
+                                     attribs, 2)))
   {
     return false;
   }
@@ -2041,8 +2057,7 @@ void COutput::InitCycle()
       // deinterlacing on/off mid-stream.
       // See also: https://bugs.freedesktop.org/show_bug.cgi?id=105145
       const bool alwaysInsertVpp = m_config.driverIsMesa &&
-                                   ((m_config.vidWidth * m_config.vidHeight) <= (1920 * 1080)) &&
-                                   interlaced;
+                                   ((m_config.vidWidth * m_config.vidHeight) <= (1920 * 1080));
 
       m_config.stats->SetVpp(false);
       if (!preferVaapiRender)
@@ -2323,21 +2338,37 @@ bool CVppPostproc::PreInit(CVaapiConfig &config, SDiMethods *methods)
     return false;
   }
 
-  VASurfaceAttrib attribs[1], *attrib;
+  unsigned int format = VA_RT_FORMAT_YUV420;
+  std::int32_t pixelFormat = VA_FOURCC_NV12;
+
+  if (m_config.profile == VAProfileHEVCMain10)
+  {
+    format = VA_RT_FORMAT_YUV420_10BPP;
+    pixelFormat = VA_FOURCC_P010;
+  }
+
+  VASurfaceAttrib attribs[2], *attrib;
   attrib = attribs;
   attrib->flags = VA_SURFACE_ATTRIB_SETTABLE;
   attrib->type = VASurfaceAttribPixelFormat;
   attrib->value.type = VAGenericValueTypeInteger;
-  attrib->value.value.i = VA_FOURCC_NV12;
+  attrib->value.value.i = pixelFormat;
+  attrib++;
+
+  // Mesa needs this so it does not allocate in interlaced (field) format,
+  // which then needs to be weaved on first export
+  attrib->flags = VA_SURFACE_ATTRIB_SETTABLE;
+  attrib->type = VASurfaceAttribUsageHint;
+  attrib->value.type = VAGenericValueTypeInteger;
+#if VA_CHECK_VERSION(1, 1, 1)
+  attrib->value.value.i = VA_SURFACE_ATTRIB_USAGE_HINT_EXPORT;
+#else
+  attrib->value.value.i = VA_SURFACE_ATTRIB_USAGE_HINT_GENERIC;
+#endif
+  attrib++;
 
   // create surfaces
   VASurfaceID surfaces[32];
-  unsigned int format = VA_RT_FORMAT_YUV420;
-  if (m_config.profile == VAProfileHEVCMain10)
-  {
-    format = VA_RT_FORMAT_YUV420_10BPP;
-    attrib->value.value.i = VA_FOURCC_P010;
-  }
   int nb_surfaces = NUM_RENDER_PICS;
   if (!CheckSuccess(vaCreateSurfaces(m_config.dpy,
                                      format,
@@ -2345,7 +2376,7 @@ bool CVppPostproc::PreInit(CVaapiConfig &config, SDiMethods *methods)
                                      m_config.surfaceHeight,
                                      surfaces,
                                      nb_surfaces,
-                                     attribs, 1)))
+                                     attribs, 2)))
   {
     CLog::Log(LOGDEBUG, LOGVIDEO, "CVppPostproc::PreInit  - VPP init failed in vaCreateSurfaces");
 
