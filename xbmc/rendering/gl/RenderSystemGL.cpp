@@ -55,14 +55,22 @@ bool CRenderSystemGL::InitRenderSystem()
       GLint i;
       for (i = 0; i < n; i++)
       {
-        m_RenderExtensions += (const char*)glGetStringi(GL_EXTENSIONS, i);
-        m_RenderExtensions += " ";
+        auto extensions = (const char*) glGetStringi(GL_EXTENSIONS, i);
+        if (extensions)
+        {
+          m_RenderExtensions += extensions;
+          m_RenderExtensions += " ";
+        }
       }
     }
   }
   else
   {
-    m_RenderExtensions += (const char*) glGetString(GL_EXTENSIONS);
+    auto extensions = (const char*) glGetString(GL_EXTENSIONS);
+    if (extensions)
+    {
+      m_RenderExtensions += extensions;
+    }
   }
   m_RenderExtensions += " ";
 
