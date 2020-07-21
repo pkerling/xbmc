@@ -9,6 +9,7 @@
 #pragma once
 
 #include "threads/CriticalSection.h"
+
 #include <atomic>
 #include <vector>
 
@@ -18,23 +19,9 @@ class ObservableMessageJob;
 typedef enum
 {
   ObservableMessageNone,
-  ObservableMessageCurrentItem,
-  ObservableMessageAddons,
-  ObservableMessageEpg,
-  ObservableMessageEpgContainer,
-  ObservableMessageEpgActiveItem,
-  ObservableMessageEpgItemUpdate,
-  ObservableMessageChannelGroup,
-  ObservableMessageChannelGroupReset,
-  ObservableMessageTimers,
-  ObservableMessageTimersReset,
-  ObservableMessageRecordings,
   ObservableMessagePeripheralsChanged,
-  ObservableMessageChannelGroupsLoaded,
-  ObservableMessageManagerStopped,
   ObservableMessageSettingsChanged,
   ObservableMessageButtonMapsChanged,
-  ObservableMessageChannelPlaybackStopped,
 } ObservableMessage;
 
 class Observer

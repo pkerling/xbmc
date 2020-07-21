@@ -71,17 +71,22 @@ namespace dialogs
     /// fprintf(stderr, "Selected directory is : %s and was %s\n", directory.c_str(), ret ? "OK" : "Canceled");
     /// ~~~~~~~~~~~~~
     ///
-    inline bool ShowAndGetDirectory(const std::string& shares, const std::string& heading, std::string& path, bool writeOnly = false)
+    inline bool ATTRIBUTE_HIDDEN ShowAndGetDirectory(const std::string& shares,
+                                                     const std::string& heading,
+                                                     std::string& path,
+                                                     bool writeOnly = false)
     {
       using namespace ::kodi::addon;
       char* retString = nullptr;
-      bool ret = CAddonBase::m_interface->toKodi->kodi_gui->dialogFileBrowser->show_and_get_directory(CAddonBase::m_interface->toKodi->kodiBase,
-                                                                                                      shares.c_str(), heading.c_str(), path.c_str(), &retString, writeOnly);
+      bool ret = CAddonBase::m_interface->toKodi->kodi_gui->dialogFileBrowser->show_and_get_directory(
+          CAddonBase::m_interface->toKodi->kodiBase, shares.c_str(), heading.c_str(), path.c_str(),
+          &retString, writeOnly);
       if (retString != nullptr)
       {
         if (std::strlen(retString))
           path = retString;
-        CAddonBase::m_interface->toKodi->free_string(CAddonBase::m_interface->toKodi->kodiBase, retString);
+        CAddonBase::m_interface->toKodi->free_string(CAddonBase::m_interface->toKodi->kodiBase,
+                                                     retString);
       }
       return ret;
     }
@@ -104,8 +109,12 @@ namespace dialogs
     ///                                 handled as directories.
     /// @return                         False if selection becomes canceled.
     ///
-    inline bool ShowAndGetFile(const std::string& shares, const std::string& mask, const std::string& heading,
-                               std::string& path, bool useThumbs = false, bool useFileDirectories = false)
+    inline bool ATTRIBUTE_HIDDEN ShowAndGetFile(const std::string& shares,
+                                                const std::string& mask,
+                                                const std::string& heading,
+                                                std::string& path,
+                                                bool useThumbs = false,
+                                                bool useFileDirectories = false)
     {
       using namespace ::kodi::addon;
       char* retString = nullptr;
@@ -141,8 +150,13 @@ namespace dialogs
     /// @param[in] singleList
     /// @return                         False if selection becomes canceled.
     ///
-    inline bool ShowAndGetFileFromDir(const std::string& directory, const std::string& mask, const std::string& heading, std::string& path,
-                                      bool useThumbs = false, bool useFileDirectories = false, bool singleList = false)
+    inline bool ATTRIBUTE_HIDDEN ShowAndGetFileFromDir(const std::string& directory,
+                                                       const std::string& mask,
+                                                       const std::string& heading,
+                                                       std::string& path,
+                                                       bool useThumbs = false,
+                                                       bool useFileDirectories = false,
+                                                       bool singleList = false)
     {
       using namespace ::kodi::addon;
       char* retString = nullptr;
@@ -176,8 +190,12 @@ namespace dialogs
     ///                               handled as directories.
     /// @return False if selection becomes canceled.
     ///
-    inline bool ShowAndGetFileList(const std::string& shares, const std::string& mask, const std::string& heading,
-                                   std::vector<std::string>& fileList, bool useThumbs = false, bool useFileDirectories = false)
+    inline bool ATTRIBUTE_HIDDEN ShowAndGetFileList(const std::string& shares,
+                                                    const std::string& mask,
+                                                    const std::string& heading,
+                                                    std::vector<std::string>& fileList,
+                                                    bool useThumbs = false,
+                                                    bool useFileDirectories = false)
     {
       using namespace ::kodi::addon;
       char** list = nullptr;
@@ -188,7 +206,7 @@ namespace dialogs
       if (ret)
       {
         for (unsigned int i = 0; i < listSize; ++i)
-          fileList.push_back(list[i]);
+          fileList.emplace_back(list[i]);
         CAddonBase::m_interface->toKodi->kodi_gui->dialogFileBrowser->clear_file_list(CAddonBase::m_interface->toKodi->kodiBase, &list, listSize);
       }
       return ret;
@@ -208,7 +226,10 @@ namespace dialogs
     /// @param[in] type
     /// @return                       False if selection becomes canceled.
     ///
-    inline bool ShowAndGetSource(std::string& path, bool allowNetworkShares, const std::string& additionalShare = "", const std::string& type = "")
+    inline bool ATTRIBUTE_HIDDEN ShowAndGetSource(std::string& path,
+                                                  bool allowNetworkShares,
+                                                  const std::string& additionalShare = "",
+                                                  const std::string& type = "")
     {
       using namespace ::kodi::addon;
       char* retString = nullptr;
@@ -235,7 +256,9 @@ namespace dialogs
     /// @param[out] path      Return value about selected image
     /// @return               False if selection becomes canceled.
     ///
-    inline bool ShowAndGetImage(const std::string& shares, const std::string& heading, std::string& path)
+    inline bool ATTRIBUTE_HIDDEN ShowAndGetImage(const std::string& shares,
+                                                 const std::string& heading,
+                                                 std::string& path)
     {
       using namespace ::kodi::addon;
       char* retString = nullptr;
@@ -262,7 +285,9 @@ namespace dialogs
     /// @param[out] file_list   Return value about selected images
     /// @return                 False if selection becomes canceled.
     ///
-    inline bool ShowAndGetImageList(const std::string& shares, const std::string& heading, std::vector<std::string>& file_list)
+    inline bool ATTRIBUTE_HIDDEN ShowAndGetImageList(const std::string& shares,
+                                                     const std::string& heading,
+                                                     std::vector<std::string>& file_list)
     {
       using namespace ::kodi::addon;
       char** list = nullptr;
@@ -272,7 +297,7 @@ namespace dialogs
       if (ret)
       {
         for (unsigned int i = 0; i < listSize; ++i)
-          file_list.push_back(list[i]);
+          file_list.emplace_back(list[i]);
         CAddonBase::m_interface->toKodi->kodi_gui->dialogFileBrowser->clear_file_list(CAddonBase::m_interface->toKodi->kodiBase, &list, listSize);
       }
       return ret;

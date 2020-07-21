@@ -7,13 +7,16 @@
  */
 
 #include "CDDAFile.h"
-#include <sys/stat.h>
+
+#include "ServiceBroker.h"
 #include "URL.h"
 #include "storage/MediaManager.h"
-#include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
 
 #include <algorithm>
+
+#include <sys/stat.h>
 
 using namespace MEDIA_DETECT;
 using namespace XFILE;
@@ -37,14 +40,16 @@ bool CFileCDDA::Open(const CURL& url)
 {
   std::string strURL = url.GetWithoutFilename();
 
-  if (!g_mediaManager.IsDiscInDrive(strURL) || !IsValidFile(url))
+  if (!CServiceBroker::GetMediaManager().IsDiscInDrive(strURL) || !IsValidFile(url))
     return false;
 
   // Open the dvd drive
 #ifdef TARGET_POSIX
-  m_pCdIo = m_cdio->cdio_open(g_mediaManager.TranslateDevicePath(strURL).c_str(), DRIVER_UNKNOWN);
+  m_pCdIo = m_cdio->cdio_open(CServiceBroker::GetMediaManager().TranslateDevicePath(strURL).c_str(),
+                              DRIVER_UNKNOWN);
 #elif defined(TARGET_WINDOWS)
-  m_pCdIo = m_cdio->cdio_open_win32(g_mediaManager.TranslateDevicePath(strURL, true).c_str());
+  m_pCdIo = m_cdio->cdio_open_win32(
+      CServiceBroker::GetMediaManager().TranslateDevicePath(strURL, true).c_str());
 #endif
   if (!m_pCdIo)
   {
@@ -101,7 +106,7 @@ int CFileCDDA::Stat(const CURL& url, struct __stat64* buffer)
 
 ssize_t CFileCDDA::Read(void* lpBuf, size_t uiBufSize)
 {
-  if (!m_pCdIo || !g_mediaManager.IsDiscInDrive())
+  if (!m_pCdIo || !CServiceBroker::GetMediaManager().IsDiscInDrive())
     return -1;
 
   if (uiBufSize > SSIZE_MAX)

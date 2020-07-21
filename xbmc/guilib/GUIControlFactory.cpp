@@ -7,51 +7,53 @@
  */
 
 #include "GUIControlFactory.h"
-#include "LocalizeStrings.h"
-#include "GUIButtonControl.h"
-#include "GUIRadioButtonControl.h"
-#include "GUISpinControl.h"
-#include "GUIRSSControl.h"
-#include "GUIImage.h"
+
+#include "GUIAction.h"
 #include "GUIBorderedImage.h"
-#include "GUILabelControl.h"
-#include "GUIEditControl.h"
-#include "GUIFadeLabelControl.h"
-#include "GUIToggleButtonControl.h"
-#include "GUITextBox.h"
-#include "GUIVideoControl.h"
-#include "GUIProgressControl.h"
-#include "GUISliderControl.h"
-#include "GUIMoverControl.h"
-#include "GUIRenderingControl.h"
-#include "GUIResizeControl.h"
-#include "GUISpinControlEx.h"
-#include "GUIVisualisationControl.h"
-#include "GUISettingsSliderControl.h"
-#include "GUIMultiImage.h"
+#include "GUIButtonControl.h"
+#include "GUIColorManager.h"
 #include "GUIControlGroup.h"
 #include "GUIControlGroupList.h"
-#include "GUIScrollBarControl.h"
-#include "GUIListContainer.h"
+#include "GUIEditControl.h"
+#include "GUIFadeLabelControl.h"
 #include "GUIFixedListContainer.h"
-#include "GUIWrappingListContainer.h"
-#include "pvr/windows/GUIEPGGridContainer.h"
-#include "GUIPanelContainer.h"
-#include "GUIListLabel.h"
-#include "GUIListGroup.h"
-#include "GUIInfoManager.h"
-#include "input/Key.h"
-#include "addons/Skin.h"
-#include "utils/CharsetConverter.h"
-#include "utils/XMLUtils.h"
 #include "GUIFontManager.h"
-#include "GUIColorManager.h"
-#include "utils/RssManager.h"
-#include "utils/StringUtils.h"
-#include "GUIAction.h"
+#include "GUIImage.h"
+#include "GUIInfoManager.h"
+#include "GUILabelControl.h"
+#include "GUIListContainer.h"
+#include "GUIListGroup.h"
+#include "GUIListLabel.h"
+#include "GUIMoverControl.h"
+#include "GUIMultiImage.h"
+#include "GUIPanelContainer.h"
+#include "GUIProgressControl.h"
+#include "GUIRSSControl.h"
+#include "GUIRadioButtonControl.h"
+#include "GUIRangesControl.h"
+#include "GUIRenderingControl.h"
+#include "GUIResizeControl.h"
+#include "GUIScrollBarControl.h"
+#include "GUISettingsSliderControl.h"
+#include "GUISliderControl.h"
+#include "GUISpinControl.h"
+#include "GUISpinControlEx.h"
+#include "GUITextBox.h"
+#include "GUIToggleButtonControl.h"
+#include "GUIVideoControl.h"
+#include "GUIVisualisationControl.h"
+#include "GUIWrappingListContainer.h"
+#include "LocalizeStrings.h"
+#include "Util.h"
+#include "addons/Skin.h"
 #include "cores/RetroPlayer/guicontrols/GUIGameControl.h"
 #include "games/controllers/guicontrols/GUIGameController.h"
-#include "Util.h"
+#include "input/Key.h"
+#include "pvr/guilib/GUIEPGGridContainer.h"
+#include "utils/CharsetConverter.h"
+#include "utils/RssManager.h"
+#include "utils/StringUtils.h"
+#include "utils/XMLUtils.h"
 
 using namespace KODI;
 using namespace KODI::GUILIB;
@@ -96,7 +98,8 @@ static const ControlMapping controls[] =
     {"wraplist",          CGUIControl::GUICONTAINER_WRAPLIST},
     {"fixedlist",         CGUIControl::GUICONTAINER_FIXEDLIST},
     {"epggrid",           CGUIControl::GUICONTAINER_EPGGRID},
-    {"panel",             CGUIControl::GUICONTAINER_PANEL}};
+    {"panel",             CGUIControl::GUICONTAINER_PANEL},
+    {"ranges",            CGUIControl::GUICONTROL_RANGES}};
 
 CGUIControl::GUICONTROLTYPES CGUIControlFactory::TranslateControlType(const std::string &type)
 {
@@ -189,7 +192,7 @@ bool CGUIControlFactory::GetDimension(const TiXmlNode *pRootNode, const char* st
 {
   const TiXmlElement* pNode = pRootNode->FirstChildElement(strTag);
   if (!pNode || !pNode->FirstChild()) return false;
-  if (0 == strnicmp("auto", pNode->FirstChild()->Value(), 4))
+  if (0 == StringUtils::CompareNoCase("auto", pNode->FirstChild()->Value(), 4))
   { // auto-width - at least min must be set
     value = ParsePosition(pNode->Attribute("max"), parentSize);
     min = ParsePosition(pNode->Attribute("min"), parentSize);
@@ -337,13 +340,15 @@ bool CGUIControlFactory::GetTexture(const TiXmlNode* pRootNode, const char* strT
     GetRectFromString(border, image.border);
   image.orientation = 0;
   const char *flipX = pNode->Attribute("flipx");
-  if (flipX && strcmpi(flipX, "true") == 0) image.orientation = 1;
+  if (flipX && StringUtils::CompareNoCase(flipX, "true") == 0)
+    image.orientation = 1;
   const char *flipY = pNode->Attribute("flipy");
-  if (flipY && strcmpi(flipY, "true") == 0) image.orientation = 3 - image.orientation;  // either 3 or 2
+  if (flipY && StringUtils::CompareNoCase(flipY, "true") == 0)
+    image.orientation = 3 - image.orientation; // either 3 or 2
   image.diffuse = XMLUtils::GetAttribute(pNode, "diffuse");
   image.diffuseColor.Parse(XMLUtils::GetAttribute(pNode, "colordiffuse"), 0);
   const char *background = pNode->Attribute("background");
-  if (background && strnicmp(background, "true", 4) == 0)
+  if (background && StringUtils::CompareNoCase(background, "true", 4) == 0)
     image.useLarge = true;
   image.filename = pNode->FirstChild() ? pNode->FirstChild()->Value() : "";
   return true;
@@ -413,7 +418,7 @@ bool CGUIControlFactory::GetConditionalVisibility(const TiXmlNode* control, std:
       allowHiddenFocus = hidden;
     // add to our condition string
     if (!node->NoChildren())
-      conditions.push_back(node->FirstChild()->Value());
+      conditions.emplace_back(node->FirstChild()->Value());
     node = node->NextSiblingElement("visible");
   }
   if (!conditions.size())
@@ -450,7 +455,7 @@ bool CGUIControlFactory::GetAnimations(TiXmlNode *control, const CRect &rect, in
       CAnimation anim;
       anim.Create(node, rect, context);
       animations.push_back(anim);
-      if (strcmpi(node->FirstChild()->Value(), "VisibleChange") == 0)
+      if (StringUtils::CompareNoCase(node->FirstChild()->Value(), "VisibleChange") == 0)
       { // add the hidden one as well
         TiXmlElement hidden(*node);
         hidden.FirstChild()->SetValue("hidden");
@@ -590,7 +595,7 @@ void CGUIControlFactory::GetInfoLabels(const TiXmlNode *pControlNode, const std:
   if (XMLUtils::GetInt(pControlNode, "number", labelNumber))
   {
     std::string label = StringUtils::Format("%i", labelNumber);
-    infoLabels.push_back(GUIINFO::CGUIInfoLabel(label));
+    infoLabels.emplace_back(label);
     return; // done
   }
   const TiXmlElement *labelNode = pControlNode->FirstChildElement(labelTag);
@@ -613,7 +618,7 @@ void CGUIControlFactory::GetInfoLabels(const TiXmlNode *pControlNode, const std:
       if (infoNode->FirstChild())
       {
         std::string info = StringUtils::Format("$INFO[%s]", infoNode->FirstChild()->Value());
-        infoLabels.push_back(GUIINFO::CGUIInfoLabel(info, fallback, parentID));
+        infoLabels.emplace_back(info, fallback, parentID);
       }
       infoNode = infoNode->NextSibling("info");
     }
@@ -813,7 +818,7 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
   if (XMLUtils::GetInt(pControlNode, "defaultcontrol", defaultControl))
   {
     const char *always = pControlNode->FirstChildElement("defaultcontrol")->Attribute("always");
-    if (always && strnicmp(always, "true", 4) == 0)
+    if (always && StringUtils::CompareNoCase(always, "true", 4) == 0)
       defaultAlways = true;
   }
   XMLUtils::GetInt(pControlNode, "pagecontrol", pageControl);
@@ -1292,6 +1297,14 @@ CGUIControl* CGUIControlFactory::Create(int parentID, const CRect &rect, TiXmlEl
         textureOverlay, bReveal);
 
       static_cast<CGUIProgressControl*>(control)->SetInfo(singleInfo, singleInfo2);
+    }
+    break;
+  case CGUIControl::GUICONTROL_RANGES:
+    {
+      control = new CGUIRangesControl(
+        parentID, id, posX, posY, width, height,
+        textureBackground, textureLeft, textureMid, textureRight,
+        textureOverlay, singleInfo);
     }
     break;
   case CGUIControl::GUICONTROL_IMAGE:

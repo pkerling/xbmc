@@ -7,11 +7,13 @@
  */
 
 #include "DVDMessageQueue.h"
+
 #include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
-#include "utils/log.h"
-#include "threads/SingleLock.h"
 #include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
-#include "math.h"
+#include "threads/SingleLock.h"
+#include "utils/log.h"
+
+#include <math.h>
 
 CDVDMessageQueue::CDVDMessageQueue(const std::string &owner) : m_hEvent(true), m_owner(owner)
 {
@@ -291,7 +293,7 @@ void CDVDMessageQueue::WaitUntilEmpty()
     m_drain = true;
   }
 
-  CLog::Log(LOGNOTICE, "CDVDMessageQueue(%s)::WaitUntilEmpty", m_owner.c_str());
+  CLog::Log(LOGINFO, "CDVDMessageQueue(%s)::WaitUntilEmpty", m_owner.c_str());
   CDVDMsgGeneralSynchronize* msg = new CDVDMsgGeneralSynchronize(40000, SYNCSOURCE_ANY);
   Put(msg->Acquire());
   msg->Wait(m_bAbortRequest, 0);

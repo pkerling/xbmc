@@ -12,7 +12,7 @@
 #include "utils/CharsetConverter.h"
 #include "utils/Utf8Utils.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 #if 0
 static const uint16_t refutf16LE1[] = { 0xff54, 0xff45, 0xff53, 0xff54,
@@ -302,30 +302,30 @@ TEST_F(TestCharsetConverter, utf8logicalToVisualBiDi)
 TEST_F(TestCharsetConverter, getCharsetLabels)
 {
   std::vector<std::string> reflabels;
-  reflabels.push_back("Western Europe (ISO)");
-  reflabels.push_back("Central Europe (ISO)");
-  reflabels.push_back("South Europe (ISO)");
-  reflabels.push_back("Baltic (ISO)");
-  reflabels.push_back("Cyrillic (ISO)");
-  reflabels.push_back("Arabic (ISO)");
-  reflabels.push_back("Greek (ISO)");
-  reflabels.push_back("Hebrew (ISO)");
-  reflabels.push_back("Turkish (ISO)");
-  reflabels.push_back("Central Europe (Windows)");
-  reflabels.push_back("Cyrillic (Windows)");
-  reflabels.push_back("Western Europe (Windows)");
-  reflabels.push_back("Greek (Windows)");
-  reflabels.push_back("Turkish (Windows)");
-  reflabels.push_back("Hebrew (Windows)");
-  reflabels.push_back("Arabic (Windows)");
-  reflabels.push_back("Baltic (Windows)");
-  reflabels.push_back("Vietnamese (Windows)");
-  reflabels.push_back("Thai (Windows)");
-  reflabels.push_back("Chinese Traditional (Big5)");
-  reflabels.push_back("Chinese Simplified (GBK)");
-  reflabels.push_back("Japanese (Shift-JIS)");
-  reflabels.push_back("Korean");
-  reflabels.push_back("Hong Kong (Big5-HKSCS)");
+  reflabels.emplace_back("Western Europe (ISO)");
+  reflabels.emplace_back("Central Europe (ISO)");
+  reflabels.emplace_back("South Europe (ISO)");
+  reflabels.emplace_back("Baltic (ISO)");
+  reflabels.emplace_back("Cyrillic (ISO)");
+  reflabels.emplace_back("Arabic (ISO)");
+  reflabels.emplace_back("Greek (ISO)");
+  reflabels.emplace_back("Hebrew (ISO)");
+  reflabels.emplace_back("Turkish (ISO)");
+  reflabels.emplace_back("Central Europe (Windows)");
+  reflabels.emplace_back("Cyrillic (Windows)");
+  reflabels.emplace_back("Western Europe (Windows)");
+  reflabels.emplace_back("Greek (Windows)");
+  reflabels.emplace_back("Turkish (Windows)");
+  reflabels.emplace_back("Hebrew (Windows)");
+  reflabels.emplace_back("Arabic (Windows)");
+  reflabels.emplace_back("Baltic (Windows)");
+  reflabels.emplace_back("Vietnamese (Windows)");
+  reflabels.emplace_back("Thai (Windows)");
+  reflabels.emplace_back("Chinese Traditional (Big5)");
+  reflabels.emplace_back("Chinese Simplified (GBK)");
+  reflabels.emplace_back("Japanese (Shift-JIS)");
+  reflabels.emplace_back("Korean");
+  reflabels.emplace_back("Hong Kong (Big5-HKSCS)");
 
   std::vector<std::string> varlabels = g_charsetConverter.getCharsetLabels();
   ASSERT_EQ(reflabels.size(), varlabels.size());

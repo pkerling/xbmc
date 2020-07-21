@@ -8,14 +8,14 @@
 
 #pragma once
 
-#include "cores/VideoPlayer/Process/ProcessInfo.h"
-#include "cores/VideoPlayer/Process/VideoBuffer.h"
-#include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
 #include "DVDResource.h"
+#include "cores/VideoPlayer/Buffers/VideoBuffer.h"
+#include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
+#include "cores/VideoPlayer/Process/ProcessInfo.h"
 
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavutil/mastering_display_metadata.h"
+#include <libavcodec/avcodec.h>
+#include <libavutil/mastering_display_metadata.h>
 }
 
 #include <vector>
@@ -109,7 +109,7 @@ public:
   enum VCReturn
   {
     VC_NONE = 0,
-    VC_ERROR,           //< an error occured, no other messages will be returned
+    VC_ERROR,           //< an error occurred, no other messages will be returned
     VC_FATAL,           //< non recoverable error
     VC_BUFFER,          //< the decoder needs more data
     VC_PICTURE,         //< the decoder got a picture, call Decode(NULL, 0) again to parse the rest of the data

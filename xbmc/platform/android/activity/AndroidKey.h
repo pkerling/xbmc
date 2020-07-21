@@ -8,17 +8,17 @@
 
 #pragma once
 
-#include <android/input.h>
-
 #include <stdint.h>
 #include <string>
 #include <vector>
 
+#include <android/input.h>
+
 class CAndroidKey
 {
 public:
-  CAndroidKey() {};
- ~CAndroidKey() {};
+  CAndroidKey() = default;
+  ~CAndroidKey() = default;
 
   bool onKeyboardEvent(AInputEvent *event);
 

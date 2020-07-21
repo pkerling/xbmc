@@ -10,10 +10,13 @@
 
 #include "FileItem.h"
 #include "ServiceBroker.h"
-
 #include "pvr/PVRManager.h"
+#include "pvr/PVRPlaybackState.h"
 #include "pvr/channels/PVRChannel.h"
 #include "pvr/epg/EpgInfoTag.h"
+
+#include <memory>
+#include <vector>
 
 using namespace PVR;
 
@@ -22,7 +25,7 @@ CGUIDialogPVRChannelGuide::CGUIDialogPVRChannelGuide()
 {
 }
 
-void CGUIDialogPVRChannelGuide::Open(const CPVRChannelPtr &channel)
+void CGUIDialogPVRChannelGuide::Open(const std::shared_ptr<CPVRChannel>& channel)
 {
   m_channel = channel;
   CGUIDialogPVRItemsViewBase::Open();
@@ -32,7 +35,7 @@ void CGUIDialogPVRChannelGuide::OnInitWindow()
 {
   // no user-specific channel is set; use current playing channel
   if (!m_channel)
-    m_channel = CServiceBroker::GetPVRManager().GetPlayingChannel();
+    m_channel = CServiceBroker::GetPVRManager().PlaybackState()->GetPlayingChannel();
 
   if (!m_channel)
   {
@@ -42,7 +45,12 @@ void CGUIDialogPVRChannelGuide::OnInitWindow()
 
   Init();
 
-  m_channel->GetEPG(*m_vecItems);
+  const std::vector<std::shared_ptr<CPVREpgInfoTag>> tags = m_channel->GetEpgTags();
+  for (const auto& tag : tags)
+  {
+    m_vecItems->Add(std::make_shared<CFileItem>(tag));
+  }
+
   m_viewControl.SetItems(*m_vecItems);
 
   CGUIDialogPVRItemsViewBase::OnInitWindow();

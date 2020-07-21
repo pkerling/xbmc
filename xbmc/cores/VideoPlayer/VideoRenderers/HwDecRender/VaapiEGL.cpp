@@ -9,18 +9,15 @@
 #include "VaapiEGL.h"
 
 #include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
-#include <va/va_drmcommon.h>
-#include <drm_fourcc.h>
-#include "utils/log.h"
 #include "utils/EGLUtils.h"
+#include "utils/log.h"
+
+#include <drm_fourcc.h>
+#include <va/va_drmcommon.h>
 
 #define HAVE_VAEXPORTSURFACHEHANDLE VA_CHECK_VERSION(1, 1, 0)
 
 using namespace VAAPI;
-
-CVaapi1Texture::CVaapi1Texture()
-{
-}
 
 void CVaapi1Texture::Init(InteropInfo &interop)
 {
@@ -60,7 +57,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
   {
     case VA_FOURCC('N','V','1','2'):
     {
-      m_bits = 8;
       attrib = attribs;
       *attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
       *attrib++ = fourcc_code('R', '8', ' ', ' ');
@@ -109,8 +105,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
         return false;
       }
 
-      GLint format, type;
-
       glGenTextures(1, &m_textureY);
       glBindTexture(m_interop.textureTarget, m_textureY);
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -118,7 +112,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
       m_interop.glEGLImageTargetTexture2DOES(m_interop.textureTarget, m_glSurface.eglImageY);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
 
       glGenTextures(1, &m_textureVU);
       glBindTexture(m_interop.textureTarget, m_textureVU);
@@ -127,17 +120,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
       m_interop.glEGLImageTargetTexture2DOES(m_interop.textureTarget, m_glSurface.eglImageVU);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE, &type);
-      if (type == GL_UNSIGNED_BYTE)
-        m_bits = 8;
-      else if (type == GL_UNSIGNED_SHORT)
-        m_bits = 16;
-      else
-      {
-        CLog::Log(LOGWARNING, "Did not expect texture type: %d", (int) type);
-        m_bits = 8;
-      }
 
       glBindTexture(m_interop.textureTarget, 0);
 
@@ -145,7 +127,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
     }
     case VA_FOURCC('P','0','1','0'):
     {
-      m_bits = 10;
       attrib = attribs;
       *attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
       *attrib++ = fourcc_code('R', '1', '6', ' ');
@@ -194,8 +175,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
         return false;
       }
 
-      GLint format, type;
-
       glGenTextures(1, &m_textureY);
       glBindTexture(m_interop.textureTarget, m_textureY);
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -203,7 +182,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
       m_interop.glEGLImageTargetTexture2DOES(m_interop.textureTarget, m_glSurface.eglImageY);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
 
       glGenTextures(1, &m_textureVU);
       glBindTexture(m_interop.textureTarget, m_textureVU);
@@ -212,17 +190,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
       glTexParameteri(m_interop.textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
       m_interop.glEGLImageTargetTexture2DOES(m_interop.textureTarget, m_glSurface.eglImageVU);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
-      glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE, &type);
-      if (type == GL_UNSIGNED_BYTE)
-        m_bits = 8;
-      else if (type == GL_UNSIGNED_SHORT)
-        m_bits = 16;
-      else
-      {
-        CLog::Log(LOGWARNING, "Did not expect texture type: %d", (int) type);
-        m_bits = 8;
-      }
 
       glBindTexture(m_interop.textureTarget, 0);
 
@@ -230,7 +197,6 @@ bool CVaapi1Texture::Map(CVaapiRenderPicture *pic)
     }
     case VA_FOURCC('B','G','R','A'):
     {
-      m_bits = 8;
       attrib = attribs;
       *attrib++ = EGL_DRM_BUFFER_FORMAT_MESA;
       *attrib++ = EGL_DRM_BUFFER_FORMAT_ARGB32_MESA;
@@ -305,11 +271,6 @@ void CVaapi1Texture::Unmap()
 
   m_vaapiPic->Release();
   m_vaapiPic = nullptr;
-}
-
-int CVaapi1Texture::GetBits()
-{
-  return m_bits;
 }
 
 GLuint CVaapi1Texture::GetTextureY()
@@ -514,18 +475,6 @@ bool CVaapi2Texture::Map(CVaapiRenderPicture* pic)
 
   m_textureSize.Set(pic->DVDPic.iWidth, pic->DVDPic.iHeight);
 
-  GLint type;
-  glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE, &type);
-  if (type == GL_UNSIGNED_BYTE)
-    m_bits = 8;
-  else if (type == GL_UNSIGNED_SHORT)
-    m_bits = 16;
-  else
-  {
-    CLog::Log(LOGWARNING, "Did not expect texture type: %d", static_cast<int> (type));
-    m_bits = 8;
-  }
-
   for (uint32_t layerNo = 0; layerNo < surface.num_layers; layerNo++)
   {
     int plane = 0;
@@ -586,7 +535,7 @@ bool CVaapi2Texture::Map(CVaapiRenderPicture* pic)
       attribs.Get());
     if (!texture->eglImage)
     {
-      CEGLUtils::LogError("Failed to import VA DRM surface into EGL image");
+      CEGLUtils::Log(LOGERROR, "Failed to import VA DRM surface into EGL image");
       return false;
     }
 
@@ -624,11 +573,6 @@ void CVaapi2Texture::Unmap()
 
   m_vaapiPic->Release();
   m_vaapiPic = nullptr;
-}
-
-int CVaapi2Texture::GetBits()
-{
-  return m_bits;
 }
 
 GLuint CVaapi2Texture::GetTextureY()

@@ -14,26 +14,14 @@
 #include "threads/CriticalSection.h"
 #include "utils/EventStream.h"
 
-extern "C"
-{
-#include "lib/cpluff/libcpluff/cpluff.h"
-}
+#include <map>
+#include <mutex>
 
 namespace ADDON
 {
   typedef std::map<TYPE, VECADDONS> MAPADDONS;
   typedef std::map<TYPE, VECADDONS>::iterator IMAPADDONS;
-  typedef std::vector<cp_cfg_element_t*> ELEMENTS;
-
-  /*!
-   * @brief The value binaryAddonList use a tuple in following construct:
-   * | Number | Type        | Description
-   * |:------:|------------:|:------------------------------------------------
-   * | first  | boolean     | If true addon is enabled, otherwise disabled
-   * | second | CAddonInfo  | Information data of addon
-   */
-  typedef std::pair<bool, CAddonInfo> BINARY_ADDON_LIST_ENTRY;
-  typedef std::vector<BINARY_ADDON_LIST_ENTRY> BINARY_ADDON_LIST;
+  typedef std::map<std::string, AddonInfoPtr> ADDON_INFO_LIST;
 
   const std::string ADDON_PYTHON_EXT           = "*.py";
 
@@ -47,7 +35,7 @@ namespace ADDON
   {
     public:
       virtual ~IAddonMgrCallback() = default;
-      virtual bool RequestRestart(AddonPtr addon, bool datachanged)=0;
+      virtual bool RequestRestart(const std::string& id, bool datachanged)=0;
   };
 
   /**
@@ -81,7 +69,10 @@ namespace ADDON
      \param enabledOnly whether we only want enabled addons - set to false to allow both enabled and disabled addons - defaults to true.
      \return true if an addon matching the id of the given type is available and is enabled (if enabledOnly is true).
      */
-    bool GetAddon(const std::string &id, AddonPtr &addon, const TYPE &type = ADDON_UNKNOWN, bool enabledOnly = true);
+    bool GetAddon(const std::string& id,
+                  AddonPtr& addon,
+                  const TYPE& type = ADDON_UNKNOWN,
+                  bool enabledOnly = true) const;
 
     bool HasType(const std::string &id, const TYPE &type);
 
@@ -89,8 +80,11 @@ namespace ADDON
 
     bool HasInstalledAddons(const TYPE &type);
 
+    /*! Returns all installed, enabled and incompatible (and disabled) add-ons. */
+    bool GetAddonsForUpdate(VECADDONS& addons) const;
+
     /*! Returns all installed, enabled add-ons. */
-    bool GetAddons(VECADDONS& addons);
+    bool GetAddons(VECADDONS& addons) const;
 
     /*! Returns enabled add-ons with given type. */
     bool GetAddons(VECADDONS& addons, const TYPE& type);
@@ -110,30 +104,6 @@ namespace ADDON
 
     bool GetInstallableAddons(VECADDONS& addons, const TYPE &type);
 
-    /*!
-     * @brief To get all installed binary addon on Kodi
-     *
-     * This function becomes used from ADDON::CBinaryAddonManager to get his
-     * related addons (whether enabled or disabled).
-     *
-     * @param[out] binaryAddonList The list where from here the binary addons
-     *                             becomes stored.
-     * @return                     If list is not empty becomes true returned
-     */
-    bool GetInstalledBinaryAddons(BINARY_ADDON_LIST& binaryAddonList);
-
-    /*!
-     * @brief To get requested installed binary addon on Kodi
-     *
-     * This function is used by ADDON::CBinaryAddonManager to obtain the add-on
-     * with the given id, regardless the add-on is disabled or enabled.
-     *
-     * @param[in] addonId          Id to get
-     * @param[out] binaryAddon     Addon info returned
-     * @return                     True, if the requested add-on was found, false otherwise
-     */
-    bool GetInstalledBinaryAddon(const std::string& addonId, BINARY_ADDON_LIST_ENTRY& binaryAddon);
-
     /*! Get the installable addon with the highest version. */
     bool FindInstallableById(const std::string& addonId, AddonPtr& addon);
 
@@ -142,18 +112,47 @@ namespace ADDON
     bool ReloadSettings(const std::string &id);
 
     /*! Get addons with available updates */
-    VECADDONS GetAvailableUpdates();
+    VECADDONS GetAvailableUpdates() const;
 
     /*! Returns true if there is any addon with available updates, otherwise false */
     bool HasAvailableUpdates();
-
-    std::string GetTranslatedString(const cp_cfg_element_t *root, const char *tag);
-    static AddonPtr AddonFromProps(CAddonInfo& addonInfo);
 
     /*! \brief Checks for new / updated add-ons
      \return True if everything went ok, false otherwise
      */
     bool FindAddons();
+
+    /*!
+     * @brief Fills the the provided vector with the list of incompatible
+     * enabled addons and returns if there's any.
+     *
+     * @param[out] incompatible List of incompatible addons
+     * @return true if there are incompatible addons
+     */
+    bool GetIncompatibleEnabledAddonInfos(std::vector<AddonInfoPtr>& incompatible) const;
+
+    /*!
+     * Migrate all the addons (updates all addons that have an update pending and disables those
+     * that got incompatible)
+     *
+     * @return list of all addons (infos) that were modified.
+     */
+    std::vector<AddonInfoPtr> MigrateAddons();
+
+    /*!
+     * @brief Try to disable addons in the given list.
+     *
+     * @param[in] incompatible List of incompatible addon infos
+     * @return list of all addon Infos that were disabled
+     */
+    std::vector<AddonInfoPtr> DisableIncompatibleAddons(
+        const std::vector<AddonInfoPtr>& incompatible);
+
+    /*!
+     * Install available addon updates, if any.
+     * @param wait If kodi should wait for all updates to download and install before returning
+     */
+    void CheckAndInstallAddonUpdates(bool wait) const;
 
     /*!
      * @note: should only be called by AddonInstaller
@@ -176,7 +175,7 @@ namespace ADDON
     void OnPostUnInstall(const std::string& id);
 
     /*! \brief Disable an addon. Returns true on success, false on failure. */
-    bool DisableAddon(const std::string& ID);
+    bool DisableAddon(const std::string& ID, AddonDisabledReason disabledReason);
 
     /*! \brief Enable an addon. Returns true on success, false on failure. */
     bool EnableAddon(const std::string& ID);
@@ -186,7 +185,18 @@ namespace ADDON
      \param ID id of the addon
      \sa DisableAddon
      */
-    bool IsAddonDisabled(const std::string& ID);
+    bool IsAddonDisabled(const std::string& ID) const;
+
+    /*!
+     * @brief Check whether an addon has been disabled via DisableAddon except for a particular
+     * reason In case the disabled cache does not know about the current state the database routine
+     * will be used.
+     * @param[in] ID id of the addon
+     * @param[in] disabledReason the reason that will be an exception to being disabled
+     * @return true if the addon was disabled except for the specified reason
+     * @sa DisableAddon
+     */
+    bool IsAddonDisabledExcept(const std::string& ID, AddonDisabledReason disabledReason) const;
 
     /* \brief Checks whether an addon can be disabled via DisableAddon.
      \param ID id of the addon
@@ -216,40 +226,6 @@ namespace ADDON
 
     void UpdateLastUsed(const std::string& id);
 
-    /* libcpluff */
-    std::string GetExtValue(cp_cfg_element_t *base, const char *path) const;
-
-    /*! \brief Retrieve an element from a given configuration element
-     \param base the base configuration element.
-     \param path the path to the configuration element from the base element.
-     \param element [out] returned element.
-     \return true if the configuration element is present
-     */
-    cp_cfg_element_t *GetExtElement(cp_cfg_element_t *base, const char *path);
-
-    /*! \brief Retrieve a vector of repeated elements from a given configuration element
-     \param base the base configuration element.
-     \param path the path to the configuration element from the base element.
-     \param result [out] returned list of elements.
-     \return true if the configuration element is present and the list of elements is non-empty
-     */
-    bool GetExtElements(cp_cfg_element_t *base, const char *path, ELEMENTS &result);
-
-    /*! \brief Retrieve a list of strings from a given configuration element
-     Assumes the configuration element or attribute contains a whitespace separated list of values (eg xs:list schema).
-     \param base the base configuration element.
-     \param path the path to the configuration element or attribute from the base element.
-     \param result [out] returned list of strings.
-     \return true if the configuration element is present and the list of strings is non-empty
-     */
-    bool GetExtList(cp_cfg_element_t *base, const char *path, std::vector<std::string> &result) const;
-
-    const cp_extension_t *GetExtension(const cp_plugin_info_t *props, const char *extension) const;
-
-    /*! \brief Retrieves the platform-specific library name from the given configuration element
-     */
-    std::string GetPlatformLibraryName(cp_cfg_element_t *base) const;
-
     /*! \brief Load the addon in the given path
      This loads the addon using c-pluff which parses the addon descriptor file.
      \param path folder that contains the addon.
@@ -269,32 +245,170 @@ namespace ADDON
 
     bool ServicesHasStarted() const;
 
-    bool IsCompatible(const IAddon& addon);
+    /*!
+     * @deprecated This addon function should no more used and becomes replaced
+     * in future with the other below by his callers.
+     */
+    bool IsCompatible(const IAddon& addon) const;
+
+    /*!
+     * @brief Check given addon information is compatible with Kodi.
+     *
+     * @param[in] addonInfo Addon information to check
+     * @return true if compatible, false if not
+     */
+    bool IsCompatible(const AddonInfoPtr& addonInfo) const;
 
     /*! \brief Recursively get dependencies for an add-on
      */
     std::vector<DependencyInfo> GetDepsRecursive(const std::string& id);
 
-    static AddonPtr Factory(const cp_plugin_info_t* plugin, TYPE type);
-    static bool Factory(const cp_plugin_info_t* plugin, TYPE type, CAddonBuilder& builder, bool ignoreExtensions = false, const CRepository::DirInfo& repo = {});
-    static void FillCpluffMetadata(const cp_plugin_info_t* plugin, CAddonBuilder& builder, const CRepository::DirInfo& repo);
+    /*!
+     * @brief Get a list of add-on's with info's for the on system available
+     * ones.
+     *
+     * @param[out] addonInfos list where finded addon information becomes stored
+     * @param[in] enabledOnly If true are only enabled ones given back,
+     *                        if false all on system available. Default is true.
+     * @param[in] type The requested type, with "ADDON_UNKNOWN" are all add-on
+     *                 types given back who match the case with value before.
+     *                 If a type id becomes added are only add-ons returned who
+     *                 match them. Default is for all types.
+     * @return true if the list contains entries
+     */
+    bool GetAddonInfos(AddonInfos& addonInfos, bool enabledOnly, TYPE type) const;
+
+    /*!
+     * @brief Get a list of disabled add-on's with info's
+     *
+     * @param[out] addonInfos list where finded addon information becomes stored
+     * @param[in] type        The requested type, with "ADDON_UNKNOWN"
+     *                        are all add-on types given back who match the case
+     *                        with value before.
+     *                        If a type id becomes added are only add-ons
+     *                        returned who match them. Default is for all types.
+     * @return true if the list contains entries
+     */
+    bool GetDisabledAddonInfos(std::vector<AddonInfoPtr>& addonInfos, TYPE type) const;
+
+    /*!
+     * @brief Get a list of disabled add-on's with info's for the on system
+     * available ones with a specific disabled reason.
+     *
+     * @param[out] addonInfos list where finded addon information becomes stored
+     * @param[in] type        The requested type, with "ADDON_UNKNOWN"
+     *                        are all add-on types given back who match the case
+     *                        with value before.
+     *                        If a type id becomes added are only add-ons
+     *                        returned who match them. Default is for all types.
+     * @param[in] disabledReason To get all disabled addons use the value
+     *                           "AddonDiasbledReason::NONE". If any other value
+     *                           is supplied only addons with that reason will be
+     *                           returned.
+     * @return true if the list contains entries
+     */
+    bool GetDisabledAddonInfos(std::vector<AddonInfoPtr>& addonInfos,
+                               TYPE type,
+                               AddonDisabledReason disabledReason) const;
+
+    const AddonInfoPtr GetAddonInfo(const std::string& id, TYPE type = ADDON_UNKNOWN) const;
+
+    /*!
+     * @brief Get the path where temporary add-on files are stored
+     *
+     * @return the base path used for temporary addon paths
+     *
+     * @warning the folder and its contents are deleted when Kodi is closed
+     */
+    const std::string& GetTempAddonBasePath() { return m_tempAddonBasePath; }
+
+    /*!
+     * Checks if the origin-repository of a given addon is defined as official repo
+     * but does not check the origin path (e.g. https://mirrors.kodi.tv ...)
+     * \param addon pointer to addon to be checked
+     */
+    bool IsFromOfficialRepo(const AddonPtr& addon) const;
 
   private:
     CAddonMgr& operator=(CAddonMgr const&) = delete;
-    /* libcpluff */
-    cp_context_t *m_cp_context = nullptr;
-    VECADDONS    m_updateableAddons;
 
-    /*! \brief Check whether this addon is supported on the current platform
-     \param info the plugin descriptor
-     \return true if the addon is supported, false otherwise.
-     */
-    static bool PlatformSupportsAddon(const cp_plugin_info_t *info);
+    VECADDONS m_updateableAddons;
 
-    bool GetAddonsInternal(const TYPE &type, VECADDONS &addons, bool enabledOnly);
+    bool GetAddonsInternal(const TYPE& type,
+                           VECADDONS& addons,
+                           bool enabledOnly,
+                           bool checkIncompatible = false) const;
     bool EnableSingle(const std::string& id);
 
-    std::set<std::string> m_disabled;
+    void FindAddons(ADDON_INFO_LIST& addonmap, const std::string& path);
+
+    /*!
+     * @brief Fills the the provided vector with the list of incompatible
+     * addons and returns if there's any.
+     *
+     * @param[out] incompatible List of incompatible addons
+     * @param[in] whether or not to include incompatible addons that are disabled
+     * @return true if there are incompatible addons
+     */
+    bool GetIncompatibleAddonInfos(std::vector<AddonInfoPtr>& incompatible,
+                                   bool includeDisabled) const;
+
+    /*!
+     * Get the list of of available updates
+     * \param[in,out] updates the vector of addons to be filled with addons that need to be updated (not blacklisted)
+     * \return if there are any addons needing updates
+     */
+    bool GetAddonUpdateCandidates(VECADDONS& updates) const;
+
+    /*!\brief Sort a list of addons for installation, i.e., defines the order of installation depending
+     * of each addon dependencies.
+     * \param[in,out] updates the vector of addons to sort
+     */
+    void SortByDependencies(VECADDONS& updates) const;
+
+    /*!
+     * Install the list of addon updates via AddonInstaller
+     * \param[in,out] updates the vector of addons to install (will be sorted)
+     * \param wait if the process should wait for all addons to install
+     */
+    void InstallAddonUpdates(VECADDONS& updates, bool wait) const;
+
+    /*!
+     * Adds an addon to a repository map
+     * \param addonToAdd the addon that should be added to the map
+     * \param map the desired target map (e.g. official, private...)
+     */
+    void AddAddonIfLatest(const AddonPtr& addonToAdd, std::map<std::string, AddonPtr>& map) const;
+
+    /*!
+     * Looks up an addon in a given repository map and then
+     * queues the update if a newer version is available
+     * \param addonToCheck the addon we want to find and version-check
+     * \param map the repository-map we want to check against
+     * \param vecAddons the target vector, into which queued addons will be emplaced
+     * \return true if the addon was found in the desired map
+     * \return false if the addon does NOT exist in the map
+     */
+    bool FindAddonAndCheckForUpdate(const AddonPtr& addonToCheck,
+                                    const std::map<std::string, AddonPtr>& map,
+                                    VECADDONS& vecAddons) const;
+
+    /*!
+     * Checks if the origin-repository of a given addon is defined as official repo
+     * and verify if the origin-path is also defined and matching
+     * \param addon pointer to addon to be checked
+     * \param bCheckAddonPath also check origin path
+     */
+    bool IsFromOfficialRepo(const AddonPtr& addon, bool bCheckAddonPath) const;
+
+    // This guards the addon installation process to make sure
+    // addon updates are not installed concurrently
+    // while the migration is running. Addon updates can be triggered
+    // as a result of a repository update event.
+    // (migration will install any available update anyway)
+    mutable std::mutex m_installAddonsMutex;
+
+    std::map<std::string, AddonDisabledReason> m_disabled;
     std::set<std::string> m_updateBlacklist;
     static std::map<TYPE, IAddonMgrCallback*> m_managers;
     mutable CCriticalSection m_critSection;
@@ -303,6 +417,11 @@ namespace ADDON
     CBlockingEventSource<AddonEvent> m_unloadEvents;
     std::set<std::string> m_systemAddons;
     std::set<std::string> m_optionalAddons;
+    std::vector<std::string> m_officialAddonRepos;
+    ADDON_INFO_LIST m_installedAddons;
+
+    // Temporary path given to add-ons, whose content is deleted when Kodi is stopped
+    const std::string m_tempAddonBasePath = "special://temp/addons";
   };
 
 }; /* namespace ADDON */

@@ -4,7 +4,6 @@ NDK_VERSION=${NDK_VERSION:-"Default"}
 NDK_API=${NDK_API:-"Default"}
 Configuration=${Configuration:-"Default"}
 XBMC_DEPENDS_ROOT=${XBMC_DEPENDS_ROOT:-"Default"}
-DARWIN_ARM_CPU=${DARWIN_ARM_CPU:-"Default"}
 XCODE_APP=${XCODE_APP:-"Default"}
 PATH_CHANGE_REV_FILENAME=".last_success_revision"
 FAILED_BUILD_FILENAME=".last_failed_revision"
@@ -19,23 +18,29 @@ DEPLOYED_BINARY_ADDONS="-e /addons"
 #$XBMC_PLATFORM_DIR matches the platform subdirs!
 case $XBMC_PLATFORM_DIR in
   ios)
-    DEFAULT_SDK_VERSION=11.0
+    DEFAULT_SDK_VERSION=12.2
     DEFAULT_XBMC_DEPENDS_ROOT=$WORKSPACE/tools/depends/xbmc-depends
     DEFAULT_CONFIGURATION="Debug"
-    DEFAULT_DARWIN_ARM_CPU="armv7"
-    DEFAULT_XCODE_APP="Xcode9.0.app"
+    DEFAULT_XCODE_APP="Xcode10.2.app"
+    ;;
+
+  tvos)
+    DEFAULT_SDK_VERSION=12.2
+    DEFAULT_XBMC_DEPENDS_ROOT=$WORKSPACE/tools/depends/xbmc-depends
+    DEFAULT_CONFIGURATION="Debug"
+    DEFAULT_XCODE_APP="Xcode10.2.app"
     ;;
 
   osx64)
-    DEFAULT_SDK_VERSION=10.13
+    DEFAULT_SDK_VERSION=10.14
     DEFAULT_XBMC_DEPENDS_ROOT=$WORKSPACE/tools/depends/xbmc-depends
     DEFAULT_CONFIGURATION="Debug"
-    DEFAULT_XCODE_APP="Xcode9.0.app"
+    DEFAULT_XCODE_APP="Xcode10.2.app"
     ;;
 
   android)
-    DEFAULT_NDK_VERSION="18"
-    DEFAULT_NDK_API="21"
+    DEFAULT_NDK_VERSION="20" # NDK package version (newer API can be inside)
+    DEFAULT_NDK_API="21" # Lollipop API level (21) defined in package ./sysroot/usr/include/android/api-level.h
     DEFAULT_XBMC_DEPENDS_ROOT=$WORKSPACE/tools/depends/xbmc-depends
     DEFAULT_CONFIGURATION="Debug"
     ;;
@@ -76,18 +81,13 @@ then
   XBMC_DEPENDS_ROOT=$DEFAULT_XBMC_DEPENDS_ROOT
 fi
 
-if [ "$DARWIN_ARM_CPU" == "Default" ]
-then
-  DARWIN_ARM_CPU=$DEFAULT_DARWIN_ARM_CPU
-fi
-
 if [ "$XCODE_APP" == "Default" ]
 then
   XCODE_APP=$DEFAULT_XCODE_APP
 fi
 
 # make osx environment aware of the selected xcode app
-DEVELOPER_DIR=/Applications/$XCODE_APP/Contents/Developer
+export DEVELOPER_DIR=/Applications/$XCODE_APP/Contents/Developer
 
 if [ "$Configuration" == "Default" ]
 then
@@ -119,12 +119,6 @@ function pathChanged ()
   local ret
   local checkPath
   ret="0"
-  #no optims in release builds!
-  if [ "$Configuration" == "Release" ]
-  then
-    echo "1"
-    return
-  fi
 
   checkPath="$1"
   if [ -e $checkPath/$PATH_CHANGE_REV_FILENAME ]

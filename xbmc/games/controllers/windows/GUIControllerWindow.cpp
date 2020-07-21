@@ -7,13 +7,15 @@
  */
 
 #include "GUIControllerWindow.h"
+
 #include "ControllerInstaller.h"
 #include "GUIControllerDefines.h"
 #include "GUIControllerList.h"
 #include "GUIFeatureList.h"
+#include "ServiceBroker.h"
+#include "addons/AddonManager.h"
 #include "addons/GUIWindowAddonBrowser.h"
 #include "addons/IAddon.h"
-#include "addons/AddonManager.h"
 #include "cores/RetroPlayer/guibridge/GUIGameRenderManager.h"
 #include "cores/RetroPlayer/guibridge/GUIGameSettingsHandle.h"
 #include "games/addons/GameClient.h"
@@ -23,7 +25,6 @@
 #include "guilib/GUIMessage.h"
 #include "guilib/WindowIDs.h"
 #include "messaging/helpers/DialogOKHelper.h"
-#include "ServiceBroker.h"
 
 // To enable button mapping support
 #include "peripherals/Peripherals.h"
@@ -32,9 +33,9 @@ using namespace KODI;
 using namespace GAME;
 using namespace KODI::MESSAGING;
 
-CGUIControllerWindow::CGUIControllerWindow(void) :
-  CGUIDialog(WINDOW_DIALOG_GAME_CONTROLLERS, "DialogGameControllers.xml"),
-  m_installer(new CControllerInstaller)
+CGUIControllerWindow::CGUIControllerWindow(void)
+  : CGUIDialog(WINDOW_DIALOG_GAME_CONTROLLERS, "DialogGameControllers.xml"),
+    m_installer(new CControllerInstaller)
 {
   // initialize CGUIWindow
   m_loadType = KEEP_IN_MEMORY;
@@ -46,7 +47,7 @@ CGUIControllerWindow::~CGUIControllerWindow(void)
   delete m_featureList;
 }
 
-void CGUIControllerWindow::DoProcess(unsigned int currentTime, CDirtyRegionList &dirtyregions)
+void CGUIControllerWindow::DoProcess(unsigned int currentTime, CDirtyRegionList& dirtyregions)
 {
   /*
    * Apply the faded focus texture to the current controller when unfocused
@@ -57,7 +58,8 @@ void CGUIControllerWindow::DoProcess(unsigned int currentTime, CDirtyRegionList 
 
   if (m_controllerList && m_controllerList->GetFocusedController() >= 0)
   {
-    control = GetFirstFocusableControl(CONTROL_CONTROLLER_BUTTONS_START + m_controllerList->GetFocusedController());
+    control = GetFirstFocusableControl(CONTROL_CONTROLLER_BUTTONS_START +
+                                       m_controllerList->GetFocusedController());
     if (control && !control->HasFocus())
     {
       if (control->GetControlType() == CGUIControl::GUICONTROL_BUTTON)
@@ -119,12 +121,14 @@ bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
       {
         ShowButtonCaptureDialog();
       }
-      else if (CONTROL_CONTROLLER_BUTTONS_START <= controlId && controlId < CONTROL_CONTROLLER_BUTTONS_END)
+      else if (CONTROL_CONTROLLER_BUTTONS_START <= controlId &&
+               controlId < CONTROL_CONTROLLER_BUTTONS_END)
       {
         OnControllerSelected(controlId - CONTROL_CONTROLLER_BUTTONS_START);
         bHandled = true;
       }
-      else if (CONTROL_FEATURE_BUTTONS_START <= controlId && controlId < CONTROL_FEATURE_BUTTONS_END)
+      else if (CONTROL_FEATURE_BUTTONS_START <= controlId &&
+               controlId < CONTROL_FEATURE_BUTTONS_END)
       {
         OnFeatureSelected(controlId - CONTROL_FEATURE_BUTTONS_START);
         bHandled = true;
@@ -135,11 +139,13 @@ bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
     {
       int controlId = message.GetControlId();
 
-      if (CONTROL_CONTROLLER_BUTTONS_START <= controlId && controlId < CONTROL_CONTROLLER_BUTTONS_END)
+      if (CONTROL_CONTROLLER_BUTTONS_START <= controlId &&
+          controlId < CONTROL_CONTROLLER_BUTTONS_END)
       {
         OnControllerFocused(controlId - CONTROL_CONTROLLER_BUTTONS_START);
       }
-      else if (CONTROL_FEATURE_BUTTONS_START <= controlId && controlId < CONTROL_FEATURE_BUTTONS_END)
+      else if (CONTROL_FEATURE_BUTTONS_START <= controlId &&
+               controlId < CONTROL_FEATURE_BUTTONS_END)
       {
         OnFeatureFocused(controlId - CONTROL_FEATURE_BUTTONS_START);
       }
@@ -149,11 +155,13 @@ bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
     {
       int controlId = message.GetControlId();
 
-      if (CONTROL_CONTROLLER_BUTTONS_START <= controlId && controlId < CONTROL_CONTROLLER_BUTTONS_END)
+      if (CONTROL_CONTROLLER_BUTTONS_START <= controlId &&
+          controlId < CONTROL_CONTROLLER_BUTTONS_END)
       {
         OnControllerFocused(controlId - CONTROL_CONTROLLER_BUTTONS_START);
       }
-      else if (CONTROL_FEATURE_BUTTONS_START <= controlId && controlId < CONTROL_FEATURE_BUTTONS_END)
+      else if (CONTROL_FEATURE_BUTTONS_START <= controlId &&
+               controlId < CONTROL_FEATURE_BUTTONS_END)
       {
         OnFeatureFocused(controlId - CONTROL_FEATURE_BUTTONS_START);
       }
@@ -165,7 +173,8 @@ bool CGUIControllerWindow::OnMessage(CGUIMessage& message)
 
       if (controlId == CONTROL_CONTROLLER_LIST)
       {
-        if (m_controllerList && m_controllerList->Refresh())
+        const std::string controllerId = message.GetStringParam();
+        if (m_controllerList && m_controllerList->Refresh(controllerId))
         {
           CGUIDialog::OnMessage(message);
           bHandled = true;
@@ -188,6 +197,22 @@ void CGUIControllerWindow::OnEvent(const ADDON::CRepositoryUpdater::RepositoryUp
   UpdateButtons();
 }
 
+void CGUIControllerWindow::OnEvent(const ADDON::AddonEvent& event)
+{
+  using namespace ADDON;
+
+  if (typeid(event) == typeid(AddonEvents::Enabled) || // also called on install,
+      typeid(event) == typeid(AddonEvents::Disabled) || // not called on uninstall
+      typeid(event) == typeid(AddonEvents::UnInstalled) ||
+      typeid(event) == typeid(AddonEvents::ReInstalled))
+  {
+    if (CServiceBroker::GetAddonMgr().HasType(event.id, ADDON_GAME_CONTROLLER))
+    {
+      UpdateButtons();
+    }
+  }
+}
+
 void CGUIControllerWindow::OnInitWindow(void)
 {
   // Get active game add-on
@@ -197,7 +222,8 @@ void CGUIControllerWindow::OnInitWindow(void)
     if (gameSettingsHandle)
     {
       ADDON::AddonPtr addon;
-      if (CServiceBroker::GetAddonMgr().GetAddon(gameSettingsHandle->GameClientID(), addon, ADDON::ADDON_GAMEDLL))
+      if (CServiceBroker::GetAddonMgr().GetAddon(gameSettingsHandle->GameClientID(), addon,
+                                                 ADDON::ADDON_GAMEDLL))
         gameClient = std::static_pointer_cast<CGameClient>(addon);
     }
   }
@@ -233,10 +259,17 @@ void CGUIControllerWindow::OnInitWindow(void)
   CServiceBroker::GetPeripherals().EnableButtonMapping();
 
   UpdateButtons();
+
+  // subscribe to events
+  CServiceBroker::GetRepositoryUpdater().Events().Subscribe(this, &CGUIControllerWindow::OnEvent);
+  CServiceBroker::GetAddonMgr().Events().Subscribe(this, &CGUIControllerWindow::OnEvent);
 }
 
 void CGUIControllerWindow::OnDeinitWindow(int nextWindowID)
 {
+  CServiceBroker::GetRepositoryUpdater().Events().Unsubscribe(this);
+  CServiceBroker::GetAddonMgr().Events().Unsubscribe(this);
+
   if (m_controllerList)
   {
     m_controllerList->Deinitialize();
@@ -292,7 +325,9 @@ void CGUIControllerWindow::UpdateButtons(void)
   }
   else
   {
-    const bool bEnable = CServiceBroker::GetAddonMgr().GetInstallableAddons(addons, ADDON::ADDON_GAME_CONTROLLER) && !addons.empty();
+    const bool bEnable =
+        CServiceBroker::GetAddonMgr().GetInstallableAddons(addons, ADDON::ADDON_GAME_CONTROLLER) &&
+        !addons.empty();
     CONTROL_ENABLE_ON_CONDITION(CONTROL_GET_MORE, bEnable);
     CONTROL_ENABLE_ON_CONDITION(CONTROL_GET_ALL, bEnable);
   }
@@ -301,11 +336,12 @@ void CGUIControllerWindow::UpdateButtons(void)
 void CGUIControllerWindow::GetMoreControllers(void)
 {
   std::string strAddonId;
-  if (CGUIWindowAddonBrowser::SelectAddonID(ADDON::ADDON_GAME_CONTROLLER, strAddonId, false, true, false, true, false) < 0)
+  if (CGUIWindowAddonBrowser::SelectAddonID(ADDON::ADDON_GAME_CONTROLLER, strAddonId, false, true,
+                                            false, true, false) < 0)
   {
     // "Controller profiles"
     // "All available controller profiles are installed."
-    HELPERS::ShowOKDialogText(CVariant{ 35050 }, CVariant{ 35062 });
+    HELPERS::ShowOKDialogText(CVariant{35050}, CVariant{35062});
     return;
   }
 }

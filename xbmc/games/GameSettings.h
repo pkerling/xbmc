@@ -19,8 +19,7 @@ namespace KODI
 namespace GAME
 {
 
-class CGameSettings : public ISettingCallback,
-                      public Observable
+class CGameSettings : public ISettingCallback, public Observable
 {
 public:
   CGameSettings();
@@ -36,7 +35,7 @@ public:
   unsigned int MaxRewindTimeSec();
 
   // Inherited from ISettingCallback
-  virtual void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
 
 private:
   // Construction parameters
@@ -44,4 +43,4 @@ private:
 };
 
 } // namespace GAME
-}
+} // namespace KODI

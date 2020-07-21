@@ -8,18 +8,20 @@
 
 #pragma once
 
+#include "settings/ISubSettings.h"
+#include "settings/lib/ISettingCallback.h"
+#include "threads/CriticalSection.h"
+#include "utils/Observer.h"
+#include "windowing/Resolution.h"
+
 #include <map>
 #include <set>
 #include <utility>
 #include <vector>
 
-#include "windowing/Resolution.h"
-#include "settings/lib/ISettingCallback.h"
-#include "settings/lib/ISubSettings.h"
-#include "threads/CriticalSection.h"
-#include "utils/Observer.h"
-
 class TiXmlNode;
+struct IntegerSettingOption;
+struct StringSettingOption;
 
 class CDisplaySettings : public ISettingCallback, public ISubSettings,
                          public Observable
@@ -67,9 +69,11 @@ public:
   const RESOLUTION_INFO& GetCurrentResolutionInfo() const { return GetResolutionInfo(m_currentResolution); }
   RESOLUTION_INFO& GetCurrentResolutionInfo() { return GetResolutionInfo(m_currentResolution); }
   RESOLUTION GetResFromString(const std::string &strResolution) { return GetResolutionFromString(strResolution); }
+  std::string GetStringFromRes(const RESOLUTION resolution, float refreshrate = 0.0f) { return GetStringFromResolution(resolution, refreshrate); }
 
   void ApplyCalibrations();
   void UpdateCalibrations();
+  void ClearCalibrations();
   void ClearCustomResolutions();
 
   float GetZoomAmount() const { return m_zoomAmount; }
@@ -82,18 +86,18 @@ public:
   void SetNonLinearStretched(bool nonLinearStretch) { m_nonLinearStretched = nonLinearStretch; }
   void SetMonitor(std::string monitor);
 
-  static void SettingOptionsModesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsRefreshChangeDelaysFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsRefreshRatesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsResolutionsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsDispModeFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsStereoscopicModesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsPreferredStereoscopicViewModesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsMonitorsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsCmsModesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsCmsWhitepointsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsCmsPrimariesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
-  static void SettingOptionsCmsGammaModesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsModesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsRefreshChangeDelaysFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsRefreshRatesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsResolutionsFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsDispModeFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsStereoscopicModesFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsPreferredStereoscopicViewModesFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsMonitorsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsCmsModesFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsCmsWhitepointsFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsCmsPrimariesFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
+  static void SettingOptionsCmsGammaModesFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
 
 
 protected:

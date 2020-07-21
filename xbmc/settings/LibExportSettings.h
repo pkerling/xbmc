@@ -12,8 +12,9 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#include <string>
 #include "settings/lib/Setting.h"
+
+#include <string>
 
 // Enumeration of library export options (possibly OR'd together)
 enum ELIBEXPORTOPTIONS
@@ -29,7 +30,9 @@ enum ELIBEXPORTOPTIONS
   ELIBEXPORT_OTHERARTISTS = 0x0080,
   ELIBEXPORT_ARTWORK = 0x0100,
   ELIBEXPORT_NFOFILES = 0x0200,
-  ELIBEXPORT_ACTORTHUMBS = 0x0400
+  ELIBEXPORT_ACTORTHUMBS = 0x0400,
+  ELIBEXPORT_ARTISTFOLDERS = 0x0800,
+  ELIBEXPORT_SONGS = 0x1000
 };
 
 class CLibExportSettings
@@ -40,7 +43,9 @@ public:
 
   bool operator!=(const CLibExportSettings &right) const;
   bool IsItemExported(ELIBEXPORTOPTIONS item) const;
+  bool IsArtists() const;
   std::vector<int> GetExportItems() const;
+  std::vector<int> GetLimitedItems(int items) const;
   void ClearItems() { m_itemstoexport = 0; }
   void AddItem(ELIBEXPORTOPTIONS item) { m_itemstoexport += item; }
   unsigned int GetItemsToExport() { return m_itemstoexport; }
@@ -50,6 +55,7 @@ public:
   bool IsSingleFile() const;
   bool IsSeparateFiles() const;
   bool IsToLibFolders() const;
+  bool IsArtistFoldersOnly() const;
 
   std::string m_strPath;
   bool m_overwrite;

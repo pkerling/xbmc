@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "AddonInfo.h"
+#include "addons/addoninfo/AddonInfo.h"
 
 #include <memory>
 #include <set>
@@ -33,9 +33,9 @@ namespace ADDON
   {
   public:
     virtual ~IAddon() = default;
+    virtual TYPE MainType() const = 0;
     virtual TYPE Type() const =0;
-    virtual TYPE FullType() const =0;
-    virtual bool IsType(TYPE type) const =0;
+    virtual bool HasType(TYPE type) const = 0;
     virtual std::string ID() const =0;
     virtual std::string Name() const =0;
     virtual bool IsInUse() const =0;
@@ -75,13 +75,16 @@ namespace ADDON
     virtual CAddonSettings* GetSettings() const =0;
     virtual const std::vector<DependencyInfo> &GetDependencies() const =0;
     virtual AddonVersion GetDependencyVersion(const std::string &dependencyID) const =0;
-    virtual bool MeetsVersion(const AddonVersion &version) const =0;
+    virtual bool MeetsVersion(const AddonVersion& versionMin,
+                              const AddonVersion& version) const = 0;
     virtual bool ReloadSettings() =0;
     virtual AddonPtr GetRunningInstance() const=0;
     virtual void OnPreInstall() =0;
     virtual void OnPostInstall(bool update, bool modal) =0;
     virtual void OnPreUnInstall() =0;
     virtual void OnPostUnInstall() =0;
+
+    // Derived property
+    bool IsBroken() const { return !Broken().empty(); }
   };
 };
-

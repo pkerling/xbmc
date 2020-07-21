@@ -7,15 +7,17 @@
  */
 
 #include "DirectoryCache.h"
+
+#include "Directory.h"
 #include "FileItem.h"
-#include "threads/SingleLock.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
 #include "URL.h"
-#include "climits"
+#include "threads/SingleLock.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 
 #include <algorithm>
+#include <climits>
 
 // Maximum number of directories to keep in our cache
 #define MAX_CACHED_DIRS 50
@@ -114,6 +116,7 @@ void CDirectoryCache::ClearFile(const std::string& strFile)
 {
   // Get rid of any URL options, else the compare may be wrong
   std::string strFile2 = CURL(strFile).GetWithoutOptions();
+  URIUtils::RemoveSlashAtEnd(strFile2);
 
   ClearDirectory(URIUtils::GetDirectory(strFile2));
 }
@@ -206,10 +209,8 @@ void CDirectoryCache::Clear()
 
 void CDirectoryCache::InitCache(std::set<std::string>& dirs)
 {
-  std::set<std::string>::iterator it;
-  for (it = dirs.begin(); it != dirs.end(); ++it)
+  for (const std::string& strDir : dirs)
   {
-    const std::string& strDir = *it;
     CFileItemList items;
     CDirectory::GetDirectory(strDir, items, "", DIR_FLAG_NO_FILE_DIRS);
     items.Clear();

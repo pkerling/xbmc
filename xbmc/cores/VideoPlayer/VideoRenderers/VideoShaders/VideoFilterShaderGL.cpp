@@ -7,15 +7,16 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <string>
-#include <math.h>
-
 #include "VideoFilterShaderGL.h"
-#include "ServiceBroker.h"
-#include "utils/log.h"
-#include "utils/GLUtils.h"
+
 #include "ConvolutionKernels.h"
+#include "ServiceBroker.h"
 #include "rendering/RenderSystem.h"
+#include "utils/GLUtils.h"
+#include "utils/log.h"
+
+#include <math.h>
+#include <string>
 
 #define TEXTARGET GL_TEXTURE_1D
 
@@ -68,7 +69,7 @@ ConvolutionFilterShader::ConvolutionFilterShader(ESCALINGMETHOD method, bool str
     shadername = "gl_convolution-4x4.glsl";
 
     if (m_floattex)
-      m_internalformat = GL_RGBA16F_ARB;
+      m_internalformat = GL_RGBA16F;
     else
       m_internalformat = GL_RGBA;
   }
@@ -78,15 +79,13 @@ ConvolutionFilterShader::ConvolutionFilterShader(ESCALINGMETHOD method, bool str
     shadername = "gl_convolution-6x6.glsl";
 
     if (m_floattex)
-      m_internalformat = GL_RGB16F_ARB;
+      m_internalformat = GL_RGB16F;
     else
       m_internalformat = GL_RGB;
   }
 
   if (m_floattex)
-    defines = "#define HAS_FLOAT_TEXTURE 1\n";
-  else
-    defines = "#define HAS_FLOAT_TEXTURE 0\n";
+    defines = "#define HAS_FLOAT_TEXTURE\n";
 
   //don't compile in stretch support when it's not needed
   if (stretch)

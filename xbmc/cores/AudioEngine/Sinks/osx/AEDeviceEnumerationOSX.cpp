@@ -7,11 +7,12 @@
  */
 
 #include "AEDeviceEnumerationOSX.h"
+
+#include "cores/AudioEngine/Sinks/darwin/CoreAudioHelpers.h"
 #include "cores/AudioEngine/Sinks/osx/CoreAudioChannelLayout.h"
-#include "cores/AudioEngine/Sinks/osx/CoreAudioHelpers.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/log.h"
 
 #include <sstream>
 
@@ -503,7 +504,10 @@ std::string AEDeviceEnumerationOSX::getExtraDisplayNameForStream(UInt32 streamId
     extraName << startChannel;
     extraName << " - ";
     extraName << startChannel + numChannels - 1;
-    CLog::Log(LOGNOTICE, "%s adding stream %d as pseudo device with start channel %d and %d channels total", __FUNCTION__, (unsigned int)streamIdx, (unsigned int)startChannel, (unsigned int)numChannels);
+    CLog::Log(LOGINFO,
+              "%s adding stream %d as pseudo device with start channel %d and %d channels total",
+              __FUNCTION__, (unsigned int)streamIdx, (unsigned int)startChannel,
+              (unsigned int)numChannels);
     return extraName.str();
   }
 

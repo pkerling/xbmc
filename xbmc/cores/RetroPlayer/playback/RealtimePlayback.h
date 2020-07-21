@@ -14,25 +14,25 @@ namespace KODI
 {
 namespace RETRO
 {
-  class CRealtimePlayback : public IPlayback
-  {
-  public:
-    virtual ~CRealtimePlayback() = default;
+class CRealtimePlayback : public IPlayback
+{
+public:
+  ~CRealtimePlayback() override = default;
 
-    // implementation of IPlayback
-    virtual void Initialize() override { }
-    virtual void Deinitialize() override { }
-    virtual bool CanPause() const override { return false; }
-    virtual bool CanSeek() const override { return false; }
-    virtual unsigned int GetTimeMs() const override { return 0; }
-    virtual unsigned int GetTotalTimeMs() const override { return 0; }
-    virtual unsigned int GetCacheTimeMs() const override { return 0; }
-    virtual void SeekTimeMs(unsigned int timeMs) override { }
-    virtual double GetSpeed() const override { return 1.0; }
-    virtual void SetSpeed(double speedFactor) override { }
-    virtual void PauseAsync() override { }
-    virtual std::string CreateSavestate() override { return ""; }
-    virtual bool LoadSavestate(const std::string& path) override { return false; }
-  };
-}
-}
+  // implementation of IPlayback
+  void Initialize() override {}
+  void Deinitialize() override {}
+  bool CanPause() const override { return false; }
+  bool CanSeek() const override { return false; }
+  unsigned int GetTimeMs() const override { return 0; }
+  unsigned int GetTotalTimeMs() const override { return 0; }
+  unsigned int GetCacheTimeMs() const override { return 0; }
+  void SeekTimeMs(unsigned int timeMs) override {}
+  double GetSpeed() const override { return 1.0; }
+  void SetSpeed(double speedFactor) override {}
+  void PauseAsync() override {}
+  std::string CreateSavestate() override { return ""; }
+  bool LoadSavestate(const std::string& path) override { return false; }
+};
+} // namespace RETRO
+} // namespace KODI

@@ -7,6 +7,7 @@
  */
 
 #include "DirectoryNodeGrouped.h"
+
 #include "music/MusicDatabase.h"
 
 using namespace XFILE::MUSICDATABASEDIRECTORY;
@@ -18,7 +19,7 @@ CDirectoryNodeGrouped::CDirectoryNodeGrouped(NODE_TYPE type, const std::string& 
 NODE_TYPE CDirectoryNodeGrouped::GetChildType() const
 {
   if (GetType() == NODE_TYPE_YEAR)
-    return NODE_TYPE_YEAR_ALBUM;
+    return NODE_TYPE_ALBUM;
 
   return NODE_TYPE_ARTIST;
 }

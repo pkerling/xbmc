@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include <memory>
 #include "platform/Platform.h"
+
+#include <memory>
 
 class CAppParamParser;
 
@@ -69,6 +70,7 @@ class CPlayerCoreFactory;
 class CDatabaseManager;
 class CProfileManager;
 class CEventLog;
+class CMediaManager;
 
 class CServiceManager
 {
@@ -121,6 +123,8 @@ public:
 
   CDatabaseManager &GetDatabaseManager();
 
+  CMediaManager& GetMediaManager();
+
 protected:
   struct delete_dataCacheCore
   {
@@ -163,4 +167,5 @@ protected:
   std::unique_ptr<CWeatherManager> m_weatherManager;
   std::unique_ptr<CPlayerCoreFactory> m_playerCoreFactory;
   std::unique_ptr<CDatabaseManager> m_databaseManager;
+  std::unique_ptr<CMediaManager> m_mediaManager;
 };

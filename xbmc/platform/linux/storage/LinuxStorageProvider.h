@@ -8,14 +8,15 @@
 
 #pragma once
 
-#include <vector>
 #include "storage/IStorageProvider.h"
+
+#include <vector>
 
 class CLinuxStorageProvider : public IStorageProvider
 {
 public:
   CLinuxStorageProvider();
-  virtual ~CLinuxStorageProvider();
+  ~CLinuxStorageProvider() override;
 
   void Initialize() override;
   void Stop() override;

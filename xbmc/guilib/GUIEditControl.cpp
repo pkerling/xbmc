@@ -7,24 +7,21 @@
  */
 
 #include "GUIEditControl.h"
+
+#include "GUIKeyboardFactory.h"
+#include "GUIUserMessages.h"
 #include "GUIWindowManager.h"
+#include "LocalizeStrings.h"
 #include "ServiceBroker.h"
+#include "XBDateTime.h"
+#include "dialogs/GUIDialogNumeric.h"
+#include "input/Key.h"
+#include "input/XBMC_vkeys.h"
 #include "utils/CharsetConverter.h"
 #include "utils/Color.h"
 #include "utils/Digest.h"
 #include "utils/Variant.h"
-#include "GUIKeyboardFactory.h"
-#include "dialogs/GUIDialogNumeric.h"
-#include "input/XBMC_vkeys.h"
-#include "input/Key.h"
-#include "LocalizeStrings.h"
-#include "XBDateTime.h"
 #include "windowing/WinSystem.h"
-#include "GUIUserMessages.h"
-
-#if defined(TARGET_DARWIN)
-#include "platform/darwin/osx/CocoaInterface.h"
-#endif
 
 using namespace KODI::GUILIB;
 
@@ -139,7 +136,7 @@ bool CGUIEditControl::OnAction(const CAction &action)
       OnPasteClipboard();
       return true;
     }
-    else if (action.GetID() >= KEY_VKEY && action.GetID() < KEY_ASCII && m_edit.empty())
+    else if (action.GetID() >= KEY_VKEY && action.GetID() < KEY_UNICODE && m_edit.empty())
     {
       // input from the keyboard (vkey, not ascii)
       unsigned char b = action.GetID() & 0xFF;
@@ -198,7 +195,7 @@ bool CGUIEditControl::OnAction(const CAction &action)
         return CGUIButtonControl::OnAction(action);
       }
     }
-    else if (action.GetID() >= KEY_ASCII)
+    else if (action.GetID() == KEY_UNICODE)
     {
       // input from the keyboard
       int ch = action.GetUnicode();
@@ -264,7 +261,7 @@ bool CGUIEditControl::OnAction(const CAction &action)
     {
       m_edit.clear();
       std::wstring str;
-      g_charsetConverter.utf8ToW(action.GetText(), str);
+      g_charsetConverter.utf8ToW(action.GetText(), str, false);
       m_text2.insert(m_cursorPos, str);
       m_cursorPos += str.size();
       UpdateText();
@@ -299,7 +296,7 @@ void CGUIEditControl::OnClick()
     {
       CDateTime dateTime;
       dateTime.SetFromDBTime(utf8);
-      SYSTEMTIME time;
+      KODI::TIME::SystemTime time;
       dateTime.GetAsSystemTime(time);
       if (CGUIDialogNumeric::ShowAndGetTime(time, !m_inputHeading.empty() ? m_inputHeading : g_localizeStrings.Get(21420)))
       {
@@ -315,7 +312,7 @@ void CGUIEditControl::OnClick()
       dateTime.SetFromDBDate(utf8);
       if (dateTime < CDateTime(2000,1, 1, 0, 0, 0))
         dateTime = CDateTime(2000, 1, 1, 0, 0, 0);
-      SYSTEMTIME date;
+      KODI::TIME::SystemTime date;
       dateTime.GetAsSystemTime(date);
       if (CGUIDialogNumeric::ShowAndGetDate(date, !m_inputHeading.empty() ? m_inputHeading : g_localizeStrings.Get(21420)))
       {
@@ -590,7 +587,7 @@ void CGUIEditControl::SetLabel2(const std::string &text)
 {
   m_edit.clear();
   std::wstring newText;
-  g_charsetConverter.utf8ToW(text, newText);
+  g_charsetConverter.utf8ToW(text, newText, false);
   if (newText != m_text2)
   {
     m_isMD5 = (m_inputType == INPUT_TYPE_PASSWORD_MD5 || m_inputType == INPUT_TYPE_PASSWORD_NUMBER_VERIFY_NEW);

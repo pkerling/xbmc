@@ -8,11 +8,8 @@
 
 #include "PowerManager.h"
 
-#include <list>
-#include <memory>
-
-#include "PowerTypes.h"
 #include "Application.h"
+#include "PowerTypes.h"
 #include "ServiceBroker.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
 #include "dialogs/GUIDialogBusy.h"
@@ -24,14 +21,17 @@
 #include "interfaces/builtins/Builtins.h"
 #include "network/Network.h"
 #include "pvr/PVRManager.h"
-#include "ServiceBroker.h"
-#include "settings/lib/Setting.h"
-#include "settings/lib/SettingsManager.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
+#include "settings/lib/SettingDefinitions.h"
+#include "settings/lib/SettingsManager.h"
 #include "utils/log.h"
 #include "weather/WeatherManager.h"
 #include "windowing/WinSystem.h"
+
+#include <list>
+#include <memory>
 
 #if defined(TARGET_WINDOWS_DESKTOP)
 extern HWND g_hWnd;
@@ -175,7 +175,7 @@ void CPowerManager::OnSleep()
   if (dialog)
     dialog->Open();
 
-  CLog::Log(LOGNOTICE, "%s: Running sleep jobs", __FUNCTION__);
+  CLog::Log(LOGINFO, "%s: Running sleep jobs", __FUNCTION__);
 
   CServiceBroker::GetPVRManager().OnSleep();
   StorePlayerState();
@@ -188,7 +188,7 @@ void CPowerManager::OnSleep()
 
 void CPowerManager::OnWake()
 {
-  CLog::Log(LOGNOTICE, "%s: Running resume jobs", __FUNCTION__);
+  CLog::Log(LOGINFO, "%s: Running resume jobs", __FUNCTION__);
 
   CServiceBroker::GetNetwork().WaitForNet();
 
@@ -221,7 +221,7 @@ void CPowerManager::OnWake()
 
 void CPowerManager::OnLowBattery()
 {
-  CLog::Log(LOGNOTICE, "%s: Running low battery jobs", __FUNCTION__);
+  CLog::Log(LOGINFO, "%s: Running low battery jobs", __FUNCTION__);
 
   CGUIDialogKaiToast::QueueNotification(CGUIDialogKaiToast::Warning, g_localizeStrings.Get(13050), "");
 
@@ -262,19 +262,19 @@ void CPowerManager::RestorePlayerState()
   g_application.PlayFile(*m_lastPlayedFileItem, m_lastUsedPlayer);
 }
 
-void CPowerManager::SettingOptionsShutdownStatesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CPowerManager::SettingOptionsShutdownStatesFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   if (CServiceBroker::GetPowerManager().CanPowerdown())
-    list.push_back(make_pair(g_localizeStrings.Get(13005), POWERSTATE_SHUTDOWN));
+    list.emplace_back(g_localizeStrings.Get(13005), POWERSTATE_SHUTDOWN);
   if (CServiceBroker::GetPowerManager().CanHibernate())
-    list.push_back(make_pair(g_localizeStrings.Get(13010), POWERSTATE_HIBERNATE));
+    list.emplace_back(g_localizeStrings.Get(13010), POWERSTATE_HIBERNATE);
   if (CServiceBroker::GetPowerManager().CanSuspend())
-    list.push_back(make_pair(g_localizeStrings.Get(13011), POWERSTATE_SUSPEND));
+    list.emplace_back(g_localizeStrings.Get(13011), POWERSTATE_SUSPEND);
   if (!g_application.IsStandAlone())
   {
-    list.push_back(make_pair(g_localizeStrings.Get(13009), POWERSTATE_QUIT));
-#if !defined(TARGET_DARWIN_IOS)
-    list.push_back(make_pair(g_localizeStrings.Get(13014), POWERSTATE_MINIMIZE));
+    list.emplace_back(g_localizeStrings.Get(13009), POWERSTATE_QUIT);
+#if !defined(TARGET_DARWIN_EMBEDDED)
+    list.emplace_back(g_localizeStrings.Get(13014), POWERSTATE_MINIMIZE);
 #endif
   }
 }

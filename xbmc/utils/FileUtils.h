@@ -8,12 +8,14 @@
 
 #pragma once
 
-#include <string>
 #include "FileItem.h"
+
+#include <string>
 
 class CFileUtils
 {
 public:
+  static bool CheckFileAccessAllowed(const std::string &filePath);
   static bool DeleteItem(const CFileItemPtr &item);
   static bool DeleteItem(const std::string &strPath);
   static bool RenameFile(const std::string &strFile);
@@ -25,4 +27,5 @@ public:
   \return Returns the file date, can return a invalid date if problems occur
   */
   static CDateTime GetModificationDate(const std::string& strFileNameAndPath, const bool& bUseLatestDate);
+  static CDateTime GetModificationDate(const int& code, const std::string& strFileNameAndPath);
 };

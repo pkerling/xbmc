@@ -6,22 +6,15 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <map>
-#include <memory>
-#include <string>
-#include <utility>
-#include <vector>
-
-#include <limits.h>
-
 #include "GUIDialogContentSettings.h"
+
 #include "ServiceBroker.h"
 #include "addons/AddonSystemSettings.h"
-#include "addons/settings/GUIDialogAddonSettings.h"
 #include "addons/GUIWindowAddonBrowser.h"
-#include "filesystem/AddonsDirectory.h"
+#include "addons/settings/GUIDialogAddonSettings.h"
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogSelect.h"
+#include "filesystem/AddonsDirectory.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
@@ -29,8 +22,14 @@
 #include "settings/lib/SettingsManager.h"
 #include "settings/windows/GUIControlSettings.h"
 #include "utils/log.h"
-#include "utils/StringUtils.h"
 #include "video/VideoInfoScanner.h"
+
+#include <limits.h>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #define SETTING_CONTENT_TYPE          "contenttype"
 #define SETTING_SCRAPER_LIST          "scraperlist"
@@ -183,14 +182,14 @@ void CGUIDialogContentSettings::OnSettingAction(std::shared_ptr<const CSetting> 
     std::vector<std::pair<std::string, int>> labels;
     if (m_content == CONTENT_ALBUMS || m_content == CONTENT_ARTISTS)
     {
-      labels.push_back(std::make_pair(ADDON::TranslateContent(m_content, true), m_content));
+      labels.emplace_back(ADDON::TranslateContent(m_content, true), m_content);
     }
     else
     {
-      labels.push_back(std::make_pair(ADDON::TranslateContent(CONTENT_NONE, true), CONTENT_NONE));
-      labels.push_back(std::make_pair(ADDON::TranslateContent(CONTENT_MOVIES, true), CONTENT_MOVIES));
-      labels.push_back(std::make_pair(ADDON::TranslateContent(CONTENT_TVSHOWS, true), CONTENT_TVSHOWS));
-      labels.push_back(std::make_pair(ADDON::TranslateContent(CONTENT_MUSICVIDEOS, true), CONTENT_MUSICVIDEOS));
+      labels.emplace_back(ADDON::TranslateContent(CONTENT_NONE, true), CONTENT_NONE);
+      labels.emplace_back(ADDON::TranslateContent(CONTENT_MOVIES, true), CONTENT_MOVIES);
+      labels.emplace_back(ADDON::TranslateContent(CONTENT_TVSHOWS, true), CONTENT_TVSHOWS);
+      labels.emplace_back(ADDON::TranslateContent(CONTENT_MUSICVIDEOS, true), CONTENT_MUSICVIDEOS);
     }
     std::sort(labels.begin(), labels.end());
 
@@ -228,7 +227,7 @@ void CGUIDialogContentSettings::OnSettingAction(std::shared_ptr<const CSetting> 
       m_scraper = std::dynamic_pointer_cast<CScraper>(scraperAddon);
 
       SetupView();
-      SetFocus(SETTING_CONTENT_TYPE);
+      SetFocusToSetting(SETTING_CONTENT_TYPE);
     }
   }
   else if (settingId == SETTING_SCRAPER_LIST)
@@ -247,7 +246,7 @@ void CGUIDialogContentSettings::OnSettingAction(std::shared_ptr<const CSetting> 
       m_scraper = std::dynamic_pointer_cast<CScraper>(scraperAddon);
 
       SetupView();
-      SetFocus(SETTING_SCRAPER_LIST);
+      SetFocusToSetting(SETTING_SCRAPER_LIST);
     }
   }
   else if (settingId == SETTING_SCRAPER_SETTINGS)
@@ -400,7 +399,7 @@ void CGUIDialogContentSettings::ToggleState(const std::string &settingid, bool e
   }
 }
 
-void CGUIDialogContentSettings::SetFocus(const std::string &settingid)
+void CGUIDialogContentSettings::SetFocusToSetting(const std::string& settingid)
 {
   BaseSettingControlPtr settingControl = GetSettingControl(settingid);
   if (settingControl != NULL && settingControl->GetControl() != NULL)

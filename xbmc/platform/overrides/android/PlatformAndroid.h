@@ -8,16 +8,16 @@
 
 #pragma once
 
-#include "platform/Platform.h"
+#include "platform/posix/PlatformPosix.h"
 
-class CPlatformAndroid : public CPlatform
+class CPlatformAndroid : public CPlatformPosix
 {
   public:
     /**\brief C'tor */
-    CPlatformAndroid();
+    CPlatformAndroid() = default;
 
     /**\brief D'tor */
-    virtual ~CPlatformAndroid();
+    ~CPlatformAndroid() override = default;
 
     void Init() override;
 };

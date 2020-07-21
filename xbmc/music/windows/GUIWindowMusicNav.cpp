@@ -7,47 +7,46 @@
  */
 
 #include "GUIWindowMusicNav.h"
+
+#include "Application.h"
+#include "FileItem.h"
+#include "GUIPassword.h"
+#include "GUIUserMessages.h"
+#include "PartyModeManager.h"
 #include "ServiceBroker.h"
+#include "URL.h"
+#include "Util.h"
 #include "addons/AddonManager.h"
 #include "addons/AddonSystemSettings.h"
-#include "utils/FileUtils.h"
-#include "utils/URIUtils.h"
-#include "PlayListPlayer.h"
-#include "GUIPassword.h"
-#include "music/dialogs/GUIDialogInfoProviderSettings.h"
+#include "dialogs/GUIDialogYesNo.h"
 #include "filesystem/MusicDatabaseDirectory.h"
 #include "filesystem/VideoDatabaseDirectory.h"
-#include "PartyModeManager.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIEditControl.h"
+#include "guilib/GUIKeyboardFactory.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
+#include "input/Key.h"
+#include "messaging/ApplicationMessenger.h"
+#include "messaging/helpers/DialogOKHelper.h"
+#include "music/dialogs/GUIDialogInfoProviderSettings.h"
+#include "music/tags/MusicInfoTag.h"
 #include "playlists/PlayList.h"
 #include "playlists/PlayListFactory.h"
 #include "profiles/ProfileManager.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "storage/MediaManager.h"
+#include "utils/FileUtils.h"
+#include "utils/LegacyPathTranslation.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
 #include "video/VideoDatabase.h"
 #include "video/dialogs/GUIDialogVideoInfo.h"
 #include "video/windows/GUIWindowVideoNav.h"
-#include "music/tags/MusicInfoTag.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
-#include "guilib/GUIKeyboardFactory.h"
 #include "view/GUIViewState.h"
-#include "input/Key.h"
-#include "dialogs/GUIDialogYesNo.h"
-#include "guilib/GUIEditControl.h"
-#include "GUIUserMessages.h"
-#include "FileItem.h"
-#include "Application.h"
-#include "messaging/helpers/DialogOKHelper.h"
-#include "messaging/ApplicationMessenger.h"
-#include "settings/Settings.h"
-#include "settings/SettingsComponent.h"
-#include "guilib/LocalizeStrings.h"
-#include "utils/LegacyPathTranslation.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-#include "utils/Variant.h"
-#include "Util.h"
-#include "URL.h"
-#include "storage/MediaManager.h"
-#include "ContextMenuManager.h"
 
 using namespace XFILE;
 using namespace PLAYLIST;
@@ -140,7 +139,8 @@ bool CGUIWindowMusicNav::OnMessage(CGUIMessage& message)
           }
 
           // Playlist directory is the root of the playlist window
-          if (m_guiState.get()) m_guiState->SetPlaylistDirectory("playlistmusic://");
+          if (m_guiState)
+            m_guiState->SetPlaylistDirectory("playlistmusic://");
 
           return true;
         }
@@ -210,43 +210,6 @@ bool CGUIWindowMusicNav::OnAction(const CAction& action)
   }
 
   return CGUIWindowMusicBase::OnAction(action);
-}
-
-std::string CGUIWindowMusicNav::GetQuickpathName(const std::string& strPath) const
-{
-  std::string path = CLegacyPathTranslation::TranslateMusicDbPath(strPath);
-  StringUtils::ToLower(path);
-  if (path == "musicdb://genres/")
-    return "Genres";
-  else if (path == "musicdb://artists/")
-    return "Artists";
-  else if (path == "musicdb://albums/")
-    return "Albums";
-  else if (path == "musicdb://songs/")
-    return "Songs";
-  else if (path == "musicdb://top100/")
-    return "Top100";
-  else if (path == "musicdb://top100/songs/")
-    return "Top100Songs";
-  else if (path == "musicdb://top100/albums/")
-    return "Top100Albums";
-  else if (path == "musicdb://recentlyaddedalbums/")
-    return "RecentlyAddedAlbums";
-  else if (path == "musicdb://recentlyplayedalbums/")
-    return "RecentlyPlayedAlbums";
-  else if (path == "musicdb://compilations/")
-    return "Compilations";
-  else if (path == "musicdb://years/")
-    return "Years";
-  else if (path == "musicdb://singles/")
-    return "Singles";
-  else if (path == "special://musicplaylists/")
-    return "Playlists";
-  else
-  {
-    CLog::Log(LOGERROR, "  CGUIWindowMusicNav::GetQuickpathName: Unknown parameter (%s)", strPath.c_str());
-    return strPath;
-  }
 }
 
 bool CGUIWindowMusicNav::ManageInfoProvider(const CFileItemPtr item)
@@ -450,8 +413,7 @@ bool CGUIWindowMusicNav::GetDirectory(const std::string &strDirectory, CFileItem
         node == NODE_TYPE_ALBUM_RECENTLY_ADDED ||
         node == NODE_TYPE_ALBUM_RECENTLY_PLAYED ||
         node == NODE_TYPE_ALBUM_TOP100 ||
-        node == NODE_TYPE_ALBUM_COMPILATIONS ||
-        node == NODE_TYPE_YEAR_ALBUM)
+        node == NODE_TYPE_DISC)  // ! @todo: own content type "discs"??
       items.SetContent("albums");
     else if (node == NODE_TYPE_ARTIST)
       items.SetContent("artists");
@@ -460,9 +422,7 @@ bool CGUIWindowMusicNav::GetDirectory(const std::string &strDirectory, CFileItem
              node == NODE_TYPE_SINGLES ||
              node == NODE_TYPE_ALBUM_RECENTLY_ADDED_SONGS ||
              node == NODE_TYPE_ALBUM_RECENTLY_PLAYED_SONGS ||
-             node == NODE_TYPE_ALBUM_COMPILATIONS_SONGS ||
-             node == NODE_TYPE_ALBUM_TOP100_SONGS ||
-             node == NODE_TYPE_YEAR_SONG)
+             node == NODE_TYPE_ALBUM_TOP100_SONGS)
       items.SetContent("songs");
     else if (node == NODE_TYPE_GENRE)
       items.SetContent("genres");
@@ -588,10 +548,10 @@ void CGUIWindowMusicNav::GetContextButtons(int itemNumber, CContextButtons &butt
       CGUIDialogContextMenu::GetContextButtons("music", item, buttons);
 #ifdef HAS_DVD_DRIVE
       // enable Rip CD an audio disc
-      if (g_mediaManager.IsDiscInDrive() && item->IsCDDA())
+      if (CServiceBroker::GetMediaManager().IsDiscInDrive() && item->IsCDDA())
       {
         // those cds can also include Audio Tracks: CDExtra and MixedMode!
-        MEDIA_DETECT::CCdInfo *pCdInfo = g_mediaManager.GetCdInfo();
+        MEDIA_DETECT::CCdInfo* pCdInfo = CServiceBroker::GetMediaManager().GetCdInfo();
         if (pCdInfo->IsAudio(1) || pCdInfo->IsCDExtra(1) || pCdInfo->IsMixedMode(1))
         {
           if (CJobManager::GetInstance().IsProcessing("cdrip"))
@@ -754,7 +714,7 @@ bool CGUIWindowMusicNav::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
   case CONTEXT_BUTTON_SET_DEFAULT:
   {
     const std::shared_ptr<CSettings> settings = CServiceBroker::GetSettingsComponent()->GetSettings();
-    settings->SetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW, GetQuickpathName(item->GetPath()));
+    settings->SetString(CSettings::SETTING_MYMUSIC_DEFAULTLIBVIEW, item->GetPath());
     settings->Save();
     return true;
   }
@@ -840,7 +800,7 @@ bool CGUIWindowMusicNav::GetSongsFromPlayList(const std::string& strPlayList, CF
   CLog::Log(LOGDEBUG,"CGUIWindowMusicNav, opening playlist [%s]", strPlayList.c_str());
 
   std::unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(strPlayList));
-  if ( NULL != pPlayList.get())
+  if (nullptr != pPlayList)
   {
     // load it
     if (!pPlayList->Load(strPlayList))
@@ -955,6 +915,8 @@ std::string CGUIWindowMusicNav::GetStartFolder(const std::string &dir)
     return "musicdb://years/";
   else if (lower == "files")
     return "sources://music/";
+  else if (lower == "boxsets")
+    return "musicdb://boxsets/";
 
   return CGUIWindowMusicBase::GetStartFolder(dir);
 }

@@ -8,28 +8,33 @@
 
 #pragma once
 
+#include "addons/kodi-addon-dev-kit/include/kodi/AddonBase.h"
+
+#include <memory>
+
 /*
 * CAddonProvider
 * IUnknown implementation to retrieve sub-addons from already active addons
 * See Inputstream.cpp/h for an explaric use case
 */
 
-namespace kodi { namespace addon { class IAddonInstance; } }
-
 namespace ADDON
 {
-  class CBinaryAddonBase;
-  typedef std::shared_ptr<CBinaryAddonBase> BinaryAddonBasePtr;
+class CAddonInfo;
+typedef std::shared_ptr<CAddonInfo> AddonInfoPtr;
 
-  class IAddonProvider
+class IAddonProvider
+{
+public:
+  virtual ~IAddonProvider() = default;
+  enum INSTANCE_TYPE
   {
-  public:
-    virtual ~IAddonProvider() = default;
-    enum INSTANCE_TYPE
-    {
-      INSTANCE_VIDEOCODEC
-    };
-    virtual void getAddonInstance(INSTANCE_TYPE instance_type, ADDON::BinaryAddonBasePtr& addonBase, kodi::addon::IAddonInstance*& parentInstance) = 0;
+    INSTANCE_INPUTSTREAM,
+    INSTANCE_VIDEOCODEC
   };
+  virtual void GetAddonInstance(INSTANCE_TYPE instance_type,
+                                ADDON::AddonInfoPtr& addonInfo,
+                                KODI_HANDLE& parentInstance) = 0;
+};
 
-  } //Namespace
+} // namespace ADDON

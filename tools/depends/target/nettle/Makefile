@@ -3,11 +3,11 @@ DEPS= ../../Makefile.include Makefile 01-disable_testsuite.patch
 
 # lib name, version
 LIBNAME=nettle
-VERSION=3.2
+VERSION=3.5.1
 SOURCE=$(LIBNAME)-$(VERSION)
 ARCHIVE=$(SOURCE).tar.gz
 
-ifeq ($(OS),ios)
+ifeq ($(OS),darwin_embedded)
   CONFIGURE_FLAGS=-disable-assembler
 endif
 
@@ -25,7 +25,7 @@ $(TARBALLS_LOCATION)/$(ARCHIVE):
 $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	rm -rf $(PLATFORM)/*; mkdir -p $(PLATFORM)
 	cd $(PLATFORM); $(ARCHIVE_TOOL) $(ARCHIVE_TOOL_FLAGS) $(TARBALLS_LOCATION)/$(ARCHIVE)
-	cd $(PLATFORM); patch -p0 < ../01-disable_testsuite.patch
+	cd $(PLATFORM); patch -p1 -i ../01-disable_testsuite.patch
 	cd $(PLATFORM); $(CONFIGURE) CCPIC=" "
 
 $(LIBDYLIB): $(PLATFORM)

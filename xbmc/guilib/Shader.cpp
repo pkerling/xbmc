@@ -6,12 +6,14 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "ServiceBroker.h"
 #include "Shader.h"
+
+#include "ServiceBroker.h"
 #include "filesystem/File.h"
-#include "utils/log.h"
-#include "utils/GLUtils.h"
 #include "rendering/RenderSystem.h"
+#include "utils/GLUtils.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
 
 #ifdef HAS_GLES
 #define GLchar char
@@ -51,6 +53,9 @@ bool CShader::LoadSource(const std::string& filename, const std::string& prefix)
       pos = versionPos + 1;
   }
   m_source.insert(pos, prefix);
+
+  m_filenames = filename;
+
   return true;
 }
 
@@ -72,6 +77,9 @@ bool CShader::AppendSource(const std::string& filename)
   }
   getline(file, temp, '\0');
   m_source.append(temp);
+
+  m_filenames.append(" " + filename);
+
   return true;
 }
 
@@ -102,8 +110,26 @@ bool CShader::InsertSource(const std::string& filename, const std::string& loc)
 
   m_source.insert(locPos, temp);
 
+  m_filenames.append(" " + filename);
+
   return true;
 }
+
+std::string CShader::GetSourceWithLineNumbers() const
+{
+  int i{1};
+  auto lines = StringUtils::Split(m_source, "\n");
+  for (auto& line : lines)
+  {
+    line.insert(0, StringUtils::Format("%3d: ", i));
+    i++;
+  }
+
+  auto output = StringUtils::Join(lines, "\n");
+
+  return output;
+}
+
 
 //////////////////////////////////////////////////////////////////////
 // CGLSLVertexShader
@@ -165,7 +191,7 @@ bool CGLSLPixelShader::Compile()
   // Pixel shaders are not mandatory.
   if (m_source.length()==0)
   {
-    CLog::Log(LOGNOTICE, "GL: No pixel shader, fixed pipeline in use");
+    CLog::Log(LOGINFO, "GL: No pixel shader, fixed pipeline in use");
     return true;
   }
 
@@ -254,7 +280,8 @@ bool CGLSLShaderProgram::CompileAndLink()
   // compiled vertex shader
   if (!m_pVP->Compile())
   {
-    CLog::Log(LOGERROR, "GL: Error compiling vertex shader");
+    CLog::Log(LOGERROR, "GL: Error compiling vertex shader: {}", m_pVP->GetName());
+    CLog::Log(LOGDEBUG, "GL: vertex shader source:\n{}", m_pVP->GetSourceWithLineNumbers());
     return false;
   }
 
@@ -262,7 +289,8 @@ bool CGLSLShaderProgram::CompileAndLink()
   if (!m_pFP->Compile())
   {
     m_pVP->Free();
-    CLog::Log(LOGERROR, "GL: Error compiling fragment shader");
+    CLog::Log(LOGERROR, "GL: Error compiling fragment shader: {}", m_pFP->GetName());
+    CLog::Log(LOGDEBUG, "GL: fragment shader source:\n{}", m_pFP->GetSourceWithLineNumbers());
     return false;
   }
 

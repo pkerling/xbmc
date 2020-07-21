@@ -7,15 +7,20 @@
  */
 
 #include "WinSystemWaylandEGLContextGLES.h"
+
 #include "OptionalsReg.h"
+#include "cores/RetroPlayer/process/RPProcessInfo.h"
+#include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererDMA.h"
+#include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererOpenGLES.h"
+#include "cores/VideoPlayer/VideoRenderers/LinuxRendererGLES.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
+#include "rendering/gles/ScreenshotSurfaceGLES.h"
+#include "utils/BufferObjectFactory.h"
+#include "utils/DMAHeapBufferObject.h"
+#include "utils/UDMABufferObject.h"
+#include "utils/log.h"
 
 #include <EGL/egl.h>
-
-#include "cores/RetroPlayer/process/RPProcessInfo.h"
-#include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererOpenGLES.h"
-#include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
-#include "cores/VideoPlayer/VideoRenderers/LinuxRendererGLES.h"
-#include "utils/log.h"
 
 using namespace KODI::WINDOWING::WAYLAND;
 
@@ -33,6 +38,8 @@ bool CWinSystemWaylandEGLContextGLES::InitWindowSystem()
   }
 
   CLinuxRendererGLES::Register();
+
+  RETRO::CRPProcessInfo::RegisterRendererFactory(new RETRO::CRendererFactoryDMA);
   RETRO::CRPProcessInfo::RegisterRendererFactory(new RETRO::CRendererFactoryOpenGLES);
 
   bool general, deepColor;
@@ -45,15 +52,24 @@ bool CWinSystemWaylandEGLContextGLES::InitWindowSystem()
     ::WAYLAND::VAAPIRegister(m_vaapiProxy.get(), deepColor);
   }
 
+  CBufferObjectFactory::ClearBufferObjects();
+#if defined(HAVE_LINUX_MEMFD) && defined(HAVE_LINUX_UDMABUF)
+  CUDMABufferObject::Register();
+#endif
+#if defined(HAVE_LINUX_DMA_HEAP)
+  CDMAHeapBufferObject::Register();
+#endif
+
+  CScreenshotSurfaceGLES::Register();
+
   return true;
 }
 
 bool CWinSystemWaylandEGLContextGLES::CreateContext()
 {
-  const EGLint contextAttribs[] = {
-    EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE
-  };
+  CEGLAttributesVec contextAttribs;
+  contextAttribs.Add({{EGL_CONTEXT_CLIENT_VERSION, 2}});
+
   if (!m_eglContext.CreateContext(contextAttribs))
   {
     CLog::Log(LOGERROR, "EGL context creation failed");

@@ -11,11 +11,11 @@
 #include "network/Network.h"
 #include "threads/CriticalSection.h"
 
+#include <androidjni/LinkProperties.h>
 #include <androidjni/Network.h>
 #include <androidjni/NetworkInfo.h>
-#include <androidjni/LinkProperties.h>
-#include <androidjni/RouteInfo.h>
 #include <androidjni/NetworkInterface.h>
+#include <androidjni/RouteInfo.h>
 
 class CNetworkAndroid;
 
@@ -27,20 +27,14 @@ public:
 
   // CNetworkInterface interface
 public:
-  virtual const std::string& GetName() const override;
-  virtual bool IsEnabled() const override;
-  virtual bool IsConnected() const override;
-  virtual bool IsWireless() const override;
-  virtual std::string GetMacAddress() const override;
-  virtual void GetMacAddressRaw(char rawMac[6]) const override;
-  virtual bool GetHostMacAddress(unsigned long host_ip, std::string& mac) const override;
-  virtual std::string GetCurrentIPAddress() const override;
-  virtual std::string GetCurrentNetmask() const override;
-  virtual std::string GetCurrentDefaultGateway() const override;
-  virtual std::string GetCurrentWirelessEssId() const override;
-  virtual std::vector<NetworkAccessPoint> GetAccessPoints() const override;
-  virtual void GetSettings(NetworkAssignment& assignment, std::string& ipAddress, std::string& networkMask, std::string& defaultGateway, std::string& essId, std::string& key, EncMode& encryptionMode) const override;
-  virtual void SetSettings(const NetworkAssignment& assignment, const std::string& ipAddress, const std::string& networkMask, const std::string& defaultGateway, const std::string& essId, const std::string& key, const EncMode& encryptionMode) override;
+  bool IsEnabled() const override;
+  bool IsConnected() const override;
+  std::string GetMacAddress() const override;
+  void GetMacAddressRaw(char rawMac[6]) const override;
+  bool GetHostMacAddress(unsigned long host_ip, std::string& mac) const override;
+  std::string GetCurrentIPAddress() const override;
+  std::string GetCurrentNetmask() const override;
+  std::string GetCurrentDefaultGateway() const override;
 
   std::string GetHostName();
 
@@ -58,19 +52,18 @@ class CNetworkAndroid : public CNetworkBase
 
 public:
   CNetworkAndroid();
-  ~CNetworkAndroid();
+  ~CNetworkAndroid() override;
 
   // CNetwork interface
 public:
-  virtual bool GetHostName(std::string& hostname) override;
-  virtual std::vector<CNetworkInterface*>& GetInterfaceList() override;
-  virtual CNetworkInterface* GetFirstConnectedInterface() override;
-  virtual std::vector<std::string> GetNameServers() override;
-  virtual void SetNameServers(const std::vector<std::string>& nameServers) override;
+  bool GetHostName(std::string& hostname) override;
+  std::vector<CNetworkInterface*>& GetInterfaceList() override;
+  CNetworkInterface* GetFirstConnectedInterface() override;
+  std::vector<std::string> GetNameServers() override;
 
   // Ping remote host
   using CNetworkBase::PingHost;
-  virtual bool PingHost(unsigned long remote_ip, unsigned int timeout_ms = 2000) override;
+  bool PingHost(unsigned long remote_ip, unsigned int timeout_ms = 2000) override;
 
 protected:
   void RetrieveInterfaces();

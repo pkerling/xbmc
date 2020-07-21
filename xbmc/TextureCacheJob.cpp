@@ -26,6 +26,8 @@
 #include "cores/omxplayer/OMXImage.h"
 #endif
 
+#include <inttypes.h>
+
 CTextureCacheJob::CTextureCacheJob(const std::string &url, const std::string &oldHash):
   m_url(url),
   m_oldHash(oldHash),
@@ -222,10 +224,7 @@ CBaseTexture *CTextureCacheJob::LoadImage(const std::string &image, unsigned int
 bool CTextureCacheJob::UpdateableURL(const std::string &url) const
 {
   // we don't constantly check online images
-  if (StringUtils::StartsWith(url, "http://") ||
-      StringUtils::StartsWith(url, "https://"))
-    return false;
-  return true;
+  return !(StringUtils::StartsWith(url, "http://") || StringUtils::StartsWith(url, "https://"));
 }
 
 std::string CTextureCacheJob::GetImageHash(const std::string &url)

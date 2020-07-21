@@ -7,18 +7,20 @@
  */
 
 #include "TextureCache.h"
+
+#include "ServiceBroker.h"
 #include "TextureCacheJob.h"
+#include "URL.h"
 #include "filesystem/File.h"
+#include "guilib/Texture.h"
 #include "profiles/ProfileManager.h"
-#include "threads/SingleLock.h"
-#include "utils/Crc32.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
+#include "threads/SingleLock.h"
+#include "utils/Crc32.h"
 #include "utils/StringUtils.h"
-#include "URL.h"
-#include "ServiceBroker.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 
 using namespace XFILE;
 
@@ -58,14 +60,11 @@ bool CTextureCache::IsCachedImage(const std::string &url) const
 
   const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
 
-  if (URIUtils::PathHasParent(url, "special://skin", true) ||
+  return URIUtils::PathHasParent(url, "special://skin", true) ||
       URIUtils::PathHasParent(url, "special://temp", true) ||
       URIUtils::PathHasParent(url, "resource://", true) ||
       URIUtils::PathHasParent(url, "androidapp://", true)   ||
-      URIUtils::PathHasParent(url, profileManager->GetThumbnailsFolder(), true))
-    return true;
-
-  return false;
+      URIUtils::PathHasParent(url, profileManager->GetThumbnailsFolder(), true);
 }
 
 bool CTextureCache::HasCachedImage(const std::string &url)
@@ -161,7 +160,20 @@ std::string CTextureCache::CacheImage(const std::string &image, CBaseTexture **t
   CTextureDetails tempDetails;
   if (!details)
     details = &tempDetails;
-  return GetCachedImage(url, *details, true);
+
+  std::string cachedpath = GetCachedImage(url, *details, true);
+  if (!cachedpath.empty())
+  {
+    if (texture)
+      *texture = CBaseTexture::LoadFromFile(cachedpath, 0, 0);
+  }
+  else
+  {
+    CLog::Log(LOGDEBUG, "CTextureCache::%s - Return NULL texture because cache is not ready",
+              __FUNCTION__);
+  }
+
+  return cachedpath;
 }
 
 bool CTextureCache::CacheImage(const std::string &image, CTextureDetails &details)

@@ -37,7 +37,7 @@
 #endif
 
 #if defined(TARGET_POSIX)
-#include "platform/linux/PlatformDefs.h"
+#include "PlatformDefs.h"
 #endif
 
 CBuiltins::CBuiltins()
@@ -142,7 +142,6 @@ void CBuiltins::GetHelp(std::string &help)
 
 int CBuiltins::Execute(const std::string& execString)
 {
-  // Deprecated. Get the text after the "XBMC."
   std::string execute;
   std::vector<std::string> params;
   CUtil::SplitExecFunction(execString, execute, params);

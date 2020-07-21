@@ -6,25 +6,22 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "utils/SystemInfo.h"
-#include "settings/Settings.h"
 #include "GUIInfoManager.h"
+#include "ServiceBroker.h"
+#include "settings/Settings.h"
+#include "utils/CPUInfo.h"
+#include "utils/SystemInfo.h"
+#if defined(TARGET_WINDOWS)
 #include "platform/win32/CharsetConverter.h"
-
-#include "gtest/gtest.h"
-
-#ifdef TARGET_WINDOWS_STORE
-#include <algorithm>
-using namespace Windows::Storage;
 #endif
+
+#include <gtest/gtest.h>
 
 class TestSystemInfo : public testing::Test
 {
 protected:
-  TestSystemInfo()
-  = default;
-  ~TestSystemInfo() override
-  = default;
+  TestSystemInfo() { CServiceBroker::RegisterCPUInfo(CCPUInfo::GetCPUInfo()); }
+  ~TestSystemInfo() { CServiceBroker::UnregisterCPUInfo(); }
 };
 
 TEST_F(TestSystemInfo, Print_System_Info)
@@ -105,6 +102,10 @@ TEST_F(TestSystemInfo, GetOsName)
 #elif defined(TARGET_DARWIN_IOS)
   EXPECT_STREQ("iOS", g_sysinfo.GetOsName(true).c_str()) << "'GetOsName(true)' must return 'iOS'";
   EXPECT_STREQ("iOS", g_sysinfo.GetOsName(false).c_str()) << "'GetOsName(false)' must return 'iOS'";
+#elif defined(TARGET_DARWIN_TVOS)
+  EXPECT_STREQ("tvOS", g_sysinfo.GetOsName(true).c_str()) << "'GetOsName(true)' must return 'tvOS'";
+  EXPECT_STREQ("tvOS", g_sysinfo.GetOsName(false).c_str())
+      << "'GetOsName(false)' must return 'tvOS'";
 #elif defined(TARGET_DARWIN_OSX)
   EXPECT_STREQ("OS X", g_sysinfo.GetOsName(true).c_str()) << "'GetOsName(true)' must return 'OS X'";
   EXPECT_STREQ("OS X", g_sysinfo.GetOsName(false).c_str()) << "'GetOsName(false)' must return 'OS X'";
@@ -220,6 +221,11 @@ TEST_F(TestSystemInfo, GetUserAgent)
 #elif defined(TARGET_DARWIN_IOS)
   EXPECT_NE(std::string::npos, g_sysinfo.GetUserAgent().find("like Mac OS X")) << "'GetUserAgent()' must contain ' like Mac OS X'";
   EXPECT_TRUE(g_sysinfo.GetUserAgent().find("CPU OS ") != std::string::npos || g_sysinfo.GetUserAgent().find("CPU iPhone OS ") != std::string::npos) << "'GetUserAgent()' must contain 'CPU OS ' or 'CPU iPhone OS '";
+#elif defined(TARGET_DARWIN_TVOS)
+  EXPECT_NE(std::string::npos, g_sysinfo.GetUserAgent().find("like Mac OS X"))
+      << "'GetUserAgent()' must contain ' like Mac OS X'";
+  EXPECT_TRUE(g_sysinfo.GetUserAgent().find("CPU TVOS ") != std::string::npos)
+      << "'GetUserAgent()' must contain 'CPU TVOS '";
 #elif defined(TARGET_DARWIN_OSX)
   EXPECT_EQ(g_sysinfo.GetUserAgent().find('('), g_sysinfo.GetUserAgent().find("(Macintosh; ")) << "Second parameter in 'GetUserAgent()' string must start from 'Macintosh; '";
 #elif defined(TARGET_ANDROID)
@@ -240,13 +246,6 @@ TEST_F(TestSystemInfo, GetUserAgent)
   EXPECT_NE(std::string::npos, g_sysinfo.GetUserAgent().find(" App_Bitness/")) << "'GetUserAgent()' must contain ' App_Bitness/'";
   EXPECT_NE(std::string::npos, g_sysinfo.GetUserAgent().find(" Version/")) << "'GetUserAgent()' must contain ' Version/'";
 }
-
-#ifndef TARGET_DARWIN
-TEST_F(TestSystemInfo, HasVideoToolBoxDecoder)
-{
-  EXPECT_FALSE(g_sysinfo.HasVideoToolBoxDecoder()) << "'HasVideoToolBoxDecoder()' must return 'false'";
-}
-#endif
 
 TEST_F(TestSystemInfo, GetBuildTargetPlatformName)
 {
@@ -305,18 +304,7 @@ TEST_F(TestSystemInfo, GetDiskSpace)
 #ifdef TARGET_WINDOWS
   using KODI::PLATFORM::WINDOWS::FromW;
   wchar_t sysDrive[300];
-#if defined(TARGET_WINDOWS_STORE)
-  DWORD res = 0;
-  auto values = ApplicationData::Current->LocalSettings->Values;
-  if (values->HasKey(L"SystemDrive"))
-  {
-    auto value = safe_cast<Platform::String^>(values->Lookup(L"SystemDrive"));
-    wcscpy_s(sysDrive, value->Data());
-    res = value->Length();
-  }
-#else
   DWORD res = GetEnvironmentVariableW(L"SystemDrive", sysDrive, sizeof(sysDrive) / sizeof(wchar_t));
-#endif
   std::string sysDriveLtr;
   if (res != 0 && res <= sizeof(sysDrive) / sizeof(wchar_t))
     sysDriveLtr.assign(FromW(sysDrive), 0, 1);

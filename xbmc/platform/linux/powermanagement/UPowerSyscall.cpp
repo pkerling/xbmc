@@ -7,6 +7,7 @@
  */
 
 #include "UPowerSyscall.h"
+
 #include "utils/log.h"
 
 CUPowerSource::CUPowerSource(const char *powerSource)
@@ -126,14 +127,13 @@ int CUPowerSyscall::BatteryLevel()
   double       subCapacity    = 0;
   double       batteryLevel   = 0;
 
-  std::list<CUPowerSource>::iterator itr;
-  for (itr = m_powerSources.begin(); itr != m_powerSources.end(); ++itr)
+  for (auto& itr : m_powerSources)
   {
-    itr->Update();
-    if(itr->IsRechargeable())
+    itr.Update();
+    if (itr.IsRechargeable())
     {
       nBatteryCount++;
-      subCapacity += itr->BatteryLevel();
+      subCapacity += itr.BatteryLevel();
     }
   }
 
@@ -156,7 +156,7 @@ void CUPowerSyscall::EnumeratePowerSources()
     {
       for (int i = 0; i < length; i++)
       {
-        m_powerSources.push_back(CUPowerSource(source[i]));
+        m_powerSources.emplace_back(source[i]);
       }
 
       dbus_free_string_array(source);

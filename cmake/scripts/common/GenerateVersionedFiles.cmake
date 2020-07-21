@@ -15,7 +15,7 @@ endfunction()
 file(GLOB ADDON_XML_IN_FILE ${CORE_SOURCE_DIR}/addons/*/addon.xml.in)
 
 # remove 'xbmc.json', will be created from 'xbmc/interfaces/json-rpc/schema/CMakeLists.txt'
-list(REMOVE_ITEM ADDON_XML_IN_FILE xbmc.json)
+list(REMOVE_ITEM ADDON_XML_IN_FILE ${CORE_SOURCE_DIR}/addons/xbmc.json/addon.xml.in)
 
 foreach(loop_var ${ADDON_XML_IN_FILE})
   list(GET loop_var 0 xml_name)
@@ -23,9 +23,6 @@ foreach(loop_var ${ADDON_XML_IN_FILE})
   string(REPLACE "/addon.xml.in" "" source_dir ${xml_name})
   string(REPLACE ${CORE_SOURCE_DIR} ${CMAKE_BINARY_DIR} dest_dir ${source_dir})
   file(MAKE_DIRECTORY ${dest_dir})
-
-  # copy everything except addon.xml.in to build folder
-  file(COPY "${source_dir}" DESTINATION "${CMAKE_BINARY_DIR}/addons" REGEX ".xml.in" EXCLUDE)
 
   configure_file(${source_dir}/addon.xml.in ${dest_dir}/addon.xml @ONLY)
 

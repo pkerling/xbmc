@@ -8,14 +8,16 @@
 
 #include "JNIXBMCMediaSession.h"
 
-#include <androidjni/jutils-details.hpp>
-#include <androidjni/Context.h>
-
+#include "AndroidKey.h"
+#include "Application.h"
 #include "CompileInfo.h"
 #include "XBMCApp.h"
-#include "Application.h"
-#include "messaging/ApplicationMessenger.h"
 #include "input/Key.h"
+#include "messaging/ApplicationMessenger.h"
+
+#include <androidjni/Context.h>
+#include <androidjni/KeyEvent.h>
+#include <androidjni/jutils-details.hpp>
 
 using namespace jni;
 
@@ -23,7 +25,6 @@ static std::string s_className = std::string(CCompileInfo::GetClass()) + "/XBMCM
 
 CJNIXBMCMediaSession::CJNIXBMCMediaSession()
   : CJNIBase(s_className)
-  , m_isActive(false)
 {
   m_object = new_object(CJNIContext::getClassLoader().loadClass(GetDotClassName(s_className)));
   m_object.setGlobal();
@@ -57,6 +58,7 @@ void CJNIXBMCMediaSession::RegisterNatives(JNIEnv* env)
       {"_onRewindRequested", "()V", (void*)&CJNIXBMCMediaSession::_onRewindRequested},
       {"_onStopRequested", "()V", (void*)&CJNIXBMCMediaSession::_onStopRequested},
       {"_onSeekRequested", "(J)V", (void*)&CJNIXBMCMediaSession::_onSeekRequested},
+      {"_onMediaButtonEvent", "(Landroid/content/Intent;)Z", (void*)&CJNIXBMCMediaSession::_onMediaButtonEvent},
     };
 
     env->RegisterNatives(cClass, methods, sizeof(methods)/sizeof(methods[0]));
@@ -154,6 +156,16 @@ void CJNIXBMCMediaSession::OnSeekRequested(int64_t pos)
   g_application.SeekTime(pos / 1000.0);
 }
 
+bool CJNIXBMCMediaSession::OnMediaButtonEvent(CJNIIntent intent)
+{
+  if (CXBMCApp::HasFocus())
+  {
+    CXBMCApp::get()->onReceive(intent);
+    return true;
+  }
+  return false;
+}
+
 bool CJNIXBMCMediaSession::isActive() const
 {
   return m_isActive;
@@ -232,3 +244,14 @@ void CJNIXBMCMediaSession::_onSeekRequested(JNIEnv* env, jobject thiz, jlong pos
   if (inst)
     inst->OnSeekRequested(pos);
 }
+
+bool CJNIXBMCMediaSession::_onMediaButtonEvent(JNIEnv* env, jobject thiz, jobject intent)
+{
+  (void)env;
+
+  CJNIXBMCMediaSession *inst = find_instance(thiz);
+  if (inst)
+    return inst->OnMediaButtonEvent(CJNIIntent(jhobject::fromJNI(intent)));
+  return false;
+}
+

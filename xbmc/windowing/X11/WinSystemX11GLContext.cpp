@@ -6,29 +6,33 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-
 #include "WinSystemX11GLContext.h"
-#include "GLContextEGL.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-#include "windowing/GraphicContext.h"
-#include "guilib/DispResource.h"
-#include "threads/SingleLock.h"
-#include <vector>
-#include "Application.h"
-#include "VideoSyncOML.h"
 
+#include "Application.h"
+#include "GLContextEGL.h"
+#include "OptionalsReg.h"
+#include "VideoSyncOML.h"
+#include "X11DPMSSupport.h"
 #include "cores/RetroPlayer/process/X11/RPProcessInfoX11.h"
 #include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererOpenGL.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
 #include "cores/VideoPlayer/Process/X11/ProcessInfoX11.h"
 #include "cores/VideoPlayer/VideoRenderers/LinuxRendererGL.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
+#include "guilib/DispResource.h"
+#include "rendering/gl/ScreenshotSurfaceGL.h"
+#include "threads/SingleLock.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
 
-#include "OptionalsReg.h"
+#include "platform/freebsd/OptionalsReg.h"
 #include "platform/linux/OptionalsReg.h"
+
+#include <vector>
+
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
 
 using namespace KODI;
 
@@ -58,6 +62,11 @@ CWinSystemX11GLContext::CWinSystemX11GLContext()
   else if (StringUtils::EqualsNoCase(envSink, "SNDIO"))
   {
     OPTIONALS::SndioRegister();
+  }
+  else if (StringUtils::EqualsNoCase(envSink, "ALSA+PULSE"))
+  {
+    OPTIONALS::ALSARegister();
+    OPTIONALS::PulseAudioRegister();
   }
   else
   {
@@ -142,6 +151,7 @@ EGLConfig CWinSystemX11GLContext::GetEGLConfig() const
 bool CWinSystemX11GLContext::SetWindow(int width, int height, bool fullscreen, const std::string &output, int *winstate)
 {
   int newwin = 0;
+
   CWinSystemX11::SetWindow(width, height, fullscreen, output, &newwin);
   if (newwin)
   {
@@ -210,13 +220,15 @@ bool CWinSystemX11GLContext::SetFullScreen(bool fullScreen, RESOLUTION_INFO& res
 
 bool CWinSystemX11GLContext::DestroyWindowSystem()
 {
-  m_pGLContext->Destroy();
+  if (m_pGLContext)
+    m_pGLContext->Destroy();
   return CWinSystemX11::DestroyWindowSystem();
 }
 
 bool CWinSystemX11GLContext::DestroyWindow()
 {
-  m_pGLContext->Detach();
+  if (m_pGLContext)
+    m_pGLContext->Detach();
   return CWinSystemX11::DestroyWindow();
 }
 
@@ -249,15 +261,23 @@ bool CWinSystemX11GLContext::RefreshGLContext(bool force)
   if (m_pGLContext)
   {
     success = m_pGLContext->Refresh(force, m_screen, m_glWindow, m_newGlContext);
+    if (!success)
+    {
+      success = m_pGLContext->CreatePB();
+      m_newGlContext = true;
+    }
     return success;
   }
 
+  m_dpms = std::make_shared<CX11DPMSSupport>();
   VIDEOPLAYER::CProcessInfoX11::Register();
   RETRO::CRPProcessInfoX11::Register();
   RETRO::CRPProcessInfoX11::RegisterRendererFactory(new RETRO::CRendererFactoryOpenGL);
   CDVDFactoryCodec::ClearHWAccels();
   VIDEOPLAYER::CRendererFactory::ClearRenderer();
   CLinuxRendererGL::Register();
+
+  CScreenshotSurfaceGL::Register();
 
   std::string gpuvendor;
   const char* vend = (const char*) glGetString(GL_VENDOR);
@@ -270,7 +290,7 @@ bool CWinSystemX11GLContext::RefreshGLContext(bool force)
 
   if (gli != "GLX")
   {
-    m_pGLContext = new CGLContextEGL(m_dpy);
+    m_pGLContext = new CGLContextEGL(m_dpy, EGL_OPENGL_API);
     success = m_pGLContext->Refresh(force, m_screen, m_glWindow, m_newGlContext);
     if (success)
     {
@@ -279,7 +299,8 @@ bool CWinSystemX11GLContext::RefreshGLContext(bool force)
         m_vaapiProxy.reset(X11::VaapiProxyCreate());
         X11::VaapiProxyConfig(m_vaapiProxy.get(), GetDisplay(),
                               static_cast<CGLContextEGL*>(m_pGLContext)->m_eglDisplay);
-        bool general, deepColor;
+        bool general = false;
+        bool deepColor = false;
         X11::VAAPIRegisterRender(m_vaapiProxy.get(), general, deepColor);
         if (general)
         {
@@ -289,6 +310,12 @@ bool CWinSystemX11GLContext::RefreshGLContext(bool force)
         if (isIntel || gli == "EGL")
           return true;
       }
+    }
+    else if (gli == "EGL_PB")
+    {
+      success = m_pGLContext->CreatePB();
+      if (success)
+        return true;
     }
   }
 

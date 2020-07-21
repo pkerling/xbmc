@@ -12,9 +12,10 @@
 //////////////////////////////////////////////////////////////////////
 
 #include "APKFile.h"
-#include "utils/log.h"
+
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
 
 #include <zip.h>
 
@@ -27,10 +28,6 @@ CAPKFile::CAPKFile()
   m_zip_index   =-1;
   m_zip_file    = NULL;
   m_zip_archive = NULL;
-}
-
-CAPKFile::~CAPKFile()
-{
 }
 
 bool CAPKFile::Open(const CURL& url)

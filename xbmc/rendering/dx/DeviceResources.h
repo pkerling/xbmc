@@ -8,43 +8,22 @@
 
 #pragma once
 
-#include <wrl.h>
-#include <wrl/client.h>
-#include <concrt.h>
-#if defined(TARGET_WINDOWS_STORE)
-#include <dxgi1_3.h>
-#else
-#include <dxgi1_2.h>
-#include <easyhook/easyhook.h>
-#endif
+#include "DirectXHelper.h"
+#include "HDRStatus.h"
+#include "guilib/D3DResource.h"
+
 #include <functional>
 #include <memory>
 
-#include "DirectXHelper.h"
-#include "guilib/D3DResource.h"
+#include <concrt.h>
+#include <dxgi1_5.h>
+#include <wrl.h>
+#include <wrl/client.h>
 
 struct RESOLUTION_INFO;
 
 namespace DX
 {
-  namespace DisplayMetrics
-  {
-    // High resolution displays can require a lot of GPU and battery power to render.
-    // High resolution phones, for example, may suffer from poor battery life if
-    // games attempt to render at 60 frames per second at full fidelity.
-    // The decision to render at full fidelity across all platforms and form factors
-    // should be deliberate.
-    static const bool SupportHighResolutions = true;
-
-    // The default thresholds that define a "high resolution" display. If the thresholds
-    // are exceeded and SupportHighResolutions is false, the dimensions will be scaled
-    // by 50%.
-    static const float Dpi100 = 96.0f;    // 100% of standard desktop display.
-    static const float DpiThreshold = 192.0f;    // 200% of standard desktop display.
-    static const float WidthThreshold = 1920.0f;  // 1080p width.
-    static const float HeightThreshold = 1080.0f;  // 1080p height.
-  };
-
   interface IDeviceNotify
   {
     virtual void OnDXDeviceLost() = 0;
@@ -82,10 +61,9 @@ namespace DX
     IDXGISwapChain1* GetSwapChain() const { return m_swapChain.Get(); }
     IDXGIFactory2* GetIDXGIFactory2() const { return m_dxgiFactory.Get(); }
     IDXGIAdapter1* GetAdapter() const { return m_adapter.Get(); }
-    ID3D11RenderTargetView* GetBackBufferRTV();
     ID3D11DepthStencilView* GetDSV() const { return m_d3dDepthStencilView.Get(); }
     D3D_FEATURE_LEVEL GetDeviceFeatureLevel() const { return m_d3dFeatureLevel; }
-    CD3DTexture* GetBackBuffer() { return &m_backBufferTex; }
+    CD3DTexture& GetBackBuffer() { return m_backBufferTex; }
 
     void GetOutput(IDXGIOutput** ppOutput) const;
     void GetAdapterDesc(DXGI_ADAPTER_DESC *desc) const;
@@ -99,6 +77,12 @@ namespace DX
     void ResizeBuffers();
 
     bool SetFullScreen(bool fullscreen, RESOLUTION_INFO& res);
+
+    // HDR display support
+    HDR_STATUS ToggleHDR();
+    void SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const;
+    void SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const;
+    bool IsHDROutput() const { return m_IsHDROutput; }
 
     // DX resources registration
     void Register(ID3DResource *resource);
@@ -178,7 +162,9 @@ namespace DX
     Concurrency::critical_section m_criticalSection;
     Concurrency::critical_section m_resourceSection;
     std::vector<ID3DResource*> m_resources;
+
     bool m_stereoEnabled;
     bool m_bDeviceCreated;
+    bool m_IsHDROutput;
   };
 }

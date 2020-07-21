@@ -7,11 +7,15 @@
  */
 
 #include "AppParamParser.h"
+
+#include "CompileInfo.h"
 #include "FileItem.h"
+#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/log.h"
-#include "utils/SystemInfo.h"
 #include "utils/StringUtils.h"
+#include "utils/SystemInfo.h"
+#include "utils/log.h"
+
 #include <stdlib.h>
 
 CAppParamParser::CAppParamParser()
@@ -20,9 +24,7 @@ CAppParamParser::CAppParamParser()
 {
 }
 
-CAppParamParser::~CAppParamParser()
-{
-}
+CAppParamParser::~CAppParamParser() = default;
 
 void CAppParamParser::Parse(const char* const* argv, int nArgs)
 {
@@ -40,7 +42,8 @@ void CAppParamParser::Parse(const char* const* argv, int nArgs)
 void CAppParamParser::DisplayVersion()
 {
   printf("%s Media Center %s\n", CSysInfo::GetVersion().c_str(), CSysInfo::GetAppName().c_str());
-  printf("Copyright (C) 2005-2013 Team %s - http://kodi.tv\n", CSysInfo::GetAppName().c_str());
+  printf("Copyright (C) %s Team %s - http://kodi.tv\n",
+         CCompileInfo::GetCopyrightYears(), CSysInfo::GetAppName().c_str());
   exit(0);
 }
 
@@ -95,7 +98,7 @@ void CAppParamParser::SetAdvancedSettings(CAdvancedSettings& advancedSettings) c
   {
     advancedSettings.m_logLevel = LOG_LEVEL_DEBUG;
     advancedSettings.m_logLevelHint = LOG_LEVEL_DEBUG;
-    CLog::SetLogLevel(LOG_LEVEL_DEBUG);
+    CServiceBroker::GetLogging().SetLogLevel(LOG_LEVEL_DEBUG);
   }
 
   if (!m_settingsFile.empty())

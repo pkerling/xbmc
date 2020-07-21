@@ -8,29 +8,28 @@
 
 #pragma once
 
-#include <memory>
-
 #include "pvr/windows/GUIWindowPVRBase.h"
 
+#include <memory>
+
 class CFileItem;
-typedef std::shared_ptr<CFileItem> CFileItemPtr;
 
 namespace PVR
 {
   class CGUIWindowPVRTimersBase : public CGUIWindowPVRBase
   {
   public:
-    CGUIWindowPVRTimersBase(bool bRadio, int id, const std::string &xmlFile);
-    ~CGUIWindowPVRTimersBase(void) override;
+    CGUIWindowPVRTimersBase(bool bRadio, int id, const std::string& xmlFile);
+    ~CGUIWindowPVRTimersBase() override;
 
     bool OnMessage(CGUIMessage& message) override;
-    bool OnAction(const CAction &action) override;
-    bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
-    void UpdateButtons(void) override;
+    bool OnAction(const CAction& action) override;
+    bool Update(const std::string& strDirectory, bool updateFilterPath = true) override;
+    void UpdateButtons() override;
 
   private:
-    bool ActionShowTimer(const CFileItemPtr &item);
+    bool ActionShowTimer(const std::shared_ptr<CFileItem>& item);
 
-    CFileItemPtr m_currentFileItem;
+    std::shared_ptr<CFileItem> m_currentFileItem;
   };
 }

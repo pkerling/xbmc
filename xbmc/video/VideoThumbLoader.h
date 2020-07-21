@@ -8,15 +8,19 @@
 
 #pragma once
 
-#include <map>
-#include <vector>
+#include "FileItem.h"
 #include "ThumbLoader.h"
 #include "utils/JobManager.h"
-#include "FileItem.h"
+
+#include <map>
+#include <vector>
 
 class CStreamDetails;
 class CVideoDatabase;
 class EmbeddedArt;
+
+using ArtMap = std::map<std::string, std::string>;
+using ArtCache = std::map<std::pair<MediaType, int>, ArtMap>;
 
 /*!
  \ingroup thumbs,jobs
@@ -109,26 +113,19 @@ public:
    */
   void OnJobComplete(unsigned int jobID, bool success, CJob *job) override;
 
-  /*! \brief set the artwork map for an item
-   In addition, sets the standard fallbacks.
-   \param item the item on which to set art.
-   \param artwork the artwork map.
-   */
-  static void SetArt(CFileItem &item, const std::map<std::string, std::string> &artwork);
-
   static bool GetEmbeddedThumb(const std::string& path,
                                const std::string& type,
                                EmbeddedArt& art);
 
 protected:
   CVideoDatabase *m_videoDatabase;
-  typedef std::map<int, std::map<std::string, std::string> > ArtCache;
-  ArtCache m_showArt;
-  ArtCache m_seasonArt;
+  ArtCache m_artCache;
 
   /*! \brief Tries to detect missing data/info from a file and adds those
    \param item The CFileItem to process
    \return void
    */
   void DetectAndAddMissingItemData(CFileItem &item);
+
+  const ArtMap& GetArtFromCache(const std::string &mediaType, const int id);
 };

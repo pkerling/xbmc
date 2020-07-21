@@ -30,7 +30,6 @@
 #include "Application.h"
 #include "guilib/GUIWindowManager.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
-#include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/SettingsComponent.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
@@ -216,7 +215,7 @@ void CMMALVideo::dec_output_port_cb(MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T *buf
       // we don't keep up when running at 60fps in the background so switch to half rate
       if (m_fps > 40.0f && !CServiceBroker::GetWinSystem()->GetGfxContext().IsFullScreenVideo() && !(m_num_decoded & 1))
         wanted = false;
-      if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_omxDecodeStartWithValidFrame && (buffer->flags & MMAL_BUFFER_HEADER_FLAG_CORRUPTED))
+      if ((buffer->flags & MMAL_BUFFER_HEADER_FLAG_CORRUPTED))
         wanted = false;
       m_num_decoded++;
       CLog::Log(LOGDEBUG, LOGVIDEO,
@@ -588,7 +587,7 @@ bool CMMALVideo::AddData(const DemuxPacket &packet)
   uint8_t* pData = packet.pData;
   int iSize = packet.iSize;
   CSingleLock lock(m_sharedSection);
-  //if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(LOGVIDEO))
+  //if (CServiceBroker::GetLogging().CanLogComponent(LOGVIDEO))
   //  CLog::Log(LOGDEBUG, "%s::%s - %-8p %-6d dts:%.3f pts:%.3f ready_queue(%d)",
   //    CLASSNAME, __func__, pData, iSize, dts == DVD_NOPTS_VALUE ? 0.0 : packet.dts*1e-6, packet.pts == DVD_NOPTS_VALUE ? 0.0 : packet.pts*1e-6, m_output_ready.size());
 
@@ -720,10 +719,6 @@ CDVDVideoCodec::VCReturn CMMALVideo::GetPicture(VideoPicture* picture)
   bool drain = (m_codecControlFlags & DVD_CODEC_CTRL_DRAIN) ? true : false;
   bool send_eos = drain && !m_got_eos && m_packet_num_eos != m_packet_num;
 
-  if (picture->videoBuffer)
-    picture->videoBuffer->Release();
-  picture->videoBuffer = nullptr;
-
   // we don't get an EOS response if no packets have been sent
   if (!drain)
     m_got_eos = false;
@@ -799,6 +794,8 @@ CDVDVideoCodec::VCReturn CMMALVideo::GetPicture(VideoPicture* picture)
   if (ret == CDVDVideoCodec::VC_PICTURE)
   {
     assert(buffer && buffer->mmal_buffer);
+    if (picture->videoBuffer)
+      picture->videoBuffer->Release();
     picture->videoBuffer = dynamic_cast<CVideoBuffer*>(buffer);
     assert(picture->videoBuffer);
     picture->color_range  = 0;

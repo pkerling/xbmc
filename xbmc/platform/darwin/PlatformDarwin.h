@@ -8,16 +8,16 @@
 
 #pragma once
 
-#include "platform/Platform.h"
+#include "platform/posix/PlatformPosix.h"
 
-class CPlatformDarwin : public CPlatform
+class CPlatformDarwin : public CPlatformPosix
 {
   public:
     /**\brief C'tor */
-    CPlatformDarwin();
+    CPlatformDarwin() = default;
 
     /**\brief D'tor */
-    virtual ~CPlatformDarwin();
+    ~CPlatformDarwin() override = default;
 
     void Init() override;
 };

@@ -8,17 +8,16 @@
 
 #include "JNIXBMCMainView.h"
 
-#include <androidjni/jutils-details.hpp>
-#include <androidjni/Context.h>
-
+#include "CompileInfo.h"
 #include "utils/StringUtils.h"
 #include "utils/log.h"
 
-#include <list>
 #include <algorithm>
 #include <cassert>
+#include <list>
 
-#include "CompileInfo.h"
+#include <androidjni/Context.h>
+#include <androidjni/jutils-details.hpp>
 
 using namespace jni;
 
@@ -47,10 +46,6 @@ CJNIXBMCMainView::CJNIXBMCMainView(CJNISurfaceHolderCallback* callback)
   : m_callback(callback)
 {
   m_instance = this;
-}
-
-CJNIXBMCMainView::~CJNIXBMCMainView()
-{
 }
 
 void CJNIXBMCMainView::_attach(JNIEnv* env, jobject thiz)

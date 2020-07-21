@@ -16,11 +16,18 @@
 #include <vector>
 
 extern "C" {
-#include "libavformat/avformat.h"
+#include <libavformat/avformat.h>
 }
 
 class CDVDDemuxFFmpeg;
 class CURL;
+
+enum class TRANSPORT_STREAM_STATE
+{
+  NONE,
+  READY,
+  NOTREADY,
+};
 
 class CDemuxStreamVideoFFmpeg : public CDemuxStreamVideo
 {
@@ -41,7 +48,7 @@ public:
 
   std::string m_description;
 protected:
-  CDVDDemuxFFmpeg *m_parent;
+  CDVDDemuxFFmpeg* m_parent;
   AVStream* m_stream  = nullptr;
 };
 
@@ -54,7 +61,7 @@ public:
 
   std::string m_description;
 protected:
-  CDVDDemuxFFmpeg *m_parent;
+  CDVDDemuxFFmpeg* m_parent;
   AVStream* m_stream = nullptr;
 };
 
@@ -76,7 +83,7 @@ public:
   CDVDDemuxFFmpeg();
   ~CDVDDemuxFFmpeg() override;
 
-  bool Open(std::shared_ptr<CDVDInputStream> pInput, bool streaminfo = true, bool fileinfo = false);
+  bool Open(std::shared_ptr<CDVDInputStream> pInput, bool fileinfo);
   void Dispose();
   bool Reset() override ;
   void Flush() override;
@@ -99,7 +106,7 @@ public:
   int GetChapterCount() override;
   int GetChapter() override;
   void GetChapterName(std::string& strChapterName, int chapterIdx=-1) override;
-  int64_t GetChapterPos(int chapterIdx=-1) override;
+  int64_t GetChapterPos(int chapterIdx = -1) override;
   std::string GetStreamCodecName(int iStreamId) override;
 
   bool Aborted();
@@ -116,19 +123,21 @@ protected:
   void AddStream(int streamIdx, CDemuxStream* stream);
   void CreateStreams(unsigned int program = UINT_MAX);
   void DisposeStreams();
-  void ParsePacket(AVPacket *pkt);
-  bool IsVideoReady();
+  void ParsePacket(AVPacket* pkt);
+  TRANSPORT_STREAM_STATE TransportStreamAudioState();
+  TRANSPORT_STREAM_STATE TransportStreamVideoState();
+  bool IsTransportStreamReady();
   void ResetVideoStreams();
-  AVDictionary *GetFFMpegOptionsFromInput();
+  AVDictionary* GetFFMpegOptionsFromInput();
   double ConvertTimestamp(int64_t pts, int den, int num);
   void UpdateCurrentPTS();
   bool IsProgramChange();
   unsigned int HLSSelectProgram();
 
-  std::string GetStereoModeFromMetadata(AVDictionary *pMetadata);
-  std::string ConvertCodecToInternalStereoMode(const std::string &mode, const StereoModeConversionMap *conversionMap);
+  std::string GetStereoModeFromMetadata(AVDictionary* pMetadata);
+  std::string ConvertCodecToInternalStereoMode(const std::string& mode, const StereoModeConversionMap* conversionMap);
 
-  void GetL16Parameters(int &channels, int &samplerate);
+  void GetL16Parameters(int& channels, int& samplerate);
   double SelectAspect(AVStream* st, bool& forced);
 
   CCriticalSection m_critSection;
@@ -145,6 +154,8 @@ protected:
   unsigned int m_program;
   unsigned int m_streamsInProgram;
   unsigned int m_newProgram;
+  unsigned int m_initialProgramNumber;
+  int m_seekStream;
 
   XbmcThreads::EndTime  m_timeout;
 
@@ -158,7 +169,8 @@ protected:
   }m_pkt;
 
   bool m_streaminfo;
-  bool m_checkvideo;
+  bool m_reopen = false;
+  bool m_checkTransportStream;
   int m_displayTime = 0;
   double m_dtsAtDisplayTime;
   bool m_seekToKeyFrame = false;

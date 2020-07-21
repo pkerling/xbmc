@@ -7,30 +7,29 @@
  */
 
 #include "Control.h"
-#include "LanguageHook.h"
-#include "AddonUtils.h"
-#include "ServiceBroker.h"
 
-#include "guilib/GUIComponent.h"
-#include "guilib/GUILabel.h"
-#include "guilib/GUIFontManager.h"
-#include "guilib/GUILabelControl.h"
-#include "guilib/GUIFadeLabelControl.h"
-#include "guilib/GUITextBox.h"
+#include "AddonUtils.h"
+#include "LanguageHook.h"
+#include "ServiceBroker.h"
+#include "WindowException.h"
 #include "guilib/GUIButtonControl.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIControlFactory.h"
+#include "guilib/GUIEditControl.h"
+#include "guilib/GUIFadeLabelControl.h"
+#include "guilib/GUIFontManager.h"
 #include "guilib/GUIImage.h"
+#include "guilib/GUILabel.h"
+#include "guilib/GUILabelControl.h"
 #include "guilib/GUIListContainer.h"
 #include "guilib/GUIProgressControl.h"
-#include "guilib/GUISliderControl.h"
 #include "guilib/GUIRadioButtonControl.h"
+#include "guilib/GUISliderControl.h"
+#include "guilib/GUITextBox.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/GUIEditControl.h"
-#include "guilib/GUIControlFactory.h"
 #include "listproviders/StaticProvider.h"
-
-#include "utils/XBMCTinyXML.h"
 #include "utils/StringUtils.h"
-#include "WindowException.h"
+#include "utils/XBMCTinyXML.h"
 
 using namespace KODI;
 
@@ -130,17 +129,21 @@ namespace XBMCAddon
 
     void ControlTextBox::setText(const String& text)
     {
-      // create message
-      CGUIMessage msg(GUI_MSG_LABEL_SET, iParentId, iControlId);
-      msg.SetLabel(text);
+      if (pGUIControl)
+      {
+        // create message
+        CGUIMessage msg(GUI_MSG_LABEL_SET, iParentId, iControlId);
+        msg.SetLabel(text);
 
-      // send message
-      CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg, iParentId);
+        // send message
+        CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg, iParentId);
+      }
     }
 
     String ControlTextBox::getText()
     {
-      if (!pGUIControl) return NULL;
+      if (!pGUIControl)
+        return nullptr;
 
       XBMCAddonUtils::GuiLock lock(languageHook, false);
       return static_cast<CGUITextBox*>(pGUIControl)->GetDescription();
@@ -148,19 +151,24 @@ namespace XBMCAddon
 
     void ControlTextBox::reset()
     {
-      // create message
-      CGUIMessage msg(GUI_MSG_LABEL_RESET, iParentId, iControlId);
-      CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg, iParentId);
+      if (pGUIControl)
+      {
+        // create message
+        CGUIMessage msg(GUI_MSG_LABEL_RESET, iParentId, iControlId);
+        CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(msg, iParentId);
+      }
     }
 
     void ControlTextBox::scroll(long position)
     {
-      static_cast<CGUITextBox*>(pGUIControl)->Scroll((int)position);
+      if (pGUIControl)
+        static_cast<CGUITextBox*>(pGUIControl)->Scroll((int)position);
     }
 
     void ControlTextBox::autoScroll(int delay, int time, int repeat)
     {
-      static_cast<CGUITextBox*>(pGUIControl)->SetAutoScrolling(delay, time, repeat);
+      if (pGUIControl)
+        static_cast<CGUITextBox*>(pGUIControl)->SetAutoScrolling(delay, time, repeat);
     }
 
     CGUIControl* ControlTextBox::Create()
@@ -515,7 +523,6 @@ namespace XBMCAddon
     ControlRadioButton::ControlRadioButton(long x, long y, long width, long height, const String& label,
                                            const char* focusOnTexture,  const char* noFocusOnTexture,
                                            const char* focusOffTexture, const char* noFocusOffTexture,
-                                           const char* focusTexture,    const char* noFocusTexture,
                                            long _textOffsetX, long _textOffsetY,
                                            long alignment, const char* font, const char* _textColor,
                                            const char* _disabledColor, long angle,
@@ -533,11 +540,6 @@ namespace XBMCAddon
       strText = label;
 
       // if texture is supplied use it, else get default ones
-      strTextureFocus = focusTexture ? focusTexture :
-        XBMCAddonUtils::getDefaultImage("button", "texturefocus");
-      strTextureNoFocus = noFocusTexture ? noFocusTexture :
-        XBMCAddonUtils::getDefaultImage("button", "texturenofocus");
-
       if (focusOnTexture && noFocusOnTexture)
       {
         strTextureRadioOnFocus = focusOnTexture;
@@ -545,8 +547,10 @@ namespace XBMCAddon
       }
       else
       {
-        strTextureRadioOnFocus = strTextureRadioOnNoFocus = focusTexture ? focusTexture :
-          XBMCAddonUtils::getDefaultImage("radiobutton", "textureradiofocus");
+        strTextureRadioOnFocus =
+          XBMCAddonUtils::getDefaultImage("radiobutton", "textureradioonfocus");
+        strTextureRadioOnNoFocus =
+          XBMCAddonUtils::getDefaultImage("radiobutton", "textureradioonnofocus");
       }
 
       if (focusOffTexture && noFocusOffTexture)
@@ -556,8 +560,10 @@ namespace XBMCAddon
       }
       else
       {
-        strTextureRadioOffFocus = strTextureRadioOffNoFocus = noFocusTexture ? noFocusTexture :
-          XBMCAddonUtils::getDefaultImage("radiobutton", "textureradiofocus");
+        strTextureRadioOffFocus =
+          XBMCAddonUtils::getDefaultImage("radiobutton", "textureradioofffocus");
+        strTextureRadioOffNoFocus =
+          XBMCAddonUtils::getDefaultImage("radiobutton", "textureradiooffnofocus");
       }
 
       if (font) strFont = font;
@@ -746,9 +752,9 @@ namespace XBMCAddon
 
         TiXmlElement pNode("animation");
         std::vector<std::string> attrs = StringUtils::Split(cAttr, " ");
-        for (std::vector<std::string>::const_iterator i = attrs.begin(); i != attrs.end(); ++i)
+        for (const auto& i : attrs)
         {
-          std::vector<std::string> attrs2 = StringUtils::Split(*i, "=");
+          std::vector<std::string> attrs2 = StringUtils::Split(i, "=");
           if (attrs2.size() == 2)
             pNode.SetAttribute(attrs2[0], attrs2[1]);
         }
@@ -985,9 +991,9 @@ namespace XBMCAddon
                              const char* font, const char* _textColor,
                              const char* _disabledColor,
                              long _alignment, const char* focusTexture,
-                             const char* noFocusTexture, bool isPassword) :
+                             const char* noFocusTexture) :
       strFont("font13"), textColor(0xffffffff), disabledColor(0x60ffffff),
-      align(_alignment), bIsPassword(isPassword)
+      align(_alignment)
 
     {
       strTextureFocus = focusTexture ? focusTexture :
@@ -1020,8 +1026,6 @@ namespace XBMCAddon
         label,
         strText);
 
-      if (bIsPassword)
-        static_cast<CGUIEditControl*>(pGUIControl)->SetInputType(CGUIEditControl::INPUT_TYPE_PASSWORD, 0);
       return pGUIControl;
     }
 
@@ -1164,8 +1168,8 @@ namespace XBMCAddon
     {
       XBMC_TRACE;
 
-      for (std::vector<Alternative<String, const XBMCAddon::xbmcgui::ListItem* > >::const_iterator iter = items.begin(); iter != items.end(); ++iter)
-        addItem(*iter,false);
+      for (const auto& iter : items)
+        addItem(iter, false);
       sendLabelBind(vecItems.size());
     }
 

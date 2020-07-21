@@ -6,11 +6,12 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "ILanguageInvoker.h"
+
+#include "interfaces/generic/ILanguageInvocationHandler.h"
+
 #include <string>
 #include <vector>
-
-#include "ILanguageInvoker.h"
-#include "interfaces/generic/ILanguageInvocationHandler.h"
 
 ILanguageInvoker::ILanguageInvoker(ILanguageInvocationHandler *invocationHandler)
   : m_id(-1),
@@ -62,10 +63,10 @@ bool ILanguageInvoker::onExecutionInitialized()
   return m_invocationHandler->OnScriptInitialized(this);
 }
 
-void ILanguageInvoker::onAbortRequested()
+void ILanguageInvoker::AbortNotification()
 {
   if (m_invocationHandler)
-    m_invocationHandler->OnScriptAbortRequested(this);
+    m_invocationHandler->NotifyScriptAborting(this);
 }
 
 void ILanguageInvoker::onExecutionFailed()

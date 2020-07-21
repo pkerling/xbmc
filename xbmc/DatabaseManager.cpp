@@ -7,17 +7,18 @@
  */
 
 #include "DatabaseManager.h"
-#include "utils/log.h"
-#include "addons/AddonDatabase.h"
-#include "view/ViewDatabase.h"
+
+#include "ServiceBroker.h"
 #include "TextureDatabase.h"
+#include "addons/AddonDatabase.h"
 #include "music/MusicDatabase.h"
-#include "video/VideoDatabase.h"
 #include "pvr/PVRDatabase.h"
 #include "pvr/epg/EpgDatabase.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
-#include "ServiceBroker.h"
+#include "utils/log.h"
+#include "video/VideoDatabase.h"
+#include "view/ViewDatabase.h"
 
 using namespace PVR;
 
@@ -95,7 +96,8 @@ bool CDatabaseManager::Update(CDatabase &db, const DatabaseSettings &settings)
       // Database exists, take a copy for our current version (if needed) and reopen that one
       if (version < db.GetSchemaVersion())
       {
-        CLog::Log(LOGNOTICE, "Old database found - updating from version %i to %i", version, db.GetSchemaVersion());
+        CLog::Log(LOGINFO, "Old database found - updating from version %i to %i", version,
+                  db.GetSchemaVersion());
         m_bIsUpgrading = true;
 
         bool copy_fail = false;
@@ -155,7 +157,8 @@ bool CDatabaseManager::UpdateVersion(CDatabase &db, const std::string &dbName)
   }
   else if (version < db.GetSchemaVersion())
   {
-    CLog::Log(LOGNOTICE, "Attempting to update the database %s from version %i to %i", dbName.c_str(), version, db.GetSchemaVersion());
+    CLog::Log(LOGINFO, "Attempting to update the database %s from version %i to %i", dbName.c_str(),
+              version, db.GetSchemaVersion());
     bool success = true;
     db.BeginTransaction();
     try
@@ -188,7 +191,7 @@ bool CDatabaseManager::UpdateVersion(CDatabase &db, const std::string &dbName)
   else
   {
     bReturn = true;
-    CLog::Log(LOGNOTICE, "Running database version %s", dbName.c_str());
+    CLog::Log(LOGINFO, "Running database version %s", dbName.c_str());
   }
 
   return bReturn;

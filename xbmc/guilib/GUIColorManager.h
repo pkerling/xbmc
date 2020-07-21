@@ -18,12 +18,10 @@
  \brief
  */
 
+#include "utils/Color.h"
+
 #include <map>
 #include <string>
-
-#include "GUIComponent.h"
-#include "ServiceBroker.h"
-#include "utils/Color.h"
 
 class CXBMCTinyXML;
 

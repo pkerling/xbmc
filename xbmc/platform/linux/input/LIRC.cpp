@@ -7,14 +7,16 @@
  */
 
 #include "LIRC.h"
+
 #include "AppInboundProtocol.h"
 #include "ServiceBroker.h"
 #include "profiles/ProfileManager.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
 #include "utils/log.h"
-#include <lirc/lirc_client.h>
+
 #include <fcntl.h>
+#include <lirc/lirc_client.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -58,7 +60,7 @@ void CLirc::Process()
       if (!CheckDaemon())
       {
         CSingleExit lock(m_critSection);
-        Sleep(1000);
+        CThread::Sleep(1000);
         continue;
       }
 
@@ -66,7 +68,7 @@ void CLirc::Process()
       if (m_fd <= 0)
       {
         CSingleExit lock(m_critSection);
-        Sleep(1000);
+        CThread::Sleep(1000);
         continue;
       }
     }
@@ -78,7 +80,7 @@ void CLirc::Process()
       if (ret < 0)
       {
         lirc_deinit();
-        Sleep(1000);
+        CThread::Sleep(1000);
         break;
       }
       if (code != nullptr)

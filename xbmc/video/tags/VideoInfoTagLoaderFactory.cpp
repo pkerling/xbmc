@@ -7,11 +7,12 @@
  */
 
 #include "VideoInfoTagLoaderFactory.h"
+
+#include "FileItem.h"
+#include "ServiceBroker.h"
 #include "VideoTagLoaderFFmpeg.h"
 #include "VideoTagLoaderNFO.h"
 #include "VideoTagLoaderPlugin.h"
-#include "FileItem.h"
-#include "ServiceBroker.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 
@@ -22,10 +23,6 @@ IVideoInfoTagLoader* CVideoInfoTagLoaderFactory::CreateLoader(const CFileItem& i
                                                               bool lookInFolder,
                                                               bool forceRefresh)
 {
-  // don't try to read tags for streams
-  if (item.IsInternetStream())
-    return nullptr;
-
   if (item.IsPlugin() && info && info->ID() == "metadata.local")
   {
     // Direct loading from plugin source with metadata.local scraper
@@ -41,7 +38,7 @@ IVideoInfoTagLoader* CVideoInfoTagLoaderFactory::CreateLoader(const CFileItem& i
   delete nfo;
 
   if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_MYVIDEOS_USETAGS) &&
-      (item.IsType(".mkv") || item.IsType(".mp4") || item.IsType(".avi")))
+      (item.IsType(".mkv") || item.IsType(".mp4") || item.IsType(".avi") || item.IsType(".m4v")))
   {
     CVideoTagLoaderFFmpeg* ff = new CVideoTagLoaderFFmpeg(item, info, lookInFolder);
     if (ff->HasInfo())

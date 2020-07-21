@@ -6,32 +6,26 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <stdint.h>
-#include <limits.h>
-#include <sys/utsname.h>
-#include <set>
-#include <sstream>
-#include <string>
-#include <algorithm>
-
 #include "AESinkALSA.h"
+
 #include "ServiceBroker.h"
 #include "cores/AudioEngine/AESinkFactory.h"
-#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/AudioEngine/Utils/AEELDParser.h"
-#include "utils/log.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
+#include "threads/SingleLock.h"
 #include "utils/MathUtils.h"
 #include "utils/SystemInfo.h"
-#include "threads/SingleLock.h"
-#include "settings/AdvancedSettings.h"
-#include "settings/SettingsComponent.h"
-#if defined(HAS_LIBAMCODEC)
-#include "utils/AMLUtils.h"
-#endif
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
 
-#ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
-#endif
+#include <algorithm>
+#include <limits.h>
+#include <set>
+#include <sstream>
+#include <stdint.h>
+#include <string>
+
+#include <sys/utsname.h>
 
 #define ALSA_OPTIONS (SND_PCM_NO_AUTO_FORMAT | SND_PCM_NO_AUTO_CHANNELS | SND_PCM_NO_AUTO_RESAMPLE)
 
@@ -449,7 +443,7 @@ snd_pcm_chmap_t* CAESinkALSA::SelectALSAChannelMap(const CAEChannelInfo& info)
       chmap = CopyALSAchmap(&supportedMaps[best]->map);
   }
 
-  if (chmap && CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(LOGAUDIO))
+  if (chmap && CServiceBroker::GetLogging().CanLogComponent(LOGAUDIO))
     CLog::Log(LOGDEBUG, "CAESinkALSA::SelectALSAChannelMap - Selected ALSA map \"%s\"", ALSAchmapToString(chmap).c_str());
 
   snd_pcm_free_chmaps(supportedMaps);
@@ -502,12 +496,6 @@ bool CAESinkALSA::Initialize(AEAudioFormat &format, std::string &device)
   {
     m_passthrough   = false;
   }
-#if defined(HAS_LIBAMCODEC)
-  if (aml_present())
-  {
-    aml_set_audio_passthrough(m_passthrough);
-  }
-#endif
 
   if (inconfig.channels == 0)
   {
@@ -952,9 +940,9 @@ void CAESinkALSA::HandleError(const char* name, int err)
 
       /* try to resume the stream */
       while((err = snd_pcm_resume(m_pcm)) == -EAGAIN)
-        Sleep(1);
+        KODI::TIME::Sleep(1);
 
-      /* if the hardware doesnt support resume, prepare the stream */
+      /* if the hardware doesn't support resume, prepare the stream */
       if (err == -ENOSYS)
         if ((err = snd_pcm_prepare(m_pcm)) < 0)
           CLog::Log(LOGERROR, "CAESinkALSA::HandleError(%s) - snd_pcm_prepare returned %d (%s)", name, err, snd_strerror(err));
@@ -1087,7 +1075,7 @@ bool CAESinkALSA::OpenPCMDevice(const std::string &name, const std::string &para
 
 void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
 {
-#if HAVE_LIBUDEV
+#if defined(HAVE_LIBUDEV)
   m_deviceMonitor.Start();
 #endif
 
@@ -1104,7 +1092,9 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
   snd_config_t *config;
   snd_config_copy(&config, snd_config);
 
+#if !defined(HAVE_X11)
   m_controlMonitor.Clear();
+#endif
 
   /* Always enumerate the default device.
    * Note: If "default" is a stereo device, EnumerateDevice()
@@ -1151,10 +1141,14 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
 
       /* Do not enumerate "default", it is already enumerated above. */
 
-      /* Do not enumerate the sysdefault or surroundXX devices, those are
-       * always accompanied with a "front" device and it is handled above
-       * as "@". The below devices will be automatically used if available
-       * for a "@" device. */
+      /* Do not enumerate the surroundXX devices, those are always accompanied
+       * with a "front" device and it is handled above as "@". The below
+       * devices plus sysdefault will be automatically used if available
+       * for a "@" device.
+       * sysdefault devices are enumerated as not all cards have front/surround
+       * devices. For cards with front/surround devices the sysdefault
+       * entry will be removed in a second pass after enumeration.
+       */
 
       /* Ubuntu has patched their alsa-lib so that "defaults.namehint.extended"
        * defaults to "on" instead of upstream "off", causing lots of unwanted
@@ -1163,7 +1157,6 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
        * "plughw", "dsnoop"). */
 
       else if (baseName != "default"
-            && baseName != "sysdefault"
             && baseName != "surround40"
             && baseName != "surround41"
             && baseName != "surround50"
@@ -1183,7 +1176,9 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
   }
   snd_device_name_free_hint(hints);
 
+#if !defined(HAVE_X11)
   m_controlMonitor.Start();
+#endif
 
   /* set the displayname for default device */
   if (!list.empty() && list[0].m_deviceName == "default")
@@ -1194,6 +1189,32 @@ void CAESinkALSA::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
     /* Otherwise use the discovered name or (unlikely) "Default" */
     else if (list[0].m_displayName.empty())
       list[0].m_displayName = "Default";
+  }
+
+  /* cards with surround entries where sysdefault should be removed */
+  std::set<std::string> cardsWithSurround;
+
+  for (AEDeviceInfoList::iterator it1 = list.begin(); it1 != list.end(); ++it1)
+  {
+    std::string baseName = it1->m_deviceName.substr(0, it1->m_deviceName.find(':'));
+    std::string card = GetParamFromName(it1->m_deviceName, "CARD");
+    if (baseName == "@" && !card.empty())
+      cardsWithSurround.insert(card);
+  }
+
+  if (!cardsWithSurround.empty())
+  {
+    /* remove sysdefault entries where we already have a surround entry */
+    AEDeviceInfoList::iterator iter = list.begin();
+    while (iter != list.end())
+    {
+      std::string baseName = iter->m_deviceName.substr(0, iter->m_deviceName.find(':'));
+      std::string card = GetParamFromName(iter->m_deviceName, "CARD");
+      if (baseName == "sysdefault" && cardsWithSurround.find(card) != cardsWithSurround.end())
+        iter = list.erase(iter);
+      else
+        iter++;
+    }
   }
 
   /* lets check uniqueness, we may need to append DEV or CARD to DisplayName */
@@ -1366,8 +1387,10 @@ void CAESinkALSA::EnumerateDevice(AEDeviceInfoList &list, const std::string &dev
             snd_hctl_load(hctl);
             bool badHDMI = false;
 
+#if !defined(HAVE_X11)
             /* add ELD to monitoring */
             m_controlMonitor.Add(strHwName, SND_CTL_ELEM_IFACE_PCM, dev, "ELD");
+#endif
 
             if (!GetELD(hctl, dev, info, badHDMI))
               CLog::Log(LOGDEBUG, "CAESinkALSA - Unable to obtain ELD information for device \"%s\" (not supported by device, or kernel older than 3.2)",
@@ -1596,7 +1619,7 @@ bool CAESinkALSA::GetELD(snd_hctl_t *hctl, int device, CAEDeviceInfo& info, bool
 
 void CAESinkALSA::sndLibErrorHandler(const char *file, int line, const char *function, int err, const char *fmt, ...)
 {
-  if(!CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(LOGAUDIO))
+  if (!CServiceBroker::GetLogging().CanLogComponent(LOGAUDIO))
     return;
 
   va_list arg;
@@ -1616,11 +1639,17 @@ void CAESinkALSA::Cleanup()
 #if HAVE_LIBUDEV
   m_deviceMonitor.Stop();
 #endif
+
+#if !defined(HAVE_X11)
   m_controlMonitor.Clear();
+#endif
 }
 
 #if HAVE_LIBUDEV
 CALSADeviceMonitor CAESinkALSA::m_deviceMonitor; // ARGH
 #endif
+
+#if !defined(HAVE_X11)
 CALSAHControlMonitor CAESinkALSA::m_controlMonitor; // ARGH
+#endif
 

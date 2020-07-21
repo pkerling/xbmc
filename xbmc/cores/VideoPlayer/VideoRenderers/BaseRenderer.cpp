@@ -6,22 +6,23 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <cstdlib> // std::abs(int) prototype
-#include <algorithm>
 #include "BaseRenderer.h"
+
 #include "ServiceBroker.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "guilib/GUIComponent.h"
-#include "windowing/GraphicContext.h"
-#include "guilib/GUIWindowManager.h"
-#include "guilib/LocalizeStrings.h"
-#include "utils/log.h"
+#include "settings/lib/SettingDefinitions.h"
 #include "utils/MathUtils.h"
-#include "utils/SystemInfo.h"
-#include "settings/AdvancedSettings.h"
-#include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+
+#include <algorithm>
+#include <cstdlib> // std::abs(int) prototype
 
 
 CBaseRenderer::CBaseRenderer()
@@ -482,13 +483,13 @@ void CBaseRenderer::SetVideoSettings(const CVideoSettings &settings)
   m_videoSettings = settings;
 }
 
-void CBaseRenderer::SettingOptionsRenderMethodsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CBaseRenderer::SettingOptionsRenderMethodsFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
-  list.push_back(make_pair(g_localizeStrings.Get(13416), RENDER_METHOD_AUTO));
+  list.emplace_back(g_localizeStrings.Get(13416), RENDER_METHOD_AUTO);
 
 #ifdef HAS_DX
-  list.push_back(make_pair(g_localizeStrings.Get(16319), RENDER_METHOD_DXVA));
-  list.push_back(make_pair(g_localizeStrings.Get(13431), RENDER_METHOD_D3D_PS));
-  list.push_back(make_pair(g_localizeStrings.Get(13419), RENDER_METHOD_SOFTWARE));
+  list.push_back(IntegerSettingOption(g_localizeStrings.Get(16319), RENDER_METHOD_DXVA));
+  list.push_back(IntegerSettingOption(g_localizeStrings.Get(13431), RENDER_METHOD_D3D_PS));
+  list.push_back(IntegerSettingOption(g_localizeStrings.Get(13419), RENDER_METHOD_SOFTWARE));
 #endif
 }

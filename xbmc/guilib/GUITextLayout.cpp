@@ -7,9 +7,11 @@
  */
 
 #include "GUITextLayout.h"
-#include "GUIFont.h"
-#include "GUIControl.h"
+
 #include "GUIColorManager.h"
+#include "GUIComponent.h"
+#include "GUIControl.h"
+#include "GUIFont.h"
 #include "utils/CharsetConverter.h"
 #include "utils/StringUtils.h"
 
@@ -66,9 +68,8 @@ void CGUITextLayout::Render(float x, float y, float angle, UTILS::Color color, U
     alignment &= ~XBFONT_CENTER_Y;
   }
   m_font->Begin();
-  for (std::vector<CGUIString>::iterator i = m_lines.begin(); i != m_lines.end(); ++i)
+  for (const auto& string : m_lines)
   {
-    const CGUIString &string = *i;
     uint32_t align = alignment;
     if (align & XBFONT_JUSTIFIED && string.m_carriageReturn)
       align &= ~XBFONT_JUSTIFIED;
@@ -122,9 +123,8 @@ void CGUITextLayout::RenderScrolling(float x, float y, float angle, UTILS::Color
   //       any difference to the smoothness of scrolling though which will be
   //       jumpy with this sort of thing.  It's not exactly a well used situation
   //       though, so this hack is probably OK.
-  for (std::vector<CGUIString>::iterator i = m_lines.begin(); i != m_lines.end(); ++i)
+  for (const auto& string : m_lines)
   {
-    const CGUIString &string = *i;
     m_font->DrawScrollingText(x, y, m_colors, shadowColor, string.m_text, alignment, maxWidth, scrollInfo);
     y += m_font->GetLineHeight();
   }
@@ -154,9 +154,8 @@ void CGUITextLayout::RenderOutline(float x, float y, UTILS::Color color, UTILS::
     // adjust so the baselines of the fonts align
     float by = y + m_font->GetTextBaseLine() - m_borderFont->GetTextBaseLine();
     m_borderFont->Begin();
-    for (std::vector<CGUIString>::iterator i = m_lines.begin(); i != m_lines.end(); ++i)
+    for (const auto& string : m_lines)
     {
-      const CGUIString &string = *i;
       uint32_t align = alignment;
       if (align & XBFONT_JUSTIFIED && string.m_carriageReturn)
         align &= ~XBFONT_JUSTIFIED;
@@ -186,9 +185,8 @@ void CGUITextLayout::RenderOutline(float x, float y, UTILS::Color color, UTILS::
     m_colors[0] = color;
 
   m_font->Begin();
-  for (std::vector<CGUIString>::iterator i = m_lines.begin(); i != m_lines.end(); ++i)
+  for (const auto& string : m_lines)
   {
-    const CGUIString &string = *i;
     uint32_t align = alignment;
     if (align & XBFONT_JUSTIFIED && string.m_carriageReturn)
       align &= ~XBFONT_JUSTIFIED;
@@ -258,56 +256,68 @@ void CGUITextLayout::UpdateStyled(const vecText &text, const std::vector<UTILS::
 }
 
 // BidiTransform is used to handle RTL text flipping in the string
-void CGUITextLayout::BidiTransform(std::vector<CGUIString> &lines, bool forceLTRReadingOrder)
+void CGUITextLayout::BidiTransform(std::vector<CGUIString>& lines, bool forceLTRReadingOrder)
 {
-  for (unsigned int i=0; i<lines.size(); i++)
+  for (unsigned int i = 0; i < lines.size(); i++)
   {
-    CGUIString &line = lines[i];
+    CGUIString& line = lines[i];
+    unsigned int lineLength = line.m_text.size();
+    std::wstring logicalText;
+    vecText style;
 
-    // reserve enough space in the flipped text
-    vecText flippedText;
-    flippedText.reserve(line.m_text.size());
+    logicalText.reserve(lineLength);
+    style.reserve(lineLength);
 
-    character_t sectionStyle = 0xffff0000; // impossible to achieve
-    std::wstring sectionText;
-    for (vecText::iterator it = line.m_text.begin(); it != line.m_text.end(); ++it)
+    // Separate the text and style for the input styled text
+    for (const auto& it : line.m_text)
     {
-      character_t style = *it & 0xffff0000;
-      if (style != sectionStyle)
+      logicalText.push_back((wchar_t)(it & 0xffff));
+      style.push_back(it & 0xffff0000);
+    }
+
+    // Allocate memory for visual to logical map and call bidi
+    int* visualToLogicalMap = new (std::nothrow) int[lineLength + 1]();
+    std::wstring visualText = BidiFlip(logicalText, forceLTRReadingOrder, visualToLogicalMap);
+
+    vecText styledVisualText;
+    styledVisualText.reserve(lineLength);
+
+    // If memory allocation failed, fallback to text with no styling
+    if (!visualToLogicalMap)
+    {
+      for (unsigned int j = 0; j < visualText.size(); j++)
       {
-        if (!sectionText.empty())
-        { // style has changed, bidi flip text
-          std::wstring sectionFlipped = BidiFlip(sectionText, forceLTRReadingOrder);
-          for (unsigned int j = 0; j < sectionFlipped.size(); j++)
-            flippedText.push_back(sectionStyle | sectionFlipped[j]);
-        }
-        sectionStyle = style;
-        sectionText.clear();
+        styledVisualText.push_back(visualText[j]);
       }
-      sectionText.push_back( (wchar_t)(*it & 0xffff) );
+    }
+    else
+    {
+      for (unsigned int j = 0; j < visualText.size(); j++)
+      {
+        styledVisualText.push_back(style[visualToLogicalMap[j]] | visualText[j]);
+      }
     }
 
-    // handle the last section
-    if (!sectionText.empty())
-    {
-      std::wstring sectionFlipped = BidiFlip(sectionText, forceLTRReadingOrder);
-      for (unsigned int j = 0; j < sectionFlipped.size(); j++)
-        flippedText.push_back(sectionStyle | sectionFlipped[j]);
-    }
+    delete[] visualToLogicalMap;
 
     // replace the original line with the processed one
-    lines[i] = CGUIString(flippedText.begin(), flippedText.end(), line.m_carriageReturn);
+    lines[i] = CGUIString(styledVisualText.begin(), styledVisualText.end(), line.m_carriageReturn);
   }
 }
 
-std::wstring CGUITextLayout::BidiFlip(const std::wstring &text, bool forceLTRReadingOrder)
+std::wstring CGUITextLayout::BidiFlip(const std::wstring& text,
+                                      bool forceLTRReadingOrder,
+                                      int* visualToLogicalMap /*= nullptr*/)
 {
-  std::string utf8text;
   std::wstring visualText;
+  std::u32string utf32logical;
+  std::u32string utf32visual;
 
-  // convert to utf8, and back to utf16 with bidi flipping
-  g_charsetConverter.wToUTF8(text, utf8text);
-  g_charsetConverter.utf8ToW(utf8text, visualText, true, forceLTRReadingOrder);
+  // Convert to utf32, call bidi then convert the result back to utf16
+  g_charsetConverter.wToUtf32(text, utf32logical);
+  g_charsetConverter.utf32logicalToVisualBiDi(utf32logical, utf32visual, false, false,
+                                              visualToLogicalMap);
+  g_charsetConverter.utf32ToW(utf32visual, visualText);
 
   return visualText;
 }
@@ -598,9 +608,8 @@ void CGUITextLayout::CalcTextExtent()
   m_textHeight = 0;
   if (!m_font) return;
 
-  for (std::vector<CGUIString>::iterator i = m_lines.begin(); i != m_lines.end(); ++i)
+  for (const auto& string : m_lines)
   {
-    const CGUIString &string = *i;
     float w = m_font->GetTextWidth(string.m_text);
     if (w > m_textWidth)
       m_textWidth = w;
@@ -611,8 +620,8 @@ void CGUITextLayout::CalcTextExtent()
 unsigned int CGUITextLayout::GetTextLength() const
 {
   unsigned int length = 0;
-  for (std::vector<CGUIString>::const_iterator i = m_lines.begin(); i != m_lines.end(); ++i)
-    length += i->m_text.size();
+  for (const auto& string : m_lines)
+    length += string.m_text.size();
   return length;
 }
 

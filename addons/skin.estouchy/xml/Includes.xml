@@ -216,10 +216,10 @@
 			<control type="image">
 				<description>Kodi Logo</description>
 				<posx>22</posx>
-				<posy>2</posy>
-				<width>150</width>
-				<height>75</height>
-				<texture>kodi_logo.png</texture>
+				<posy>16</posy>
+				<width>160</width>
+				<height>44</height>
+				<texture>special://xbmc/media/vendor_logo.png</texture>
 				<include>VisibleFadeEffect</include>
 			</control>
 		</control>
@@ -640,7 +640,7 @@
 	<include name="ScrollOffsetLabel">
 		<control type="group">
 			<include>16x9_xPos_Relocation</include>
-			<visible>Container.Scrolling + [String.IsEqual(Container.SortMethod,$LOCALIZE[551]) | String.IsEqual(Container.SortMethod,$LOCALIZE[561]) | String.IsEqual(Container.SortMethod,$LOCALIZE[558]) | String.IsEqual(Container.SortMethod,$LOCALIZE[557]) | String.IsEqual(Container.SortMethod,$LOCALIZE[556])]</visible>
+			<visible>Container.Scrolling + [Container.SortMethod(1) | Container.SortMethod(4) | Container.SortMethod(12) | Container.SortMethod(10) | Container.SortMethod(7) | Container.SortMethod(29)]</visible>
 			<animation effect="fade" time="100">Visible</animation>
 			<animation effect="fade" time="300">Hidden</animation>
 			<posx>600</posx>
@@ -792,8 +792,8 @@
 				<height>760</height>
 				<onleft>9000</onleft>
 				<onright>9003</onright>
-				<onup>10</onup>
-				<ondown>10</ondown>
+				<onup>9002</onup>
+				<ondown>9002</ondown>
 				<scrolltime>300</scrolltime>
 				<orientation>vertical</orientation>
 				<focusposition>1</focusposition>
@@ -1153,7 +1153,7 @@
 		<control type="button">
 			<label>31006</label>
 			<include>MenuButtonCommonValues</include>
-			<onclick>ActivateWindow(122)</onclick>
+			<onclick>ActivateWindow(visualisationpresetlist)</onclick>
 		</control>
 		<control type="button">
 			<label>$LOCALIZE[486]$INFO[Playlist.Repeat, : ]</label>
@@ -2492,7 +2492,7 @@
 			<visible>VideoPlayer.HasMenu + !VideoPlayer.Content(LiveTV)</visible>
 		</control>
 		<control type="button">
-			<label>Player info</label>
+			<label>31015</label>
 			<include>MenuButtonCommonValues</include>
 			<onclick>ClearProperty(PopupMenuVisible,Home)</onclick>
 			<onclick>ActivateWindow(playerprocessinfo)</onclick>
@@ -2521,6 +2521,61 @@
 			<include>MenuButtonCommonValues</include>
 		</control>
 	</include>
+	<include name="YesNoDefaultButtons">
+		<control type="group">
+			<posx>145</posx>
+			<posy>240</posy>
+			<width>660</width>
+			<height>60</height>
+			<visible>Window.IsVisible(yesnodialog)</visible>
+			<control type="button" id="11">
+				<description>Yes button</description>
+				<posx>0</posx>
+				<posy>0</posy>
+				<width>200</width>
+				<include>ButtonInfoDialogsCommonValues</include>
+			</control>
+			<control type="button" id="10">
+				<description>No button</description>
+				<posx>210</posx>
+				<posy>0</posy>
+				<width>200</width>
+				<include>ButtonInfoDialogsCommonValues</include>
+			</control>
+		</control>
+	</include>
+	<include name="YesNoExtendedButtons">
+		<control type="grouplist" id="9000">
+			<posx>20</posx>
+			<posy>240</posy>
+			<width>660</width>
+			<height>60</height>
+			<itemgap>10</itemgap>
+			<align>center</align>
+			<orientation>horizontal</orientation>
+			<onleft>9000</onleft>
+			<onright>9000</onright>
+			<onup>9000</onup>
+			<ondown>9000</ondown>
+			<visible>!Window.IsVisible(yesnodialog)</visible>
+			<control type="button" id="10">
+				<description>OK button</description>
+				<width>200</width>
+				<include>ButtonInfoDialogsCommonValues</include>
+			</control>
+			<control type="button" id="11">
+				<description>Cancel button</description>
+				<width>200</width>
+				<include>ButtonInfoDialogsCommonValues</include>
+			</control>
+			<control type="button" id="12">
+				<description>Custom button</description>
+				<width>200</width>
+				<include>ButtonInfoDialogsCommonValues</include>
+			</control>
+		</control>
+	</include>
+
 	<include name="16x9_xPos_Relocation">
 		<animation effect="slide" start="0,0" end="213,0" time="0" condition="String.IsEqual(Skin.AspectRatio,16:9)">conditional</animation>
 	</include>

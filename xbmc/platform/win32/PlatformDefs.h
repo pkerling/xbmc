@@ -8,8 +8,6 @@
 
 #pragma once
 
-#ifdef TARGET_WINDOWS
-
 #include <windows.h>
 
 #define __STDC_FORMAT_MACROS
@@ -30,12 +28,6 @@ typedef intptr_t      ssize_t;
 
 #define ftello64 _ftelli64
 #define fseeko64 _fseeki64
-#ifndef strcasecmp
-#define strcasecmp strcmpi
-#endif
-#ifndef strncasecmp
-#define strncasecmp strnicmp
-#endif
 
 #if defined TARGET_WINDOWS_DESKTOP
 #define popen   _popen
@@ -57,6 +49,3 @@ typedef intptr_t      ssize_t;
 #endif
 
 extern "C" char * strptime(const char *buf, const char *fmt, struct tm *tm);
-
-#endif // TARGET_WINDOWS
-

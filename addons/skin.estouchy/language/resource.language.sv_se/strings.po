@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -56,6 +56,10 @@ msgctxt "#31014"
 msgid "Episodes"
 msgstr "Avsnitt"
 
+msgctxt "#31015"
+msgid "Player info"
+msgstr "Spelarinfo"
+
 msgctxt "#31016"
 msgid "Albums"
 msgstr "Album"
@@ -95,6 +99,10 @@ msgstr "Logga in"
 msgctxt "#31039"
 msgid "Updated:"
 msgstr "Uppdaterad:"
+
+msgctxt "#31043"
+msgid "PAUSED"
+msgstr "PAUSAD"
 
 msgctxt "#31044"
 msgid "FAST FORWARD"
@@ -186,7 +194,7 @@ msgstr "Ladda ner undertexter"
 
 msgctxt "#31358"
 msgid "Teletext"
-msgstr "Texttv"
+msgstr "Text-tv"
 
 msgctxt "#31390"
 msgid "Skin default"
@@ -266,7 +274,7 @@ msgstr "Bakgrund:"
 
 msgctxt "#31555"
 msgid "Configure TV settings · Change full screen info · Manage EPG data settings"
-msgstr "Konfigurera TV-inställningar · Ändra helskärmsinformation · Hantera EPG datainställningar"
+msgstr "Konfigurera tv-inställningar · Ändra helskärmsinformation · Hantera EPG datainställningar"
 
 msgctxt "#31556"
 msgid "Live TV"

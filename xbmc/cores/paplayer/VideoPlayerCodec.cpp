@@ -7,20 +7,20 @@
  */
 
 #include "VideoPlayerCodec.h"
-#include "cores/AudioEngine/Utils/AEUtil.h"
+
+#include "ServiceBroker.h"
+#include "URL.h"
 #include "cores/AudioEngine/AEResampleFactory.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
-
-#include "cores/VideoPlayer/DVDInputStreams/DVDFactoryInputStream.h"
-#include "cores/VideoPlayer/DVDDemuxers/DVDFactoryDemuxer.h"
-#include "cores/VideoPlayer/DVDDemuxers/DVDDemuxUtils.h"
-#include "cores/VideoPlayer/DVDStreamInfo.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDFactoryCodec.h"
+#include "cores/VideoPlayer/DVDDemuxers/DVDDemuxUtils.h"
+#include "cores/VideoPlayer/DVDDemuxers/DVDFactoryDemuxer.h"
+#include "cores/VideoPlayer/DVDInputStreams/DVDFactoryInputStream.h"
+#include "cores/VideoPlayer/DVDStreamInfo.h"
 #include "music/tags/TagLoaderTagLib.h"
-#include "utils/log.h"
-#include "URL.h"
 #include "utils/StringUtils.h"
-#include "ServiceBroker.h"
+#include "utils/log.h"
 
 VideoPlayerCodec::VideoPlayerCodec()
 {
@@ -66,13 +66,11 @@ void  VideoPlayerCodec::SetPassthroughStreamType(CAEStreamInfo::DataType streamT
 
 bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
 {
-  const std::string &strFile = file.GetPath();
-
   // take precaution if Init()ialized earlier
   if (m_bInited)
   {
     // keep things as is if Init() was done with known strFile
-    if (m_strFileName == strFile)
+    if (m_strFileName == file.GetDynPath())
       return true;
 
     // got differing filename, so cleanup before starting over
@@ -81,19 +79,13 @@ bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
 
   m_nDecodedLen = 0;
 
-  std::string strFileToOpen = strFile;
-
-  CURL urlFile(strFile);
-  if (urlFile.IsProtocol("shout") )
-    strFileToOpen.replace(0, 8, "http://");
-
   CFileItem fileitem(file);
   fileitem.SetMimeType(m_strContentType);
   fileitem.SetMimeTypeForInternetFile();
   m_pInputStream = CDVDFactoryInputStream::CreateInputStream(NULL, fileitem);
   if (!m_pInputStream)
   {
-    CLog::Log(LOGERROR, "%s: Error creating input stream for %s", __FUNCTION__, strFileToOpen.c_str());
+    CLog::Log(LOGERROR, "{}: Error creating input stream for {}", __FUNCTION__, file.GetDynPath());
     return false;
   }
 
@@ -101,7 +93,7 @@ bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
   //! convey CFileItem::ContentLookup() into Open()
   if (!m_pInputStream->Open())
   {
-    CLog::Log(LOGERROR, "%s: Error opening file %s", __FUNCTION__, strFileToOpen.c_str());
+    CLog::Log(LOGERROR, "{}: Error opening file {}", __FUNCTION__, file.GetDynPath());
     if (m_pInputStream.use_count() > 1)
       throw std::runtime_error("m_pInputStream reference count is greater than 1");
     m_pInputStream.reset();
@@ -160,8 +152,9 @@ bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
 
   CDVDStreamInfo hint(*pStream, true);
 
-  CAEStreamInfo::DataType ptStreamTye = GetPassthroughStreamType(hint.codec, hint.samplerate);
-  m_pAudioCodec = CDVDFactoryCodec::CreateAudioCodec(hint, *m_processInfo.get(), true, true, ptStreamTye);
+  CAEStreamInfo::DataType ptStreamTye =
+      GetPassthroughStreamType(hint.codec, hint.samplerate, hint.profile);
+  m_pAudioCodec = CDVDFactoryCodec::CreateAudioCodec(hint, *m_processInfo, true, true, ptStreamTye);
   if (!m_pAudioCodec)
   {
     CLog::Log(LOGERROR, "%s: Could not create audio codec", __FUNCTION__);
@@ -185,7 +178,7 @@ bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
            m_strContentType == "audio/ape")
     strFallbackFileExtension = "ape";
   CTagLoaderTagLib tagLoaderTagLib;
-  tagLoaderTagLib.Load(strFile, m_tag, strFallbackFileExtension);
+  tagLoaderTagLib.Load(file.GetDynPath(), m_tag, strFallbackFileExtension);
 
   // we have to decode initial data in order to get channels/samplerate
   // for sanity - we read no more than 10 packets
@@ -279,7 +272,7 @@ bool VideoPlayerCodec::Init(const CFileItem &file, unsigned int filecache)
     m_bitsPerSample = CAEUtil::DataFormatToBits(m_format.m_dataFormat);
   }
 
-  m_strFileName = strFile;
+  m_strFileName = file.GetDynPath();
   m_bInited = true;
 
   return true;
@@ -491,7 +484,9 @@ bool VideoPlayerCodec::NeedConvert(AEDataFormat fmt)
   }
 }
 
-CAEStreamInfo::DataType VideoPlayerCodec::GetPassthroughStreamType(AVCodecID codecId, int samplerate)
+CAEStreamInfo::DataType VideoPlayerCodec::GetPassthroughStreamType(AVCodecID codecId,
+                                                                   int samplerate,
+                                                                   int profile)
 {
   AEAudioFormat format;
   format.m_dataFormat = AE_FMT_RAW;
@@ -510,7 +505,15 @@ CAEStreamInfo::DataType VideoPlayerCodec::GetPassthroughStreamType(AVCodecID cod
       break;
 
     case AV_CODEC_ID_DTS:
-      format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_DTSHD_CORE;
+      if (profile == FF_PROFILE_DTS_HD_HRA)
+        format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_DTSHD;
+      else
+        format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_DTSHD_MA;
+      format.m_streamInfo.m_sampleRate = samplerate;
+      break;
+
+    case AV_CODEC_ID_TRUEHD:
+      format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_TRUEHD;
       format.m_streamInfo.m_sampleRate = samplerate;
       break;
 
@@ -519,6 +522,12 @@ CAEStreamInfo::DataType VideoPlayerCodec::GetPassthroughStreamType(AVCodecID cod
   }
 
   bool supports = CServiceBroker::GetActiveAE()->SupportsRaw(format);
+
+  if (!supports && codecId == AV_CODEC_ID_DTS)
+  {
+    format.m_streamInfo.m_type = CAEStreamInfo::STREAM_TYPE_DTSHD_CORE;
+    supports = CServiceBroker::GetActiveAE()->SupportsRaw(format);
+  }
 
   if (supports)
     return format.m_streamInfo.m_type;

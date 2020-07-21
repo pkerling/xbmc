@@ -10,16 +10,151 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "sqlitedataset.h"
+
+#include "utils/URIUtils.h"
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
+
 #include <iostream>
+#include <map>
+#include <sstream>
 #include <string>
 
-#include "sqlitedataset.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
-
-#ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
+namespace {
+#define X(VAL) std::make_pair(VAL, #VAL)
+//!@todo Remove ifdefs when sqlite version requirement has been bumped to at least 3.26.0
+const std::map<int, const char*> g_SqliteErrorStrings =
+{
+  X(SQLITE_OK),
+  X(SQLITE_ERROR),
+  X(SQLITE_INTERNAL),
+  X(SQLITE_PERM),
+  X(SQLITE_ABORT),
+  X(SQLITE_BUSY),
+  X(SQLITE_LOCKED),
+  X(SQLITE_NOMEM),
+  X(SQLITE_READONLY),
+  X(SQLITE_INTERRUPT),
+  X(SQLITE_IOERR),
+  X(SQLITE_CORRUPT),
+  X(SQLITE_NOTFOUND),
+  X(SQLITE_FULL),
+  X(SQLITE_CANTOPEN),
+  X(SQLITE_PROTOCOL),
+  X(SQLITE_EMPTY),
+  X(SQLITE_SCHEMA),
+  X(SQLITE_TOOBIG),
+  X(SQLITE_CONSTRAINT),
+  X(SQLITE_MISMATCH),
+  X(SQLITE_MISUSE),
+  X(SQLITE_NOLFS),
+  X(SQLITE_AUTH),
+  X(SQLITE_FORMAT),
+  X(SQLITE_RANGE),
+  X(SQLITE_NOTADB),
+  X(SQLITE_NOTICE),
+  X(SQLITE_WARNING),
+  X(SQLITE_ROW),
+  X(SQLITE_DONE),
+#if defined(SQLITE_ERROR_MISSING_COLLSEQ)
+  X(SQLITE_ERROR_MISSING_COLLSEQ),
 #endif
+#if defined(SQLITE_ERROR_RETRY)
+  X(SQLITE_ERROR_RETRY),
+#endif
+#if defined(SQLITE_ERROR_SNAPSHOT)
+  X(SQLITE_ERROR_SNAPSHOT),
+#endif
+  X(SQLITE_IOERR_READ),
+  X(SQLITE_IOERR_SHORT_READ),
+  X(SQLITE_IOERR_WRITE),
+  X(SQLITE_IOERR_FSYNC),
+  X(SQLITE_IOERR_DIR_FSYNC),
+  X(SQLITE_IOERR_TRUNCATE),
+  X(SQLITE_IOERR_FSTAT),
+  X(SQLITE_IOERR_UNLOCK),
+  X(SQLITE_IOERR_RDLOCK),
+  X(SQLITE_IOERR_DELETE),
+  X(SQLITE_IOERR_BLOCKED),
+  X(SQLITE_IOERR_NOMEM),
+  X(SQLITE_IOERR_ACCESS),
+  X(SQLITE_IOERR_CHECKRESERVEDLOCK),
+  X(SQLITE_IOERR_LOCK),
+  X(SQLITE_IOERR_CLOSE),
+  X(SQLITE_IOERR_DIR_CLOSE),
+  X(SQLITE_IOERR_SHMOPEN),
+  X(SQLITE_IOERR_SHMSIZE),
+  X(SQLITE_IOERR_SHMLOCK),
+  X(SQLITE_IOERR_SHMMAP),
+  X(SQLITE_IOERR_SEEK),
+  X(SQLITE_IOERR_DELETE_NOENT),
+  X(SQLITE_IOERR_MMAP),
+  X(SQLITE_IOERR_GETTEMPPATH),
+  X(SQLITE_IOERR_CONVPATH),
+#if defined(SQLITE_IOERR_VNODE)
+  X(SQLITE_IOERR_VNODE),
+#endif
+#if defined(SQLITE_IOERR_AUTH)
+  X(SQLITE_IOERR_AUTH),
+#endif
+#if defined(SQLITE_IOERR_BEGIN_ATOMIC)
+  X(SQLITE_IOERR_BEGIN_ATOMIC),
+#endif
+#if defined(SQLITE_IOERR_COMMIT_ATOMIC)
+  X(SQLITE_IOERR_COMMIT_ATOMIC),
+#endif
+#if defined(SQLITE_IOERR_ROLLBACK_ATOMIC)
+  X(SQLITE_IOERR_ROLLBACK_ATOMIC),
+#endif
+  X(SQLITE_LOCKED_SHAREDCACHE),
+#if defined(SQLITE_LOCKED_VTAB)
+  X(SQLITE_LOCKED_VTAB),
+#endif
+  X(SQLITE_BUSY_RECOVERY),
+  X(SQLITE_BUSY_SNAPSHOT),
+  X(SQLITE_CANTOPEN_NOTEMPDIR),
+  X(SQLITE_CANTOPEN_ISDIR),
+  X(SQLITE_CANTOPEN_FULLPATH),
+  X(SQLITE_CANTOPEN_CONVPATH),
+#if defined(SQLITE_CANTOPEN_DIRTYWAL)
+  X(SQLITE_CANTOPEN_DIRTYWAL),
+#endif
+  X(SQLITE_CORRUPT_VTAB),
+#if defined(SQLITE_CORRUPT_SEQUENCE)
+  X(SQLITE_CORRUPT_SEQUENCE),
+#endif
+  X(SQLITE_READONLY_RECOVERY),
+  X(SQLITE_READONLY_CANTLOCK),
+  X(SQLITE_READONLY_ROLLBACK),
+  X(SQLITE_READONLY_DBMOVED),
+#if defined(SQLITE_READONLY_CANTINIT)
+  X(SQLITE_READONLY_CANTINIT),
+#endif
+#if defined(SQLITE_READONLY_DIRECTORY)
+  X(SQLITE_READONLY_DIRECTORY),
+#endif
+  X(SQLITE_ABORT_ROLLBACK),
+  X(SQLITE_CONSTRAINT_CHECK),
+  X(SQLITE_CONSTRAINT_COMMITHOOK),
+  X(SQLITE_CONSTRAINT_FOREIGNKEY),
+  X(SQLITE_CONSTRAINT_FUNCTION),
+  X(SQLITE_CONSTRAINT_NOTNULL),
+  X(SQLITE_CONSTRAINT_PRIMARYKEY),
+  X(SQLITE_CONSTRAINT_TRIGGER),
+  X(SQLITE_CONSTRAINT_UNIQUE),
+  X(SQLITE_CONSTRAINT_VTAB),
+  X(SQLITE_CONSTRAINT_ROWID),
+  X(SQLITE_NOTICE_RECOVER_WAL),
+  X(SQLITE_NOTICE_RECOVER_ROLLBACK),
+  X(SQLITE_WARNING_AUTOINDEX),
+  X(SQLITE_AUTH_USER),
+#if defined(SQLITE_OK_LOAD_PERMANENTLY)
+  X(SQLITE_OK_LOAD_PERMANENTLY),
+#endif
+};
+#undef X
+}
 
 namespace dbiplus {
 //************* Callback function ***************************
@@ -62,7 +197,7 @@ int callback(void* res_ptr,int ncol, char** result,char** cols)
 
 static int busy_callback(void*, int busyCount)
 {
-  Sleep(100);
+  KODI::TIME::Sleep(100);
   return 1;
 }
 
@@ -129,61 +264,30 @@ int SqliteDatabase::status(void) {
   return DB_CONNECTION_OK;
 }
 
-int SqliteDatabase::setErr(int err_code, const char * qry){
-  switch (err_code) {
-  case SQLITE_OK: error ="Successful result";
-    break;
-  case SQLITE_ERROR: error = "SQL error or missing database";
-    break;
-  case SQLITE_INTERNAL: error = "An internal logic error in SQLite";
-    break;
-  case SQLITE_PERM: error ="Access permission denied";
-    break;
-  case SQLITE_ABORT: error = "Callback routine requested an abort";
-    break;
-  case SQLITE_BUSY: error = "The database file is locked";
-    break;
-  case SQLITE_LOCKED: error = "A table in the database is locked";
-    break;
-  case SQLITE_NOMEM: error = "A malloc() failed";
-    break;
-  case SQLITE_READONLY: error = "Attempt to write a readonly database";
-    break;
-  case SQLITE_INTERRUPT: error = "Operation terminated by sqlite_interrupt()";
-    break;
-  case  SQLITE_IOERR: error = "Some kind of disk I/O error occurred";
-    break;
-  case  SQLITE_CORRUPT: error = "The database disk image is malformed";
-    break;
-  case SQLITE_NOTFOUND: error = "(Internal Only) Table or record not found";
-    break;
-  case SQLITE_FULL: error = "Insertion failed because database is full";
-    break;
-  case SQLITE_CANTOPEN: error = "Unable to open the database file";
-    break;
-  case SQLITE_PROTOCOL: error = "Database lock protocol error";
-    break;
-  case SQLITE_EMPTY:  error = "(Internal Only) Database table is empty";
-    break;
-  case SQLITE_SCHEMA: error = "The database schema changed";
-    break;
-  case SQLITE_TOOBIG: error = "Too much data for one row of a table";
-    break;
-  case SQLITE_CONSTRAINT: error = "Abort due to constraint violation";
-    break;
-  case SQLITE_MISMATCH:  error = "Data type mismatch";
-    break;
-  default : error = "Undefined SQLite error";
+int SqliteDatabase::setErr(int err_code, const char * qry) {
+  std::stringstream ss;
+  ss << "[" << db << "] ";
+  auto errorIt = g_SqliteErrorStrings.find(err_code);
+  if (errorIt != g_SqliteErrorStrings.end()) {
+    ss << "SQLite error " << errorIt->second;
+  } else {
+    ss << "Undefined SQLite error " << err_code;
   }
-  error = "[" + db + "] " + error;
-  error += "\nQuery: ";
-  error += qry;
-  error += "\n";
+  if (conn)
+    ss << " (" << sqlite3_errmsg(conn) << ")";
+  ss << "\nQuery: " << qry;
+  error = ss.str();
   return err_code;
 }
 
 const char *SqliteDatabase::getErrorMsg() {
    return error.c_str();
+}
+
+static int AlphaNumericCollation(
+    void* not_used, int nKey1, const void* pKey1, int nKey2, const void* pKey2)
+{
+  return StringUtils::AlphaNumericCollation(nKey1, pKey1, nKey2, pKey2);
 }
 
 int SqliteDatabase::connect(bool create) {
@@ -208,16 +312,23 @@ int SqliteDatabase::connect(bool create) {
     }
     else if (errorCode == SQLITE_OK)
     {
+      sqlite3_extended_result_codes(conn, 1);
       sqlite3_busy_handler(conn, busy_callback, NULL);
       char* err=NULL;
       if (setErr(sqlite3_exec(getHandle(),"PRAGMA empty_result_callbacks=ON",NULL,NULL,&err),"PRAGMA empty_result_callbacks=ON") != SQLITE_OK)
       {
-        throw DbErrors(getErrorMsg());
+        throw DbErrors("%s", getErrorMsg());
       }
       else if (sqlite3_db_readonly(conn, nullptr) == 1)
       {
         CLog::Log(LOGFATAL, "SqliteDatabase: %s is read only", db_fullpath.c_str());
         throw std::runtime_error("SqliteDatabase: " + db_fullpath + " is read only");
+      }
+      errorCode = sqlite3_create_collation(conn, "ALPHANUM", SQLITE_UTF8, 0, AlphaNumericCollation);
+      if (errorCode != SQLITE_OK)
+      {
+        CLog::Log(LOGFATAL, "SqliteDatabase: can not register collation");
+        throw std::runtime_error("SqliteDatabase: can not register collation " + db_fullpath);
       }
       active = true;
       return DB_CONNECTION_OK;
@@ -362,19 +473,22 @@ long SqliteDatabase::nextid(const char* sname) {
   int id;/*,nrow,ncol;*/
   result_set res;
   char sqlcmd[512];
-  sprintf(sqlcmd,"select nextid from %s where seq_name = '%s'",sequence_table.c_str(), sname);
+  snprintf(sqlcmd, sizeof(sqlcmd), "SELECT nextid FROM %s WHERE seq_name = '%s'",
+           sequence_table.c_str(), sname);
   if ((last_err = sqlite3_exec(getHandle(),sqlcmd,&callback,&res,NULL)) != SQLITE_OK) {
     return DB_UNEXPECTED_RESULT;
     }
   if (res.records.empty()) {
     id = 1;
-    sprintf(sqlcmd,"insert into %s (nextid,seq_name) values (%d,'%s')",sequence_table.c_str(),id,sname);
+    snprintf(sqlcmd, sizeof(sqlcmd), "INSERT INTO %s (nextid,seq_name) VALUES (%d,'%s')",
+             sequence_table.c_str(), id, sname);
     if ((last_err = sqlite3_exec(conn,sqlcmd,NULL,NULL,NULL)) != SQLITE_OK) return DB_UNEXPECTED_RESULT;
     return id;
   }
   else {
     id = res.records[0]->at(0).get_asInt()+1;
-    sprintf(sqlcmd,"update %s set nextid=%d where seq_name = '%s'",sequence_table.c_str(),id,sname);
+    snprintf(sqlcmd, sizeof(sqlcmd), "UPDATE %s SET nextid=%d WHERE seq_name = '%s'",
+             sequence_table.c_str(), id, sname);
     if ((last_err = sqlite3_exec(conn,sqlcmd,NULL,NULL,NULL)) != SQLITE_OK) return DB_UNEXPECTED_RESULT;
     return id;
   }
@@ -437,6 +551,7 @@ std::string SqliteDatabase::vprepare(const char *format, va_list args)
   // Strip SEPARATOR from all GROUP_CONCAT statements:
   // before: GROUP_CONCAT(field SEPARATOR '; ')
   // after:  GROUP_CONCAT(field, '; ')
+  // Can not specify separator when have DISTINCT, comma used by default
   pos = strResult.find("GROUP_CONCAT(");
   while (pos != std::string::npos)
   {
@@ -446,24 +561,37 @@ std::string SqliteDatabase::vprepare(const char *format, va_list args)
     pos = strResult.find("GROUP_CONCAT(", pos + 1);
   }
   // Replace CONCAT with || to concatenate text fields:
-  // before: CONCAT(field1, field2)
-  // after:  field1 || field2
+  // before: CONCAT(field1, field2, field3)
+  // after: field1 || field2 || field3
+  // Avoid commas in substatements and within single quotes
+  // before: CONCAT(field1, ',', REPLACE(field2, ',', '-'), field3)
+  // after: field1 || ',' || REPLACE(field2, ',', '-') || field3
   pos = strResult.find("CONCAT(");
   while (pos != std::string::npos)
   {
     if (pos == 0 || strResult[pos - 1] == ' ') // Not GROUP_CONCAT
     {
-      size_t pos2 = strResult.find(",", pos + 1);
-      if (pos2 != std::string::npos)
+      // Check each char for other bracket or single quote pairs
+      unsigned int brackets = 1;
+      bool quoted = false;
+      size_t index = pos + 7; // start after "CONCAT("
+      while (index < strResult.size() && brackets != 0)
       {
-        size_t pos3 = strResult.find(")", pos2 + 1);
-        if (pos3 != std::string::npos)
+        if (strResult[index] == '(')
+          brackets++;
+        else if (strResult[index] == ')')
         {
-          strResult.erase(pos3, 1);
-          strResult.replace(pos2, 1, " || ");
-          strResult.erase(pos, 7);
+          brackets--;
+          if (brackets == 0)
+            strResult.erase(index, 1); //Remove closing bracket of CONCAT
         }
+        else if (strResult[index] == '\'')
+          quoted = !quoted;
+        else if (strResult[index] == ',' && brackets == 1 && !quoted)
+          strResult.replace(index, 1, "||");
+        index++;
       }
+      strResult.erase(pos, 7); //Remove "CONCAT("
     }
     pos = strResult.find("CONCAT(", pos + 1);
   }
@@ -518,13 +646,24 @@ void SqliteDataset::make_query(StringList &_sql) {
   if (autocommit) db->start_transaction();
 
 
-  for (std::list<std::string>::iterator i =_sql.begin(); i!=_sql.end(); ++i) {
-  query = *i;
-  char* err=NULL;
-  Dataset::parse_sql(query);
-  if (db->setErr(sqlite3_exec(this->handle(),query.c_str(),NULL,NULL,&err),query.c_str())!=SQLITE_OK) {
-    throw DbErrors(db->getErrorMsg());
-  }
+  for (const std::string& i : _sql)
+  {
+    query = i;
+    char* err = NULL;
+    Dataset::parse_sql(query);
+    if (db->setErr(sqlite3_exec(this->handle(), query.c_str(), NULL, NULL, &err), query.c_str()) !=
+        SQLITE_OK)
+    {
+      std::string message = db->getErrorMsg();
+      if (err)
+      {
+        message.append(" (");
+        message.append(err);
+        message.append(")");
+        sqlite3_free(err);
+      }
+      throw DbErrors("%s", message.c_str());
+    }
   } // end of for
 
 
@@ -651,7 +790,10 @@ int SqliteDataset::exec(const std::string &sql) {
     return res;
   else
     {
-      throw DbErrors(db->getErrorMsg());
+      if (errmsg)
+        throw DbErrors("%s (%s)", db->getErrorMsg(), errmsg);
+      else
+        throw DbErrors("%s", db->getErrorMsg());
     }
 }
 
@@ -676,7 +818,7 @@ bool SqliteDataset::query(const std::string &query) {
 
   sqlite3_stmt *stmt = NULL;
   if (db->setErr(sqlite3_prepare_v2(handle(),query.c_str(),-1,&stmt, NULL),query.c_str()) != SQLITE_OK)
-    throw DbErrors(db->getErrorMsg());
+    throw DbErrors("%s", db->getErrorMsg());
 
   // column headers
   const unsigned int numColumns = sqlite3_column_count(stmt);
@@ -724,7 +866,7 @@ bool SqliteDataset::query(const std::string &query) {
   }
   else
   {
-    throw DbErrors(db->getErrorMsg());
+    throw DbErrors("%s", db->getErrorMsg());
   }
 }
 

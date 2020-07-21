@@ -7,10 +7,16 @@
  */
 
 #include "ISettingControl.h"
+
+#include "ServiceBroker.h"
 #include "SettingDefinitions.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
+
+ISettingControl::ISettingControl() : CStaticLoggerBase("ISettingControl")
+{
+}
 
 bool ISettingControl::Deserialize(const TiXmlNode *node, bool update /* = false */)
 {
@@ -27,7 +33,7 @@ bool ISettingControl::Deserialize(const TiXmlNode *node, bool update /* = false 
     format = strTmp;
   if (!SetFormat(format))
   {
-    CLog::Log(LOGERROR, "ISettingControl: error reading \"format\" attribute of <control>");
+    s_logger->error("error reading \"{}\" attribute of <control>", SETTING_XML_ATTR_FORMAT);
     return false;
   }
 
@@ -35,7 +41,7 @@ bool ISettingControl::Deserialize(const TiXmlNode *node, bool update /* = false 
   {
     if (!StringUtils::EqualsNoCase(strTmp, "false") && !StringUtils::EqualsNoCase(strTmp, "true"))
     {
-      CLog::Log(LOGERROR, "ISettingControl: error reading \"delayed\" attribute of <control>");
+      s_logger->error("error reading \"{}\" attribute of <control>", SETTING_XML_ATTR_DELAYED);
       return false;
     }
     else

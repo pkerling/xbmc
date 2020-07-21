@@ -20,21 +20,20 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/IGUIContainer.h"
 #include "guilib/LocalizeStrings.h"
+#include "guilib/guiinfo/GUIInfo.h"
+#include "guilib/guiinfo/GUIInfoHelper.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "music/dialogs/GUIDialogMusicInfo.h"
 #include "music/dialogs/GUIDialogSongInfo.h"
 #include "music/tags/MusicInfoTag.h"
-#include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
 #include "video/VideoInfoTag.h"
 #include "video/dialogs/GUIDialogVideoInfo.h"
 #include "view/GUIViewState.h"
 #include "windows/GUIMediaWindow.h"
-
-#include "guilib/guiinfo/GUIInfo.h"
-#include "guilib/guiinfo/GUIInfoHelper.h"
-#include "guilib/guiinfo/GUIInfoLabels.h"
 
 using namespace KODI::GUILIB;
 using namespace KODI::GUILIB::GUIINFO;
@@ -496,7 +495,7 @@ bool CGUIControlsGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int co
         const CGUIViewState *viewState = window->GetViewState();
         if (viewState)
         {
-          value = (static_cast<unsigned int>(viewState->GetSortMethod().sortBy) == info.GetData1());
+          value = (static_cast<unsigned int>(viewState->GetSortMethod().sortBy) == info.GetData2());
           return true;
         }
       }

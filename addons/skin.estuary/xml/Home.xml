@@ -53,6 +53,7 @@
 						<pagecontrol>5010</pagecontrol>
 						<include content="WidgetListCategories" condition="Library.HasContent(movies) + !Skin.HasSetting(home_no_categories_widget)">
 							<param name="content_path" value="library://video/movies/"/>
+							<param name="additional_movie_items" value="true"/>
 							<param name="widget_header" value="$LOCALIZE[31148]"/>
 							<param name="widget_target" value="videos"/>
 							<param name="list_id" value="5900"/>
@@ -118,6 +119,7 @@
 						<pagecontrol>6010</pagecontrol>
 						<include content="WidgetListCategories" condition="Library.HasContent(tvshows) + !Skin.HasSetting(home_no_categories_widget)">
 							<param name="content_path" value="library://video/tvshows/"/>
+							<param name="additional_tvshow_items" value="true"/>
 							<param name="widget_header" value="$LOCALIZE[31148]"/>
 							<param name="widget_target" value="videos"/>
 							<param name="list_id" value="6900"/>
@@ -400,11 +402,12 @@
 							</control>
 						</control>
 						<include content="WidgetListCategories" condition="System.HasPVRAddon">
+							<param name="content_path" value="pvr://tv/"/>
 							<param name="widget_header" value="$LOCALIZE[31148]"/>
+							<param name="widget_target" value="pvr"/>
 							<param name="list_id" value="12900"/>
-							<param name="pvr_submenu" value="true"/>
-							<param name="pvr_type" value="TV"/>
 						</include>
+
 						<include content="WidgetListChannels" condition="System.HasPVRAddon">
 							<param name="content_path" value="pvr://channels/tv/*?view=lastplayed"/>
 							<param name="sortby" value="lastplayed"/>
@@ -423,11 +426,18 @@
 							<param name="label" value="$INFO[ListItem.ChannelName]"/>
 							<param name="label2" value="$INFO[ListItem.Title]$INFO[ListItem.EpisodeName, (,)]"/>
 						</include>
+						<include content="WidgetListChannels" condition="System.HasPVRAddon">
+							<param name="content_path" value="pvr://channels/tv"/>
+							<param name="widget_header" value="$LOCALIZE[19173]"/>
+							<param name="widget_target" value="tvguide"/>
+							<param name="list_id" value="12400"/>
+							<param name="item_treshold" value="1"/>
+						</include>
 					</control>
 					<include content="ImageWidget" condition="!System.HasPVRAddon">
 						<param name="text_label" value="$LOCALIZE[31143]" />
 						<param name="button_label" value="$LOCALIZE[31144]" />
-						<param name="button_onclick" value="ActivateWindow(addonbrowser,addons://user/xbmc.pvrclient,return)"/>
+						<param name="button_onclick" value="ActivateWindow(addonbrowser,addons://all/kodi.pvrclient,return)"/>
 						<param name="button_id" value="12400"/>
 						<param name="button2_onclick" value="Skin.SetBool(HomeMenuNoTVButton)"/>
 					</include>
@@ -473,10 +483,10 @@
 							</control>
 						</control>
 						<include content="WidgetListCategories" condition="System.HasPVRAddon">
+							<param name="content_path" value="pvr://radio/"/>
 							<param name="widget_header" value="$LOCALIZE[31148]"/>
+							<param name="widget_target" value="pvr"/>
 							<param name="list_id" value="13900"/>
-							<param name="pvr_submenu" value="true"/>
-							<param name="pvr_type" value="Radio"/>
 						</include>
 						<include content="WidgetListChannels" condition="System.HasPVRAddon">
 							<param name="content_path" value="pvr://channels/radio/*?view=lastplayed"/>
@@ -496,11 +506,18 @@
 							<param name="label" value="$INFO[ListItem.ChannelName]"/>
 							<param name="label2" value="$INFO[ListItem.Title]$INFO[ListItem.EpisodeName, (,)]"/>
 						</include>
+						<include content="WidgetListChannels" condition="System.HasPVRAddon">
+							<param name="content_path" value="pvr://channels/radio"/>
+							<param name="widget_header" value="$LOCALIZE[19174]"/>
+							<param name="widget_target" value="radioguide"/>
+							<param name="list_id" value="13400"/>
+							<param name="item_treshold" value="1"/>
+						</include>
 					</control>
 					<include content="ImageWidget" condition="!System.HasPVRAddon">
 						<param name="text_label" value="$LOCALIZE[31143]" />
 						<param name="button_label" value="$LOCALIZE[31144]" />
-						<param name="button_onclick" value="ActivateWindow(addonbrowser,addons://user/xbmc.pvrclient,return)"/>
+						<param name="button_onclick" value="ActivateWindow(addonbrowser,addons://all/kodi.pvrclient,return)"/>
 						<param name="button_id" value="13400"/>
 						<param name="button2_onclick" value="Skin.SetBool(HomeMenuNoRadioButton)"/>
 					</include>
@@ -527,7 +544,7 @@
 						<orientation>vertical</orientation>
 						<pagecontrol>14010</pagecontrol>
 						<visible>Integer.IsGreater(Container(14100).NumItems,0) | Container(14100).IsUpdating</visible>
-						<itemlayout width="330" height="396">
+						<itemlayout width="330" height="401">
 							<control type="group">
 								<top>130</top>
 								<include content="InfoWallMusicLayout">
@@ -536,7 +553,7 @@
 								</include>
 							</control>
 						</itemlayout>
-						<focusedlayout width="330" height="396">
+						<focusedlayout width="330" height="401">
 							<control type="group">
 								<depth>DepthContentPopout</depth>
 								<top>130</top>
@@ -744,6 +761,7 @@
 							<param name="widget_header" value="$LOCALIZE[20094]"/>
 							<param name="widget_target" value="pictures"/>
 							<param name="list_id" value="4100"/>
+							<param name="icon_height" value="110"/>
 						</include>
 					</control>
 				</control>
@@ -767,8 +785,8 @@
 					</control>
 					<include content="ImageWidget">
 						<param name="text_label" value="$LOCALIZE[31162]" />
-						<param name="button_label" value="$LOCALIZE[31110]" />
-						<param name="button_onclick" value="ActivateWindow(games)"/>
+						<param name="button_label" value="$LOCALIZE[31144]" />
+						<param name="button_onclick" value="ActivateWindow(addonbrowser,addons://all/category.gameaddons,return)"/>
 						<param name="button_id" value="17100"/>
 						<param name="visible" value="!Integer.IsGreater(Container(17001).NumItems,0)"/>
 						<param name="button2_onclick" value="Skin.SetBool(HomeMenuNoGamesButton)"/>
@@ -790,6 +808,9 @@
 						<param name="visible" value="true"/>
 						<param name="button2_label" value="$LOCALIZE[13391]"/>
 						<param name="button2_onclick" value="EjectTray()"/>
+						<param name="button3_label" value="$LOCALIZE[600]"/>
+						<param name="button3_onclick" value="RipCD"/>
+						<param name="visible_3" value="System.HasMediaAudioCD"/>
 					</include>
 				</control>
 			</control>
@@ -1065,18 +1086,12 @@
 				<top>30</top>
 				<left>90</left>
 				<control type="image">
-					<aspectratio>keep</aspectratio>
-					<width>56</width>
-					<height>56</height>
-					<texture colordiffuse="button_focus">icons/logo.png</texture>
-				</control>
-				<control type="image">
-					<left>40</left>
-					<top>10</top>
+					<left>4</left>
+					<top>0</top>
 					<aspectratio>keep</aspectratio>
 					<width>192</width>
-					<height>36</height>
-					<texture>icons/logo-text.png</texture>
+					<height>56</height>
+					<texture>special://xbmc/media/vendor_logo.png</texture>
 				</control>
 			</control>
 		</control>

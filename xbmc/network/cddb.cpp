@@ -6,24 +6,26 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <taglib/id3v1genres.h>
 #include "cddb.h"
+
 #include "CompileInfo.h"
-#include "network/DNSNameCache.h"
 #include "ServiceBroker.h"
+#include "filesystem/File.h"
+#include "network/DNSNameCache.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
-#include "filesystem/File.h"
 #include "utils/CharsetConverter.h"
-#include "utils/log.h"
+#include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 
 #include <memory>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
 #include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <taglib/id3v1genres.h>
 
 using namespace MEDIA_DETECT;
 using namespace CDDB;
@@ -493,7 +495,7 @@ void Xcddb::parseData(const char *buffer)
 
         std::map<std::string, std::string>::const_iterator it = keywords.find(strKeyword);
         if (it != keywords.end())
-          strValue = it->second + strValue; // keyword occured before, concatenate
+          strValue = it->second + strValue; // keyword occurred before, concatenate
         else
           keywordsOrder.push_back(strKeyword);
 
@@ -503,9 +505,8 @@ void Xcddb::parseData(const char *buffer)
   }
 
   // parse keywords
-  for (std::list<std::string>::const_iterator it = keywordsOrder.begin(); it != keywordsOrder.end(); ++it)
+  for (const std::string& strKeyword : keywordsOrder)
   {
-    std::string strKeyword = *it;
     std::string strValue = keywords[strKeyword];
 
     //! @todo STRING_CLEANUP
@@ -973,7 +974,10 @@ bool Xcddb::queryCDinfo(CCdInfo* pInfo)
     return false; //This is actually good. The calling method will handle this
 
   case 202: //No match found
-    CLog::Log(LOGNOTICE, "Xcddb::queryCDinfo No match found in CDDB database when doing the query shown below:\n%s",query_buffer);
+    CLog::Log(
+        LOGINFO,
+        "Xcddb::queryCDinfo No match found in CDDB database when doing the query shown below:\n%s",
+        query_buffer);
   case 403: //Database entry is corrupt
   case 409: //No handshake
   default:

@@ -8,10 +8,14 @@
 
 #pragma once
 
-#include "system_gl.h"
 #include "GLShader.h"
 #include "rendering/RenderSystem.h"
 #include "utils/Color.h"
+
+#include <array>
+#include <memory>
+
+#include "system_gl.h"
 
 enum ESHADERMETHOD
 {
@@ -89,7 +93,6 @@ protected:
   bool m_bVsyncInit = false;
   int m_width;
   int m_height;
-  bool m_supportsNPOT = true;
 
   std::string m_RenderExtensions;
 
@@ -98,7 +101,7 @@ protected:
 
   GLint m_viewPort[4];
 
-  std::unique_ptr<CGLShader*[]> m_pShader;
+  std::array<std::unique_ptr<CGLShader>, SM_MAX> m_pShader;
   ESHADERMETHOD m_method = SM_DEFAULT;
   GLuint m_vertexArray = GL_NONE;
 };

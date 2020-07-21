@@ -7,14 +7,15 @@
  */
 
 #include "DVDDemuxVobsub.h"
+
+#include "DVDCodecs/DVDCodecs.h"
+#include "DVDDemuxFFmpeg.h"
 #include "DVDInputStreams/DVDFactoryInputStream.h"
 #include "DVDInputStreams/DVDInputStream.h"
 #include "DVDStreamInfo.h"
-#include "DVDCodecs/DVDCodecs.h"
-#include "DVDDemuxFFmpeg.h"
+#include "DVDSubtitles/DVDSubtitleStream.h"
 #include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
 #include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
-#include "DVDSubtitles/DVDSubtitleStream.h"
 
 #include <string.h>
 
@@ -60,11 +61,11 @@ bool CDVDDemuxVobsub::Open(const std::string& filename, int source, const std::s
   item.SetMimeType("video/x-vobsub");
   item.SetContentLookup(false);
   m_Input = CDVDFactoryInputStream::CreateInputStream(NULL, item);
-  if(!m_Input.get() || !m_Input->Open())
+  if (!m_Input || !m_Input->Open())
     return false;
 
   m_Demuxer.reset(new CDVDDemuxFFmpeg());
-  if(!m_Demuxer->Open(m_Input))
+  if (!m_Demuxer->Open(m_Input, false))
     return false;
 
   CDVDStreamInfo hints;

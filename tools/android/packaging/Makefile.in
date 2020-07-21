@@ -3,9 +3,8 @@ include ../../depends/Makefile.include
 BUILD_TYPE:=@CMAKE_BUILD_TYPE@
 BUILD_TYPE_LC:=$(shell echo $(BUILD_TYPE) | tr A-Z a-z)
 
-OBJS = libplist.so libshairplay.so \
-  libass.so \
-  libbluray.so libsmbclient.so
+OBJS = libshairplay.so \
+  libass.so
 
 PLATFORM_OBJS =
 EXCLUDED_ADDONS =
@@ -25,47 +24,23 @@ ifneq ($(strip $(SIGN_KEYPASS)),)
 SIGN_KEYPASS_OPT=-keypass $(SIGN_KEYPASS)
 endif
 
-X86OVERRIDES=XBMC_OVERRIDE_HOST=i686-android-linux XBMC_OVERRIDE_TOOLCHAIN=$(XBMC_X86_TOOLCHAIN)
-ARMOVERRIDES=XBMC_OVERRIDE_HOST=arm-linux-androideabi XBMC_OVERRIDE_TOOLCHAIN=$(XBMC_ARM_TOOLCHAIN)
-
 #this fixes a android ndk fuckup where the paths to
 #prebuilt stuff follow different name schemes for
 #arm and x86
-ifeq ($(findstring i686,$(CPU)),i686)
+ifeq ($(findstring x86_64,$(CPU)),x86_64)
+  ARCH=x86_64
+else ifeq ($(findstring x86,$(CPU)),x86)
   ARCH=x86
-  CPU=x86
-endif
-ifeq ($(findstring arm64,$(CPU)),arm64)
+else ifeq ($(findstring arm64,$(CPU)),arm64)
   ARCH=arm64
-  CPU=arm64-v8a
 else ifeq ($(findstring arm,$(CPU)),arm)
   ARCH=arm
-  CPU=armeabi-v7a
 endif
 
 # libc++
-STLLIB=$(TOOLCHAIN)/$(HOST)/lib/libc++_shared.so
-# https://android.googlesource.com/platform/ndk/+/fe0fe5dc32682d1811d32492c3055becb512c147/build/tools/make_standalone_toolchain.py#308
-ifeq ($(findstring armeabi-v7a,$(CPU)),armeabi-v7a)
-  STLLIB=$(TOOLCHAIN)/$(HOST)/lib/armv7-a/libc++_shared.so
-endif
+STLLIB=$(TOOLCHAIN)/sysroot/usr/lib/$(HOST)/libc++_shared.so
 
-#older ndk x86
-GDBPATH=$(NDKROOT)/toolchains/$(ARCH)-$(GCC_VERSION)/prebuilt/gdbserver
-
-ifneq ($(shell test -f $(GDBPATH) && echo 1),1)
-#older ndk arm
-GDBPATH=$(NDKROOT)/toolchains/$(HOST)-$(GCC_VERSION)/prebuilt/gdbserver
-endif
-
-ifneq ($(shell test -f $(GDBPATH) && echo 1),1)
-#vanilla ndk >= 8
 GDBPATH=$(NDKROOT)/prebuilt/android-$(ARCH)/gdbserver/gdbserver
-endif
-
-ifeq ($(ARCH),aarch64)
-GDBPATH=$(NDKROOT)/prebuilt/android-arm64/gdbserver/gdbserver
-endif
 
 # check for java 1.8
 JAVA8=$(shell java -version 2>&1 | grep -q '1.8.[0-9]' && echo yes)
@@ -102,8 +77,6 @@ shared:
 	find `pwd`/assets/ -name "*.so" -exec rm {} \;
 	find `pwd`/assets/addons/skin.*/media/* -depth -not -iname "Textures.xbt" -exec rm -rf {} \;
 	cd `pwd`/assets/addons; rm -rf $(EXCLUDED_ADDONS)
-	mkdir -p assets/system/certs
-	cp $(CMAKE_SOURCE_DIR)/tools/depends/target/openssl/cacert.pem assets/system/certs
 	cp $(CMAKE_SOURCE_DIR)/privacy-policy.txt assets
 
 sharedapk: shared | xbmc/assets
@@ -115,9 +88,9 @@ sharedobb: shared
 	@echo "$(CMAKE_SOURCE_DIR)/main.@APP_NAME_LC@.obb created"
 
 python: | xbmc/assets
-	mkdir -p xbmc/assets/python2.7/lib/
-	cp -rfp $(PREFIX)/lib/python2.7 xbmc/assets/python2.7/lib/
-	cd xbmc/assets/python2.7/lib/python2.7/; rm -rf test config lib-dynload
+	mkdir -p xbmc/assets/python@PYTHON_VERSION@/lib/
+	cp -rfp $(PREFIX)/lib/python@PYTHON_VERSION@ xbmc/assets/python@PYTHON_VERSION@/lib/
+	cd xbmc/assets/python@PYTHON_VERSION@/lib/python@PYTHON_VERSION@/; rm -rf test config lib-dynload
 
 res:
 	mkdir -p xbmc/res xbmc/res/raw xbmc/res/values images
@@ -138,7 +111,7 @@ res:
 
 libs: $(PREFIX)/lib/@APP_NAME_LC@/lib@APP_NAME_LC@.so
 	rm -rf xbmc/lib/$(CPU) xbmc/obj/local/$(CPU)
-	mkdir -p xbmc/lib/$(CPU) xbmc/assets/python2.7/lib/ xbmc/obj/local/$(CPU)
+	mkdir -p xbmc/lib/$(CPU) xbmc/assets/python@PYTHON_VERSION@/lib/ xbmc/obj/local/$(CPU)
 	cp -fpL $(SRCLIBS) xbmc/obj/local/$(CPU)/
 	cp -fp $(PREFIX)/lib/@APP_NAME_LC@/lib@APP_NAME_LC@.so xbmc/obj/local/$(CPU)/
 	find $(PREFIX)/lib/@APP_NAME_LC@/addons -name "*.so" -exec cp -fp {} xbmc/obj/local/$(CPU)/ \; || true
@@ -146,7 +119,7 @@ libs: $(PREFIX)/lib/@APP_NAME_LC@/lib@APP_NAME_LC@.so
 	find $(DEPENDS_PATH)/share/kodi/addons -name "*.so" -exec cp -fp {} xbmc/obj/local/$(CPU)/ \; || true
 	find $(DEPENDS_PATH)/lib/kodi/addons -name "*.so" -exec cp -fp {} xbmc/obj/local/$(CPU)/ \; || true
 	find $(PREFIX)/lib/@APP_NAME_LC@/system -name "*.so" -exec cp -fp {} xbmc/obj/local/$(CPU)/ \;
-	DIR=${CURDIR}; cd $(PREFIX)/lib/python2.7/site-packages; for i in `find Cryptodome -name \*.so` ; do FN=`echo $$i | cut -c1- | tr "/" "_"` ; mv $$i $$DIR/xbmc/obj/local/$(CPU)/$$FN ; done
+	DIR=${CURDIR}; cd $(PREFIX)/lib/python@PYTHON_VERSION@/site-packages; for i in `find Cryptodome -name \*.so` ; do FN=`echo $$i | cut -c1- | tr "/" "_" | sed -e 's/\.cpython-[0-9]\{2\}-x86_64-linux-gnu\./\./g'` ;mv $$i $$DIR/xbmc/obj/local/$(CPU)/$$FN ; done
 	cd xbmc/obj/local/$(CPU)/; find . -name "*.so" -not -name "lib*.so" | sed "s/\.\///" | xargs -I@ mv @ lib@
 	cp -fp xbmc/obj/local/$(CPU)/*.so xbmc/lib/$(CPU)/
 	$(STRIP) --strip-unneeded xbmc/lib/$(CPU)/*.so
@@ -163,7 +136,7 @@ java: res
 package: libs python java
 	@echo "Gradle build..."
 	ANDROID_HOME=$(SDKROOT) ./gradlew assemble$(BUILD_TYPE)Unsigned
-	@cp xbmc/build/outputs/apk/xbmc-$(BUILD_TYPE_LC)Unsigned-unsigned.apk images/@APP_NAME_LC@app-debug-$(CPU)-unaligned.apk
+	@cp xbmc/build/outputs/apk/$(BUILD_TYPE_LC)Unsigned/xbmc-$(BUILD_TYPE_LC)Unsigned-unsigned.apk images/@APP_NAME_LC@app-debug-$(CPU)-unaligned.apk
 
 apk-sign:
 	@echo "Signing..."

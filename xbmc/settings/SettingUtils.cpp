@@ -7,9 +7,12 @@
  */
 
 #include "SettingUtils.h"
+
 #include "settings/lib/Setting.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
+
+#include <algorithm>
 
 std::vector<CVariant> CSettingUtils::GetList(std::shared_ptr<const CSettingList> settingList)
 {
@@ -37,19 +40,19 @@ std::vector<CVariant> CSettingUtils::ListToValues(std::shared_ptr<const CSetting
     switch (setting->GetElementType())
     {
       case SettingType::Boolean:
-        realValues.push_back(std::static_pointer_cast<const CSettingBool>(value)->GetValue());
+        realValues.emplace_back(std::static_pointer_cast<const CSettingBool>(value)->GetValue());
         break;
 
       case SettingType::Integer:
-        realValues.push_back(std::static_pointer_cast<const CSettingInt>(value)->GetValue());
+        realValues.emplace_back(std::static_pointer_cast<const CSettingInt>(value)->GetValue());
         break;
 
       case SettingType::Number:
-        realValues.push_back(std::static_pointer_cast<const CSettingNumber>(value)->GetValue());
+        realValues.emplace_back(std::static_pointer_cast<const CSettingNumber>(value)->GetValue());
         break;
 
       case SettingType::String:
-        realValues.push_back(std::static_pointer_cast<const CSettingString>(value)->GetValue());
+        realValues.emplace_back(std::static_pointer_cast<const CSettingString>(value)->GetValue());
         break;
 
       default:
@@ -116,4 +119,17 @@ bool CSettingUtils::ValuesToList(std::shared_ptr<const CSettingList> setting, co
   }
 
   return true;
+}
+
+bool CSettingUtils::FindIntInList(std::shared_ptr<const CSettingList> settingList, int value)
+{
+  if (settingList == nullptr || settingList->GetElementType() != SettingType::Integer)
+    return false;
+
+  const auto values = settingList->GetValue();
+  const auto matchingValue =
+      std::find_if(values.begin(), values.end(), [value](const SettingPtr& setting) {
+        return std::static_pointer_cast<CSettingInt>(setting)->GetValue() == value;
+      });
+  return matchingValue != values.end();
 }

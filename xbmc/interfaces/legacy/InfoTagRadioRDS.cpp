@@ -7,21 +7,21 @@
  */
 
 #include "InfoTagRadioRDS.h"
+
+#include "pvr/channels/PVRChannel.h"
+#include "pvr/channels/PVRRadioRDSInfoTag.h"
 #include "utils/StringUtils.h"
 
 namespace XBMCAddon
 {
   namespace xbmc
   {
-    InfoTagRadioRDS::InfoTagRadioRDS()
-    {
-      PVR::CPVRRadioRDSInfoTagPtr empty;
-      infoTag = empty;
-    }
+    InfoTagRadioRDS::InfoTagRadioRDS() = default;
 
-    InfoTagRadioRDS::InfoTagRadioRDS(const PVR::CPVRRadioRDSInfoTagPtr tag)
+    InfoTagRadioRDS::InfoTagRadioRDS(const std::shared_ptr<PVR::CPVRChannel>& channel)
     {
-      infoTag = tag;
+      if (channel)
+        infoTag = channel->GetRadioRDSInfoTag();
     }
 
     InfoTagRadioRDS::~InfoTagRadioRDS() = default;

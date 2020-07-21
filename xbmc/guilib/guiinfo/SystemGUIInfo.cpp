@@ -9,19 +9,16 @@
 #include "guilib/guiinfo/SystemGUIInfo.h"
 
 #include "Application.h"
+#include "GUIPassword.h"
 #include "LangInfo.h"
 #include "ServiceBroker.h"
-#include "addons/BinaryAddonCache.h"
-#include "GUIPassword.h"
+#include "addons/AddonManager.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "network/Network.h"
 #if defined(TARGET_DARWIN_OSX)
 #include "platform/darwin/osx/smc.h"
-#endif
-#ifdef TARGET_POSIX
-#include "platform/linux/XMemUtils.h"
 #endif
 #include "powermanagement/PowerManager.h"
 #include "profiles/ProfileManager.h"
@@ -33,6 +30,7 @@
 #include "storage/MediaManager.h"
 #include "utils/AlarmClock.h"
 #include "utils/CPUInfo.h"
+#include "utils/MemUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/SystemInfo.h"
 #include "utils/TimeUtils.h"
@@ -57,7 +55,7 @@ std::string CSystemGUIInfo::GetSystemHeatInfo(int info) const
   {
     m_lastSysHeatInfoTime = CTimeUtils::GetFrameTime();
 #if defined(TARGET_POSIX)
-    g_cpuInfo.getTemperature(m_cpuTemp);
+    CServiceBroker::GetCPUInfo()->GetTemperature(m_cpuTemp);
     m_gpuTemp = GetGPUTemperature();
 #endif
   }
@@ -73,11 +71,14 @@ std::string CSystemGUIInfo::GetSystemHeatInfo(int info) const
       text = StringUtils::Format("%i%%", m_fanSpeed * 2);
       break;
     case SYSTEM_CPU_USAGE:
+      if (CServiceBroker::GetCPUInfo()->SupportsCPUUsage())
 #if defined(TARGET_DARWIN) || defined(TARGET_WINDOWS)
-      text = StringUtils::Format("%d%%", g_cpuInfo.getUsedPercentage());
+        text = StringUtils::Format("%d%%", CServiceBroker::GetCPUInfo()->GetUsedPercentage());
 #else
-      text = StringUtils::Format("%s", g_cpuInfo.GetCoresUsageString().c_str());
+        text = CServiceBroker::GetCPUInfo()->GetCoresUsageString();
 #endif
+      else
+        text = g_localizeStrings.Get(10005); // Not available
       break;
   }
   return text;
@@ -197,28 +198,33 @@ bool CSystemGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
     case SYSTEM_BUILD_DATE:
       value = CSysInfo::GetBuildDate();
       return true;
+    case SYSTEM_BUILD_VERSION_CODE:
+      value = CSysInfo::GetVersionCode();
+      return true;
+    case SYSTEM_BUILD_VERSION_GIT:
+      value = CSysInfo::GetVersionGit();
+      return true;
     case SYSTEM_FREE_MEMORY:
     case SYSTEM_FREE_MEMORY_PERCENT:
     case SYSTEM_USED_MEMORY:
     case SYSTEM_USED_MEMORY_PERCENT:
     case SYSTEM_TOTAL_MEMORY:
     {
-      MEMORYSTATUSEX stat;
-      stat.dwLength = sizeof(MEMORYSTATUSEX);
-      GlobalMemoryStatusEx(&stat);
-      int iMemPercentFree = 100 - static_cast<int>(100.0f * (stat.ullTotalPhys - stat.ullAvailPhys) / stat.ullTotalPhys + 0.5f);
+      KODI::MEMORY::MemoryStatus stat;
+      KODI::MEMORY::GetMemoryStatus(&stat);
+      int iMemPercentFree = 100 - static_cast<int>(100.0f * (stat.totalPhys - stat.availPhys) / stat.totalPhys + 0.5f);
       int iMemPercentUsed = 100 - iMemPercentFree;
 
       if (info.m_info == SYSTEM_FREE_MEMORY)
-        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.ullAvailPhys / MB));
+        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.availPhys / MB));
       else if (info.m_info == SYSTEM_FREE_MEMORY_PERCENT)
         value = StringUtils::Format("%i%%", iMemPercentFree);
       else if (info.m_info == SYSTEM_USED_MEMORY)
-        value = StringUtils::Format("%uMB", static_cast<unsigned int>((stat.ullTotalPhys - stat.ullAvailPhys) / MB));
+        value = StringUtils::Format("%uMB", static_cast<unsigned int>((stat.totalPhys - stat.availPhys) / MB));
       else if (info.m_info == SYSTEM_USED_MEMORY_PERCENT)
         value = StringUtils::Format("%i%%", iMemPercentUsed);
       else if (info.m_info == SYSTEM_TOTAL_MEMORY)
-        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.ullTotalPhys / MB));
+        value = StringUtils::Format("%uMB", static_cast<unsigned int>(stat.totalPhys / MB));
       return true;
     }
     case SYSTEM_SCREEN_MODE:
@@ -235,7 +241,7 @@ bool CSystemGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
       return true;
 #ifdef HAS_DVD_DRIVE
     case SYSTEM_DVD_LABEL:
-      value = g_mediaManager.GetDiskLabel();
+      value = CServiceBroker::GetMediaManager().GetDiskLabel();
       return true;
 #endif
     case SYSTEM_ALARM_POS:
@@ -286,7 +292,9 @@ bool CSystemGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
       return true;
     }
     case SYSTEM_GET_CORE_USAGE:
-      value = StringUtils::Format("%4.2f", g_cpuInfo.GetCoreInfo(std::atoi(info.GetData3().c_str())).m_fPct);
+      value = StringUtils::Format("%4.2f", CServiceBroker::GetCPUInfo()
+                                               ->GetCoreInfo(std::atoi(info.GetData3().c_str()))
+                                               .m_usagePercent);
       return true;
     case SYSTEM_RENDER_VENDOR:
       value = CServiceBroker::GetRenderSystem()->GetRenderVendor();
@@ -385,10 +393,9 @@ bool CSystemGUIInfo::GetInt(int& value, const CGUIListItem *gitem, int contextWi
     case SYSTEM_FREE_MEMORY:
     case SYSTEM_USED_MEMORY:
     {
-      MEMORYSTATUSEX stat;
-      stat.dwLength = sizeof(MEMORYSTATUSEX);
-      GlobalMemoryStatusEx(&stat);
-      int memPercentUsed = static_cast<int>(100.0f * (stat.ullTotalPhys - stat.ullAvailPhys) / stat.ullTotalPhys + 0.5f);
+      KODI::MEMORY::MemoryStatus stat;
+      KODI::MEMORY::GetMemoryStatus(&stat);
+      int memPercentUsed = static_cast<int>(100.0f * (stat.totalPhys - stat.availPhys) / stat.totalPhys + 0.5f);
       if (info.m_info == SYSTEM_FREE_MEMORY)
         value = 100 - memPercentUsed;
       else
@@ -402,7 +409,7 @@ bool CSystemGUIInfo::GetInt(int& value, const CGUIListItem *gitem, int contextWi
       return true;
     }
     case SYSTEM_CPU_USAGE:
-      value = g_cpuInfo.getUsedPercentage();
+      value = CServiceBroker::GetCPUInfo()->GetUsedPercentage();
       return true;
     case SYSTEM_BATTERY_LEVEL:
       value = CServiceBroker::GetPowerManager().BatteryLevel();
@@ -471,6 +478,13 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       value = false;
 #endif
       return true;
+    case SYSTEM_PLATFORM_DARWIN_TVOS:
+#ifdef TARGET_DARWIN_TVOS
+      value = true;
+#else
+      value = false;
+#endif
+      return true;
     case SYSTEM_PLATFORM_ANDROID:
 #if defined(TARGET_ANDROID)
       value = true;
@@ -486,14 +500,27 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
 #endif
       return true;
     case SYSTEM_MEDIA_DVD:
-      value = g_mediaManager.IsDiscInDrive();
+      value = CServiceBroker::GetMediaManager().IsDiscInDrive();
+      return true;
+    case SYSTEM_MEDIA_AUDIO_CD:
+    #ifdef HAS_DVD_DRIVE
+      if (CServiceBroker::GetMediaManager().IsDiscInDrive())
+      {
+        MEDIA_DETECT::CCdInfo* pCdInfo = CServiceBroker::GetMediaManager().GetCdInfo();
+        value = pCdInfo && (pCdInfo->IsAudio(1) || pCdInfo->IsCDExtra(1) || pCdInfo->IsMixedMode(1));
+      }
+      else
+    #endif
+      {
+        value = false;
+      }
       return true;
 #ifdef HAS_DVD_DRIVE
     case SYSTEM_DVDREADY:
-      value = g_mediaManager.GetDriveStatus() != DRIVE_NOT_READY;
+      value = CServiceBroker::GetMediaManager().GetDriveStatus() != DRIVE_NOT_READY;
       return true;
     case SYSTEM_TRAYOPEN:
-      value = g_mediaManager.GetDriveStatus() == DRIVE_OPEN;
+      value = CServiceBroker::GetMediaManager().GetDriveStatus() == DRIVE_OPEN;
       return true;
 #endif
     case SYSTEM_CAN_POWERDOWN:
@@ -521,13 +548,8 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       value = true;
       return true;
     case SYSTEM_HAS_PVR_ADDON:
-    {
-      ADDON::VECADDONS pvrAddons;
-      ADDON::CBinaryAddonCache &addonCache = CServiceBroker::GetBinaryAddonCache();
-      addonCache.GetAddons(pvrAddons, ADDON::ADDON_PVRDLL);
-      value = (pvrAddons.size() > 0);
+      value = CServiceBroker::GetAddonMgr().HasAddons(ADDON::ADDON_PVRDLL);
       return true;
-    }
     case SYSTEM_HAS_CMS:
 #if defined(HAS_GL) || defined(HAS_DX)
       value = true;
@@ -569,7 +591,7 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       value = g_application.GlobalIdleTime() >= static_cast<int>(info.GetData1());
       return true;
     case SYSTEM_HAS_CORE_ID:
-      value = g_cpuInfo.HasCoreId(info.GetData1());
+      value = CServiceBroker::GetCPUInfo()->HasCoreId(info.GetData1());
       return true;
     case SYSTEM_DATE:
     {
@@ -610,6 +632,9 @@ bool CSystemGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
     }
     case SYSTEM_HAS_ALARM:
       value = g_alarmClock.HasAlarm(info.GetData3());
+      return true;
+    case SYSTEM_SUPPORTS_CPU_USAGE:
+      value = CServiceBroker::GetCPUInfo()->SupportsCPUUsage();
       return true;
     case SYSTEM_GET_BOOL:
       value = CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(info.GetData3());

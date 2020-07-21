@@ -9,12 +9,14 @@
 #pragma once
 
 #include "DVDDemux.h"
+#include "DVDInputStreams/DVDInputStream.h"
+
 #include <map>
 #include <vector>
 
 extern "C" {
-#include "libavcodec/avcodec.h"
-#include "libavformat/avformat.h"
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 }
 
 class CDVDDemuxClient : public CDVDDemux
@@ -32,6 +34,7 @@ public:
   DemuxPacket* Read() override;
   bool SeekTime(double time, bool backwards = false, double* startpts = NULL) override;
   void SetSpeed(int iSpeed) override;
+  void FillBuffer(bool mode) override;
   CDemuxStream* GetStream(int iStreamId) const override;
   std::vector<CDemuxStream*> GetStreams() const override;
   int GetNrOfStreams() const override;
@@ -56,5 +59,8 @@ protected:
   double m_dtsAtDisplayTime;
   std::unique_ptr<DemuxPacket> m_packet;
   int m_videoStreamPlaying = -1;
+
+private:
+  static inline bool CodecHasExtraData(AVCodecID id);
 };
 

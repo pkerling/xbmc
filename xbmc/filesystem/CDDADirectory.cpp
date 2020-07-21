@@ -7,9 +7,11 @@
  */
 
 #include "CDDADirectory.h"
-#include "music/MusicDatabase.h"
-#include "FileItem.h"
+
 #include "File.h"
+#include "FileItem.h"
+#include "ServiceBroker.h"
+#include "music/MusicDatabase.h"
 #include "storage/MediaManager.h"
 #include "utils/StringUtils.h"
 
@@ -26,11 +28,11 @@ bool CCDDADirectory::GetDirectory(const CURL& url, CFileItemList &items)
   // Reads the tracks from an audio cd
   std::string strPath = url.Get();
 
-  if (!g_mediaManager.IsDiscInDrive(strPath))
+  if (!CServiceBroker::GetMediaManager().IsDiscInDrive(strPath))
     return false;
 
   // Get information for the inserted disc
-  CCdInfo* pCdInfo = g_mediaManager.GetCdInfo(strPath);
+  CCdInfo* pCdInfo = CServiceBroker::GetMediaManager().GetCdInfo(strPath);
   if (pCdInfo == NULL)
     return false;
 

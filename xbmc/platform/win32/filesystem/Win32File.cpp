@@ -6,21 +6,20 @@
  *  See LICENSES/README.md for more information.
  */
 
-#ifdef TARGET_WINDOWS
 #include "Win32File.h"
-#include "platform/win32/WIN32Util.h"
-#include "platform/win32/CharsetConverter.h"
-#include "utils/log.h"
-#include "utils/SystemInfo.h"
+
 #include "utils/auto_buffer.h"
+#include "utils/log.h"
+
+#include "platform/win32/CharsetConverter.h"
+#include "platform/win32/WIN32Util.h"
+
+#include <cassert>
+#include <wchar.h>
 
 #include <Windows.h>
-
-#include <sys/stat.h>
-
 #include <intsafe.h>
-#include <wchar.h>
-#include <cassert>
+#include <sys/stat.h>
 
 
 using namespace XFILE;
@@ -600,9 +599,9 @@ int CWin32File::Stat(const CURL& url, struct __stat64* statData)
         }
       }
       const wchar_t* const fileExtC = fileExt.c_str();
-      for (std::vector<std::wstring>::const_iterator it = listExts.cbegin(); it != listExts.cend(); ++it)
+      for (const auto& it : listExts)
       {
-        if (_wcsicmp(fileExtC, it->c_str()) == 0)
+        if (_wcsicmp(fileExtC, it.c_str()) == 0)
         {
           statData->st_mode |= _S_IEXEC; // file can be executed
           break;
@@ -741,9 +740,9 @@ int CWin32File::Stat(struct __stat64* statData)
         }
       }
       const wchar_t* const fileExtC = fileExt.c_str();
-      for (std::vector<std::wstring>::const_iterator it = listExts.cbegin(); it != listExts.cend(); ++it)
+      for (const auto& it : listExts)
       {
-        if (_wcsicmp(fileExtC, it->c_str()) == 0)
+        if (_wcsicmp(fileExtC, it.c_str()) == 0)
         {
           statData->st_mode |= _S_IEXEC; // file can be executed
           break;
@@ -759,5 +758,3 @@ int CWin32File::Stat(struct __stat64* statData)
 
   return 0;
 }
-
-#endif // TARGET_WINDOWS

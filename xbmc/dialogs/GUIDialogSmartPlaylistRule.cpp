@@ -7,24 +7,25 @@
  */
 
 #include "GUIDialogSmartPlaylistRule.h"
-#include "ServiceBroker.h"
-#include "GUIDialogFileBrowser.h"
-#include "music/MusicDatabase.h"
-#include "video/VideoDatabase.h"
-#include "guilib/GUIWindowManager.h"
-#include "GUIDialogSelect.h"
-#include "filesystem/Directory.h"
+
 #include "FileItem.h"
+#include "GUIDialogFileBrowser.h"
+#include "GUIDialogSelect.h"
+#include "ServiceBroker.h"
+#include "filesystem/Directory.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIEditControl.h"
+#include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
+#include "music/MusicDatabase.h"
 #include "settings/MediaSourceSettings.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
 #include "storage/MediaManager.h"
 #include "utils/LabelFormatter.h"
 #include "utils/StringUtils.h"
-#include "settings/Settings.h"
-#include "settings/SettingsComponent.h"
 #include "utils/Variant.h"
+#include "video/VideoDatabase.h"
 
 #include <utility>
 
@@ -215,6 +216,11 @@ void CGUIDialogSmartPlaylistRule::OnBrowse()
     }
     iLabel = 562;
   }
+  else if (m_rule.m_field == FieldOrigYear)
+  {
+    database.GetYearsNav("musicdb://originalyears/", items);
+    iLabel = 38078;
+  }
   else if (m_rule.m_field == FieldDirector)
   {
     videodatabase.GetDirectorsNav(basePath + "directors/", items, type);
@@ -310,7 +316,7 @@ void CGUIDialogSmartPlaylistRule::OnBrowse()
       VECSOURCES sources2 = *CMediaSourceSettings::GetInstance().GetSources("video");
       sources.insert(sources.end(),sources2.begin(),sources2.end());
     }
-    g_mediaManager.GetLocalDrives(sources);
+    CServiceBroker::GetMediaManager().GetLocalDrives(sources);
 
     std::string path = m_rule.GetParameter();
     CGUIDialogFileBrowser::ShowAndGetDirectory(sources, g_localizeStrings.Get(657), path, false);

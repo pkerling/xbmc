@@ -7,14 +7,14 @@
 
 #include "AudioDecoder.h"
 
+#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "music/tags/MusicInfoTag.h"
 #include "music/tags/TagLoaderTagLib.h"
-#include "cores/AudioEngine/Utils/AEUtil.h"
 
 namespace ADDON
 {
 
-CAudioDecoder::CAudioDecoder(const BinaryAddonBasePtr& addonInfo)
+CAudioDecoder::CAudioDecoder(const AddonInfoPtr& addonInfo)
   : IAddonInstanceHandler(ADDON_INSTANCE_AUDIODECODER, addonInfo)
 {
   m_CodecName = addonInfo->Type(ADDON_AUDIODECODER)->GetValue("@name").asString();

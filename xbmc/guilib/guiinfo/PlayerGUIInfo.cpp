@@ -8,27 +8,27 @@
 
 #include "guilib/guiinfo/PlayerGUIInfo.h"
 
-#include <cmath>
-
 #include "Application.h"
 #include "FileItem.h"
 #include "PlayListPlayer.h"
 #include "ServiceBroker.h"
+#include "URL.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
+#include "cores/Cut.h"
 #include "cores/DataCacheCore.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIDialog.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/guiinfo/GUIInfo.h"
+#include "guilib/guiinfo/GUIInfoHelper.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "utils/StringUtils.h"
 #include "utils/TimeUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
 #include "utils/log.h"
-#include "URL.h"
 
-#include "guilib/guiinfo/GUIInfo.h"
-#include "guilib/guiinfo/GUIInfoHelper.h"
-#include "guilib/guiinfo/GUIInfoLabels.h"
+#include <cmath>
 
 using namespace KODI::GUILIB::GUIINFO;
 
@@ -38,9 +38,7 @@ CPlayerGUIInfo::CPlayerGUIInfo()
 {
 }
 
-CPlayerGUIInfo::~CPlayerGUIInfo()
-{
-}
+CPlayerGUIInfo::~CPlayerGUIInfo() = default;
 
 int CPlayerGUIInfo::GetTotalPlayTime() const
 {
@@ -158,7 +156,7 @@ bool CPlayerGUIInfo::InitCurrentItem(CFileItem *item)
 {
   if (item && g_application.GetAppPlayer().IsPlaying())
   {
-    CLog::Log(LOGDEBUG,"CPlayerGUIInfo::InitCurrentItem(%s)", CURL::GetRedacted(item->GetPath()).c_str());
+    CLog::Log(LOGDEBUG, "CPlayerGUIInfo::InitCurrentItem(%s)", CURL::GetRedacted(item->GetPath()).c_str());
     m_currentItem.reset(new CFileItem(*item));
   }
   else
@@ -184,8 +182,14 @@ bool CPlayerGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
         value = "+" + seekOffset;
       return true;
     }
+    case PLAYER_PROGRESS:
+      value = std::to_string(std::lrintf(g_application.GetPercentage()));
+      return true;
+    case PLAYER_PROGRESS_CACHE:
+      value = std::to_string(std::lrintf(g_application.GetCachePercentage()));
+      return true;
     case PLAYER_VOLUME:
-      value = StringUtils::Format("%2.1f dB", CAEUtil::PercentToGain(g_application.GetVolume(false)));
+      value = StringUtils::Format("%2.1f dB", CAEUtil::PercentToGain(g_application.GetVolumeRatio()));
       return true;
     case PLAYER_SUBTITLE_DELAY:
       value = StringUtils::Format("%2.3f s", g_application.GetAppPlayer().GetVideoSettings().m_SubtitleDelay);
@@ -289,9 +293,13 @@ bool CPlayerGUIInfo::GetLabel(std::string& value, const CFileItem *item, int con
     case PLAYER_ICON:
       value = item->GetArt("thumb");
       if (value.empty())
-        value = item->GetIconImage();
+        value = item->GetArt("icon");
       if (fallback)
-        *fallback = item->GetIconImage();
+        *fallback = item->GetArt("icon");
+      return true;
+    case PLAYER_CUTLIST:
+    case PLAYER_CHAPTERS:
+      value = GetContentRanges(info.m_info);
       return true;
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +361,7 @@ bool CPlayerGUIInfo::GetInt(int& value, const CGUIListItem *gitem, int contextWi
     // PLAYER_*
     ///////////////////////////////////////////////////////////////////////////////////////////////
     case PLAYER_VOLUME:
-      value = static_cast<int>(g_application.GetVolume());
+      value = static_cast<int>(g_application.GetVolumePercent());
       return true;
     case PLAYER_SUBTITLE_DELAY:
       value = g_application.GetSubtitleDelay();
@@ -405,7 +413,7 @@ bool CPlayerGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
       value = m_playerShowTime;
       return true;
     case PLAYER_MUTED:
-      value = (g_application.IsMuted() || g_application.GetVolume(false) <= VOLUME_MINIMUM);
+      value = (g_application.IsMuted() || g_application.GetVolumeRatio() <= VOLUME_MINIMUM);
       return true;
     case PLAYER_HAS_MEDIA:
       value = g_application.GetAppPlayer().IsPlaying();
@@ -585,4 +593,79 @@ bool CPlayerGUIInfo::GetBool(bool& value, const CGUIListItem *gitem, int context
   }
 
   return false;
+}
+
+std::string CPlayerGUIInfo::GetContentRanges(int iInfo) const
+{
+  std::string values;
+
+  CDataCacheCore& data = CServiceBroker::GetDataCacheCore();
+  std::vector<std::pair<float, float>> ranges;
+
+  time_t start;
+  int64_t current;
+  int64_t min;
+  int64_t max;
+  data.GetPlayTimes(start, current, min, max);
+
+  time_t duration = max - start * 1000;
+  if (duration > 0)
+  {
+    switch (iInfo)
+    {
+      case PLAYER_CUTLIST:
+        ranges = GetCutList(data, duration);
+        break;
+      case PLAYER_CHAPTERS:
+        ranges = GetChapters(data, duration);
+        break;
+      default:
+        CLog::Log(LOGERROR, "CPlayerGUIInfo::GetContentRanges(%i) - unhandled guiinfo", iInfo);
+        break;
+    }
+
+    // create csv string from ranges
+    for (const auto& range : ranges)
+      values += StringUtils::Format("%.5f,%.5f,", range.first, range.second);
+
+    if (!values.empty())
+      values.pop_back(); // remove trailing comma
+  }
+
+  return values;
+}
+
+std::vector<std::pair<float, float>> CPlayerGUIInfo::GetCutList(CDataCacheCore& data, time_t duration) const
+{
+  std::vector<std::pair<float, float>> ranges;
+
+  const std::vector<EDL::Cut> cuts = data.GetCutList();
+  for (const auto& cut : cuts)
+  {
+    if (cut.action != EDL::Action::CUT &&
+        cut.action != EDL::Action::COMM_BREAK)
+      continue;
+
+    float cutStart = cut.start * 100.0f / duration;
+    float cutEnd = cut.end * 100.0f / duration;
+    ranges.emplace_back(std::make_pair(cutStart, cutEnd));
+  }
+  return ranges;
+}
+
+std::vector<std::pair<float, float>> CPlayerGUIInfo::GetChapters(CDataCacheCore& data, time_t duration) const
+{
+  std::vector<std::pair<float, float>> ranges;
+
+  const std::vector<std::pair<std::string, int64_t>> chapters = data.GetChapters();
+  float lastMarker = 0.0f;
+  for (const auto& chapter : chapters)
+  {
+    float marker = chapter.second * 1000 * 100.0f / duration;
+    if (marker != 0)
+      ranges.emplace_back(std::make_pair(lastMarker, marker));
+
+    lastMarker = marker;
+  }
+  return ranges;
 }

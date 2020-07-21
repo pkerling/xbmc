@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -188,6 +188,10 @@ msgctxt "#31065"
 msgid "Video playlist"
 msgstr "Video spēļsaraksts"
 
+msgctxt "#31066"
+msgid "Music playlist"
+msgstr "Mūzikas spēļsaraksts"
+
 msgctxt "#31067"
 msgid "Event log"
 msgstr "Notikumu žurnāls"
@@ -203,6 +207,10 @@ msgstr "veidoja"
 msgctxt "#31072"
 msgid "Power Options"
 msgstr "Enerģijas opcijas"
+
+msgctxt "#31074"
+msgid "Total duration"
+msgstr "Kopējais ilgums"
 
 msgctxt "#31075"
 msgid "Movie sets"
@@ -252,9 +260,21 @@ msgctxt "#31114"
 msgid "Search YouTube"
 msgstr "Meklēt YouTube"
 
+msgctxt "#31132"
+msgid "Select Program"
+msgstr "Programmas izvēle"
+
+msgctxt "#31133"
+msgid "Select Resolution"
+msgstr "Izšķirtspējas izvēle"
+
 msgctxt "#31137"
 msgid "PVR info"
 msgstr "PVR info"
+
+msgctxt "#31138"
+msgid "Player process info"
+msgstr "Atskaņotāja procesu informācija"
 
 msgctxt "#31139"
 msgid "Video decoder"

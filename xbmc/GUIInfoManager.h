@@ -8,18 +8,17 @@
 
 #pragma once
 
-#include <map>
-#include <memory>
-#include <set>
-#include <string>
-#include <vector>
-
 #include "guilib/guiinfo/GUIInfoProviders.h"
 #include "interfaces/info/InfoBool.h"
 #include "interfaces/info/SkinVariable.h"
 #include "messaging/IMessageTarget.h"
 #include "threads/CriticalSection.h"
-#include "utils/Observer.h"
+
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 class CFileItem;
 class CVideoInfoTag;
@@ -51,7 +50,7 @@ namespace MUSIC_INFO
  \ingroup strings
  \brief
  */
-class CGUIInfoManager : public Observable, public KODI::MESSAGING::IMessageTarget
+class CGUIInfoManager : public KODI::MESSAGING::IMessageTarget
 {
 public:
   CGUIInfoManager(void);
@@ -174,6 +173,7 @@ private:
   int TranslateSingleString(const std::string &strCondition);
   int TranslateListItem(const Property& cat, const Property& prop, int id, bool container);
   int TranslateMusicPlayerString(const std::string &info) const;
+  int TranslateVideoPlayerString(const std::string& info) const;
   static TIME_FORMAT TranslateTimeFormat(const std::string &format);
 
   std::string GetMultiInfoLabel(const KODI::GUILIB::GUIINFO::CGUIInfo &info, int contextWindow, std::string *fallback = nullptr) const;

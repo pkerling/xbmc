@@ -7,12 +7,13 @@
  */
 
 #include "GUIStaticItem.h"
-#include "utils/XMLUtils.h"
+
 #include "GUIControlFactory.h"
 #include "GUIInfoManager.h"
 #include "guilib/GUIComponent.h"
-#include "utils/Variant.h"
 #include "utils/StringUtils.h"
+#include "utils/Variant.h"
+#include "utils/XMLUtils.h"
 
 using namespace KODI::GUILIB;
 
@@ -35,7 +36,7 @@ CGUIStaticItem::CGUIStaticItem(const TiXmlElement *item, int parentID) : CFileIt
   SetLabel(label.GetLabel(parentID));
   SetLabel2(label2.GetLabel(parentID));
   SetArt("thumb", thumb.GetLabel(parentID, true));
-  SetIconImage(icon.GetLabel(parentID, true));
+  SetArt("icon", icon.GetLabel(parentID, true));
   if (!label.IsConstant())  m_info.push_back(std::make_pair(label, "label"));
   if (!label2.IsConstant()) m_info.push_back(std::make_pair(label2, "label2"));
   if (!thumb.IsConstant())  m_info.push_back(std::make_pair(thumb, "thumb"));
@@ -65,11 +66,11 @@ CGUIStaticItem::CGUIStaticItem(const CFileItem &item)
 
 void CGUIStaticItem::UpdateProperties(int contextWindow)
 {
-  for (InfoVector::const_iterator i = m_info.begin(); i != m_info.end(); ++i)
+  for (const auto& i : m_info)
   {
-    const GUIINFO::CGUIInfoLabel &info = i->first;
-    const std::string &name = i->second;
-    bool preferTexture = strnicmp("label", name.c_str(), 5) != 0;
+    const GUIINFO::CGUIInfoLabel& info = i.first;
+    const std::string& name = i.second;
+    bool preferTexture = StringUtils::CompareNoCase("label", name, 5) != 0;
     std::string value(info.GetLabel(contextWindow, preferTexture));
     if (StringUtils::EqualsNoCase(name, "label"))
       SetLabel(value);
@@ -78,7 +79,7 @@ void CGUIStaticItem::UpdateProperties(int contextWindow)
     else if (StringUtils::EqualsNoCase(name, "thumb"))
       SetArt("thumb", value);
     else if (StringUtils::EqualsNoCase(name, "icon"))
-      SetIconImage(value);
+      SetArt("icon", value);
     else
       SetProperty(name, value.c_str());
   }

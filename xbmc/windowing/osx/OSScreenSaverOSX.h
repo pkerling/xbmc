@@ -8,14 +8,14 @@
 
 #pragma once
 
-#import <IOKit/pwr_mgt/IOPMLib.h>
-
 #include "../OSScreenSaver.h"
+
+#import <IOKit/pwr_mgt/IOPMLib.h>
 
 class COSScreenSaverOSX : public KODI::WINDOWING::IOSScreenSaver
 {
 public:
-  COSScreenSaverOSX();
+  COSScreenSaverOSX() = default;
   void Inhibit() override;
   void Uninhibit() override;
 

@@ -27,7 +27,7 @@
 #include "cores/IPlayerCallback.h"
 #include "settings/lib/ISettingsHandler.h"
 #include "settings/lib/ISettingCallback.h"
-#include "settings/lib/ISubSettings.h"
+#include "settings/ISubSettings.h"
 #if !defined(TARGET_WINDOWS) && defined(HAS_DVD_DRIVE)
 #include "storage/DetectDVDType.h"
 #endif
@@ -48,7 +48,6 @@ class CFileItemList;
 class CKey;
 class CSeekHandler;
 class CInertialScrollingHandler;
-class DPMSSupport;
 class CSplash;
 class CBookmark;
 class IActionListener;
@@ -146,11 +145,11 @@ public:
   bool Create(const CAppParamParser &params);
   bool Cleanup() override;
 
-  bool IsInitialized() { return !m_bInitializing; }
+  bool IsInitialized() const { return !m_bInitializing; }
+  bool IsStopping() const { return m_bStop; }
 
   bool CreateGUI();
   bool InitWindow(RESOLUTION res = RES_INVALID);
-  bool DestroyWindow();
   void StartServices();
   void StopServices();
 
@@ -201,6 +200,8 @@ public:
   void CheckShutdown();
   void InhibitIdleShutdown(bool inhibit);
   bool IsIdleShutdownInhibited() const;
+  void InhibitScreenSaver(bool inhibit);
+  bool IsScreenSaverInhibited() const;
   // Checks whether the screensaver and / or DPMS should become active.
   void CheckScreenSaverAndDPMS();
   void ActivateScreenSaver(bool forceType = false);
@@ -210,7 +211,8 @@ public:
   void Process() override;
   void ProcessSlow();
   void ResetScreenSaver();
-  float GetVolume(bool percentage = true) const;
+  float GetVolumePercent() const;
+  float GetVolumeRatio() const;
   void SetVolume(float iValue, bool isPercentage = true);
   bool IsMuted() const;
   bool IsMutedInternal() const { return m_muted; }
@@ -319,7 +321,7 @@ public:
 
   bool SwitchToFullScreen(bool force = false);
 
-  bool GetRenderGUI() const { return m_renderGUI; };
+  bool GetRenderGUI() const override { return m_renderGUI; };
 
   bool SetLanguage(const std::string &strLanguage);
   bool LoadLanguage(bool reload);
@@ -351,6 +353,8 @@ public:
   */
   void UnlockFrameMoveGuard();
 
+  void SetRenderGUI(bool renderGUI);
+
 protected:
   bool OnSettingsSaving() const override;
   bool Load(const TiXmlNode *settings) override;
@@ -366,7 +370,6 @@ protected:
 
   // inbound protocol
   bool OnEvent(XBMC_Event& newEvent);
-  void SetRenderGUI(bool renderGUI);
 
   /*!
    \brief Delegates the action to all registered action handlers.
@@ -392,6 +395,9 @@ protected:
 
 #if defined(TARGET_DARWIN_IOS)
   friend class CWinEventsIOS;
+#endif
+#if defined(TARGET_DARWIN_TVOS)
+  friend class CWinEventsTVOS;
 #endif
 #if defined(TARGET_ANDROID)
   friend class CWinEventsAndroid;
@@ -421,15 +427,15 @@ protected:
   XbmcThreads::EndTime m_guiRefreshTimer;
 
   bool m_bInhibitIdleShutdown = false;
+  bool m_bInhibitScreenSaver = false;
 
-  std::unique_ptr<DPMSSupport> m_dpms;
   bool m_dpmsIsActive = false;
   bool m_dpmsIsManual = false;
 
   CFileItemPtr m_itemCurrentFile;
 
   std::string m_prevMedia;
-  ThreadIdentifier m_threadID = 0;       // application thread ID.  Used in applicationMessenger to know where we are firing a thread with delay from.
+  std::thread::id m_threadID;       // application thread ID.  Used in applicationMessenger to know where we are firing a thread with delay from.
   bool m_bInitializing = true;
   bool m_bPlatformDirectories = true;
 
@@ -467,7 +473,8 @@ protected:
 
   ReplayGainSettings m_replayGainSettings;
   std::vector<IActionListener *> m_actionListeners;
-  std::vector<std::string> m_incompatibleAddons;  /*!< Result of addon migration */
+  std::vector<ADDON::AddonInfoPtr>
+      m_incompatibleAddons; /*!< Result of addon migration (incompatible addon infos) */
 
 private:
   mutable CCriticalSection m_critSection; /*!< critical section for all changes to this class, except for changes to triggers */

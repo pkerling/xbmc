@@ -22,10 +22,10 @@
 #include "guilib/GUIComponent.h"
 #include "guilib/LocalizeStrings.h"
 #include "guilib/StereoscopicsManager.h"
-#include "messaging/ApplicationMessenger.h"
 #include "messaging/helpers/DialogHelper.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/lib/Setting.h"
+#include "settings/lib/SettingDefinitions.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "storage/MediaManager.h"
@@ -38,14 +38,23 @@
 #include "windowing/WinSystem.h"
 
 #if defined(HAVE_X11)
+#define WIN_SYSTEM_CLASS CWinSystemX11
 #include "windowing/X11/WinSystemX11.h"
 #elif defined(TARGET_DARWIN_OSX)
+#define WIN_SYSTEM_CLASS CWinSystemOSX
 #include "windowing/osx/WinSystemOSX.h"
+#elif defined(TARGET_ANDROID)
 #elif defined(TARGET_DARWIN_IOS)
-#include "windowing/osx/WinSystemIOS.h"
+#define WIN_SYSTEM_CLASS CWinSystemIOS
+#include "windowing/ios/WinSystemIOS.h"
+#elif defined(TARGET_DARWIN_TVOS)
+#define WIN_SYSTEM_CLASS CWinSystemTVOS
+#include "windowing/tvos/WinSystemTVOS.h"
 #elif defined(HAVE_WAYLAND)
+#define WIN_SYSTEM_CLASS KODI::WINDOWING::WAYLAND::CWinSystemWayland
 #include "windowing/wayland/WinSystemWayland.h"
 #elif defined(TARGET_WINDOWS_DESKTOP)
+#define WIN_SYSTEM_CLASS CWinSystemWin32DX
 #include "windowing/windows/WinSystemWin32DX.h"
 #endif
 
@@ -88,7 +97,7 @@ static std::string ModeFlagsToString(unsigned int flags, bool identifier)
 
 CDisplaySettings::CDisplaySettings()
 {
-  m_resolutions.insert(m_resolutions.begin(), RES_CUSTOM, RESOLUTION_INFO());
+  m_resolutions.resize(RES_CUSTOM);
 
   m_zoomAmount = 1.0f;
   m_pixelRatio = 1.0f;
@@ -219,6 +228,7 @@ void CDisplaySettings::Clear()
   CSingleLock lock(m_critical);
   m_calibrations.clear();
   m_resolutions.clear();
+  m_resolutions.resize(RES_CUSTOM);
 
   m_zoomAmount = 1.0f;
   m_pixelRatio = 1.0f;
@@ -236,7 +246,7 @@ void CDisplaySettings::OnSettingAction(std::shared_ptr<const CSetting> setting)
   {
     std::string path = std::static_pointer_cast<const CSettingString>(setting)->GetValue();
     VECSOURCES shares;
-    g_mediaManager.GetLocalDrives(shares);
+    CServiceBroker::GetMediaManager().GetLocalDrives(shares);
     if (CGUIDialogFileBrowser::ShowAndGetFile(shares, ".3dlut", g_localizeStrings.Get(36580), path))
     {
       std::static_pointer_cast<CSettingString>(std::const_pointer_cast<CSetting>(setting))->SetValue(path);
@@ -246,7 +256,7 @@ void CDisplaySettings::OnSettingAction(std::shared_ptr<const CSetting> setting)
   {
     std::string path = std::static_pointer_cast<const CSettingString>(setting)->GetValue();
     VECSOURCES shares;
-    g_mediaManager.GetLocalDrives(shares);
+    CServiceBroker::GetMediaManager().GetLocalDrives(shares);
     if (CGUIDialogFileBrowser::ShowAndGetFile(shares, ".icc|.icm", g_localizeStrings.Get(36581), path))
     {
       std::static_pointer_cast<CSettingString>(std::const_pointer_cast<CSetting>(setting))->SetValue(path);
@@ -279,8 +289,10 @@ bool CDisplaySettings::OnSettingChanging(std::shared_ptr<const CSetting> setting
     }
 
     std::string screenmode = GetStringFromResolution(newRes);
-    CServiceBroker::GetSettingsComponent()->GetSettings()->SetString(CSettings::SETTING_VIDEOSCREEN_SCREENMODE, screenmode);
+    if (!CServiceBroker::GetSettingsComponent()->GetSettings()->SetString(CSettings::SETTING_VIDEOSCREEN_SCREENMODE, screenmode))
+      return false;
   }
+
   if (settingId == CSettings::SETTING_VIDEOSCREEN_SCREENMODE)
   {
     RESOLUTION oldRes = GetCurrentResolution();
@@ -328,10 +340,16 @@ bool CDisplaySettings::OnSettingChanging(std::shared_ptr<const CSetting> setting
 
     return true;
   }
-#if defined(HAVE_X11)
+#if defined(HAVE_X11) || defined(TARGET_WINDOWS_DESKTOP) || defined(TARGET_DARWIN_OSX)
   else if (settingId == CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS)
   {
-    CServiceBroker::GetWinSystem()->UpdateResolutions();
+    auto winSystem = CServiceBroker::GetWinSystem();
+#if defined(HAVE_X11)
+    winSystem->UpdateResolutions();
+#elif defined(TARGET_WINDOWS_DESKTOP) || defined(TARGET_DARWIN_OSX)
+    CGraphicContext& gfxContext = winSystem->GetGfxContext();
+    gfxContext.SetVideoResolution(gfxContext.GetVideoResolution(), true);
+#endif
   }
 #endif
 
@@ -398,11 +416,20 @@ void CDisplaySettings::SetCurrentResolution(RESOLUTION resolution, bool save /* 
 
   if (save)
   {
+    // Save videoscreen.screenmode setting
     std::string mode = GetStringFromResolution(resolution);
     CServiceBroker::GetSettingsComponent()->GetSettings()->SetString(CSettings::SETTING_VIDEOSCREEN_SCREENMODE, mode.c_str());
-  }
 
-  if (resolution != m_currentResolution)
+    // Check if videoscreen.screen setting also needs to be saved
+    // e.g. if ToggleFullscreen is called
+    int currentDisplayMode = GetCurrentDisplayMode();
+    int currentDisplayModeSetting = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_VIDEOSCREEN_SCREEN);
+    if (currentDisplayMode != currentDisplayModeSetting)
+    {
+      CServiceBroker::GetSettingsComponent()->GetSettings()->SetInt(CSettings::SETTING_VIDEOSCREEN_SCREEN, currentDisplayMode);
+    }
+  }
+  else if (resolution != m_currentResolution)
   {
     m_currentResolution = resolution;
     SetChanged();
@@ -487,10 +514,8 @@ void CDisplaySettings::ApplyCalibrations()
   for (ResolutionInfos::const_iterator itCal = m_calibrations.begin(); itCal != m_calibrations.end(); ++itCal)
   {
     // find resolutions
-    for (size_t res = 0; res < m_resolutions.size(); ++res)
+    for (size_t res = RES_DESKTOP; res < m_resolutions.size(); ++res)
     {
-      if (res == RES_WINDOW)
-        continue;
       if (StringUtils::EqualsNoCase(itCal->strMode, m_resolutions[res].strMode))
       {
         // overscan
@@ -538,24 +563,33 @@ void CDisplaySettings::ApplyCalibrations()
 void CDisplaySettings::UpdateCalibrations()
 {
   CSingleLock lock(m_critical);
-  for (size_t res = RES_DESKTOP; res < m_resolutions.size(); ++res)
-  {
-    // find calibration
-    bool found = false;
-    for (ResolutionInfos::iterator itCal = m_calibrations.begin(); itCal != m_calibrations.end(); ++itCal)
-    {
-      if (StringUtils::EqualsNoCase(itCal->strMode, m_resolutions[res].strMode))
-      {
-        //! @todo erase calibrations with default values
-        *itCal = m_resolutions[res];
-        found = true;
-        break;
-      }
-    }
 
-    if (!found)
-      m_calibrations.push_back(m_resolutions[res]);
+  if (m_resolutions.size() <= RES_DESKTOP)
+    return;
+
+  // Add new (unique) resolutions
+  for (ResolutionInfos::const_iterator res(m_resolutions.cbegin() + RES_CUSTOM); res != m_resolutions.cend(); ++res)
+    if (std::find_if(m_calibrations.cbegin(), m_calibrations.cend(),
+      [&](const RESOLUTION_INFO& info) { return StringUtils::EqualsNoCase(res->strMode, info.strMode); }) == m_calibrations.cend())
+        m_calibrations.push_back(*res);
+
+  for (auto &cal : m_calibrations)
+  {
+    ResolutionInfos::const_iterator res(std::find_if(m_resolutions.cbegin() + RES_DESKTOP, m_resolutions.cend(),
+    [&](const RESOLUTION_INFO& info) { return StringUtils::EqualsNoCase(cal.strMode, info.strMode); }));
+
+    if (res != m_resolutions.cend())
+    {
+      //! @todo erase calibrations with default values
+      cal = *res;
+    }
   }
+}
+
+void CDisplaySettings::ClearCalibrations()
+{
+  CSingleLock lock(m_critical);
+  m_calibrations.clear();
 }
 
 DisplayMode CDisplaySettings::GetCurrentDisplayMode() const
@@ -656,12 +690,12 @@ RESOLUTION CDisplaySettings::GetResolutionForScreen()
   return RES_DESKTOP;
 }
 
-static inline bool ModeSort(std::pair<std::string, std::string> i,std::pair<std::string, std::string> j)
+static inline bool ModeSort(StringSettingOption i,StringSettingOption j)
 {
-  return (i.second > j.second);
+  return (i.value > j.value);
 }
 
-void CDisplaySettings::SettingOptionsModesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void CDisplaySettings::SettingOptionsModesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data)
 {
   RESOLUTION res = CDisplaySettings::GetInstance().GetDisplayResolution();
   RESOLUTION_INFO info = CDisplaySettings::GetInstance().GetResolutionInfo(res);
@@ -674,26 +708,24 @@ void CDisplaySettings::SettingOptionsModesFiller(std::shared_ptr<const CSetting>
     {
       auto setting = GetStringFromResolution((RESOLUTION)index, mode.fRefreshRate);
 
-      list.push_back(std::make_pair(
-        StringUtils::Format("%dx%d%s %0.2fHz", mode.iScreenWidth, mode.iScreenHeight,
-                            ModeFlagsToString(mode.dwFlags, false).c_str(),
-                            mode.fRefreshRate),
-                            setting));
+      list.emplace_back(StringUtils::Format("%dx%d%s %0.2fHz", mode.iScreenWidth, mode.iScreenHeight,
+                                            ModeFlagsToString(mode.dwFlags, false).c_str(), mode.fRefreshRate),
+                        setting);
     }
   }
 
   std::sort(list.begin(), list.end(), ModeSort);
 }
 
-void CDisplaySettings::SettingOptionsRefreshChangeDelaysFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsRefreshChangeDelaysFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
-  list.push_back(std::make_pair(g_localizeStrings.Get(13551), 0));
+  list.emplace_back(g_localizeStrings.Get(13551), 0);
 
   for (int i = 1; i <= MAX_REFRESH_CHANGE_DELAY; i++)
-    list.push_back(std::make_pair(StringUtils::Format(g_localizeStrings.Get(13553).c_str(), (double)i / 10.0), i));
+    list.emplace_back(StringUtils::Format(g_localizeStrings.Get(13553).c_str(), static_cast<double>(i) / 10.0), i);
 }
 
-void CDisplaySettings::SettingOptionsRefreshRatesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void CDisplaySettings::SettingOptionsRefreshRatesFiller(SettingConstPtr setting, std::vector<StringSettingOption> &list, std::string &current, void *data)
 {
   // get the proper resolution
   RESOLUTION res = CDisplaySettings::GetInstance().GetDisplayResolution();
@@ -704,7 +736,7 @@ void CDisplaySettings::SettingOptionsRefreshRatesFiller(SettingConstPtr setting,
   if (res == RES_WINDOW)
   {
     current = "WINDOW";
-    list.push_back(std::make_pair(g_localizeStrings.Get(242), current));
+    list.emplace_back(g_localizeStrings.Get(242), current);
     return;
   }
 
@@ -718,21 +750,21 @@ void CDisplaySettings::SettingOptionsRefreshRatesFiller(SettingConstPtr setting,
     std::string screenmode = GetStringFromResolution((RESOLUTION)refreshrate->ResInfo_Index, refreshrate->RefreshRate);
     if (!match && StringUtils::EqualsNoCase(std::static_pointer_cast<const CSettingString>(setting)->GetValue(), screenmode))
       match = true;
-    list.push_back(std::make_pair(StringUtils::Format("%.02f", refreshrate->RefreshRate), screenmode));
+    list.emplace_back(StringUtils::Format("%.2f", refreshrate->RefreshRate), screenmode);
   }
 
   if (!match)
     current = GetStringFromResolution(res, CServiceBroker::GetWinSystem()->DefaultRefreshRate(refreshrates).RefreshRate);
 }
 
-void CDisplaySettings::SettingOptionsResolutionsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsResolutionsFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   RESOLUTION res = CDisplaySettings::GetInstance().GetDisplayResolution();
   RESOLUTION_INFO info = CDisplaySettings::GetInstance().GetResolutionInfo(res);
   if (res == RES_WINDOW)
   {
     current = res;
-    list.push_back(std::make_pair(g_localizeStrings.Get(242), res));
+    list.emplace_back(g_localizeStrings.Get(242), res);
   }
   else
   {
@@ -740,10 +772,9 @@ void CDisplaySettings::SettingOptionsResolutionsFiller(SettingConstPtr setting, 
     std::vector<RESOLUTION_WHR> resolutions = CServiceBroker::GetWinSystem()->ScreenResolutions(info.fRefreshRate);
     for (std::vector<RESOLUTION_WHR>::const_iterator resolution = resolutions.begin(); resolution != resolutions.end(); ++resolution)
     {
-      list.push_back(std::make_pair(
-        StringUtils::Format("%dx%d%s", resolution->width, resolution->height,
-                            ModeFlagsToString(resolution->flags, false).c_str()),
-                            resolution->ResInfo_Index));
+      list.emplace_back(StringUtils::Format("%dx%d%s", resolution->width, resolution->height,
+                                            ModeFlagsToString(resolution->flags, false).c_str()),
+                        resolution->ResInfo_Index);
 
       resolutionInfos.insert(std::make_pair((RESOLUTION)resolution->ResInfo_Index, CDisplaySettings::GetInstance().GetResolutionInfo(resolution->ResInfo_Index)));
     }
@@ -754,19 +785,19 @@ void CDisplaySettings::SettingOptionsResolutionsFiller(SettingConstPtr setting, 
   }
 }
 
-void CDisplaySettings::SettingOptionsDispModeFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsDispModeFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   // The user should only be able to disable windowed modes with the canwindowed
   // setting. When the user sets canwindowed to true but the windowing system
   // does not support windowed modes, we would just shoot ourselves in the foot
   // by offering the option.
   if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_canWindowed && CServiceBroker::GetWinSystem()->CanDoWindowed())
-    list.push_back(std::make_pair(g_localizeStrings.Get(242), DM_WINDOWED));
+    list.emplace_back(g_localizeStrings.Get(242), DM_WINDOWED);
 
-  list.push_back(std::make_pair(g_localizeStrings.Get(244), DM_FULLSCREEN));
+  list.emplace_back(g_localizeStrings.Get(244), DM_FULLSCREEN);
 }
 
-void CDisplaySettings::SettingOptionsStereoscopicModesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsStereoscopicModesFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   CGUIComponent *gui = CServiceBroker::GetGUI();
   if (gui != nullptr)
@@ -777,74 +808,63 @@ void CDisplaySettings::SettingOptionsStereoscopicModesFiller(SettingConstPtr set
     {
       RENDER_STEREO_MODE mode = (RENDER_STEREO_MODE) i;
       if (CServiceBroker::GetRenderSystem()->SupportsStereo(mode))
-        list.push_back(std::make_pair(stereoscopicsManager.GetLabelForStereoMode(mode), mode));
+        list.emplace_back(stereoscopicsManager.GetLabelForStereoMode(mode), mode);
     }
   }
 }
 
-void CDisplaySettings::SettingOptionsPreferredStereoscopicViewModesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsPreferredStereoscopicViewModesFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   const CStereoscopicsManager &stereoscopicsManager = CServiceBroker::GetGUI()->GetStereoscopicsManager();
 
-  list.push_back(std::make_pair(stereoscopicsManager.GetLabelForStereoMode(RENDER_STEREO_MODE_AUTO), RENDER_STEREO_MODE_AUTO)); // option for autodetect
+  list.emplace_back(stereoscopicsManager.GetLabelForStereoMode(RENDER_STEREO_MODE_AUTO),
+                    RENDER_STEREO_MODE_AUTO); // option for autodetect
   // don't add "off" to the list of preferred modes as this doesn't make sense
   for (int i = RENDER_STEREO_MODE_OFF +1; i < RENDER_STEREO_MODE_COUNT; i++)
   {
     RENDER_STEREO_MODE mode = (RENDER_STEREO_MODE) i;
     // also skip "mono" mode which is no real stereoscopic mode
     if (mode != RENDER_STEREO_MODE_MONO && CServiceBroker::GetRenderSystem()->SupportsStereo(mode))
-      list.push_back(std::make_pair(stereoscopicsManager.GetLabelForStereoMode(mode), mode));
+      list.emplace_back(stereoscopicsManager.GetLabelForStereoMode(mode), mode);
   }
 }
 
-void CDisplaySettings::SettingOptionsMonitorsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void CDisplaySettings::SettingOptionsMonitorsFiller(SettingConstPtr setting, std::vector<StringSettingOption> &list, std::string &current, void *data)
 {
-#if defined(HAVE_X11) || defined(TARGET_DARWIN_OSX) || defined(TARGET_DARWIN_IOS)
+#if defined(HAVE_X11) || defined(TARGET_DARWIN) || defined(HAVE_WAYLAND) || \
+    defined(TARGET_WINDOWS_DESKTOP)
   std::vector<std::string> monitors;
-
-#if defined(HAVE_X11)
-  CWinSystemX11 *winSystem = dynamic_cast<CWinSystemX11*>(CServiceBroker::GetWinSystem());
-#elif defined(TARGET_DARWIN_OSX)
-  CWinSystemOSX *winSystem = dynamic_cast<CWinSystemOSX*>(CServiceBroker::GetWinSystem());
-#elif defined(TARGET_DARWIN_IOS)
-  CWinSystemIOS *winSystem = dynamic_cast<CWinSystemIOS*>(CServiceBroker::GetWinSystem());
-#endif
+  auto winSystem = dynamic_cast<WIN_SYSTEM_CLASS*>(CServiceBroker::GetWinSystem());
   winSystem->GetConnectedOutputs(&monitors);
   std::string currentMonitor = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
-  for (unsigned int i=0; i<monitors.size(); ++i)
+#if defined(HAVE_X11) || defined(TARGET_DARWIN)
+  for (unsigned int i = 0; i < monitors.size(); ++i)
   {
     if(currentMonitor.compare("Default") != 0 &&
        StringUtils::EqualsNoCase(CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP).strOutput, monitors[i]))
     {
       current = monitors[i];
     }
-    list.push_back(std::make_pair(monitors[i], monitors[i]));
+    list.emplace_back(monitors[i], monitors[i]);
   }
 #elif defined(HAVE_WAYLAND) || defined(TARGET_WINDOWS_DESKTOP)
-  std::vector<std::string> monitors;
-#if defined(HAVE_WAYLAND)
-  KODI::WINDOWING::WAYLAND::CWinSystemWayland *winSystem = dynamic_cast<KODI::WINDOWING::WAYLAND::CWinSystemWayland*>(CServiceBroker::GetWinSystem());
-#elif defined(TARGET_WINDOWS_DESKTOP)
-  CWinSystemWin32DX *winSystem = dynamic_cast<CWinSystemWin32DX*>(CServiceBroker::GetWinSystem());
-#endif
-  winSystem->GetConnectedOutputs(&monitors);
   bool foundMonitor = false;
-  std::string currentMonitor = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_VIDEOSCREEN_MONITOR);
   for (auto const& monitor : monitors)
   {
     if(monitor == currentMonitor)
     {
       foundMonitor = true;
     }
-    list.push_back(std::make_pair(monitor, monitor));
+    list.emplace_back(monitor, monitor);
   }
 
   if (!foundMonitor && !current.empty())
   {
     // Add current value so no monitor change is triggered when entering the settings screen and
     // the preferred monitor is preserved
-    list.push_back(std::make_pair(current, current));
+    list.emplace_back(current, current);
   }
+#endif
 #endif
 }
 
@@ -857,36 +877,36 @@ void CDisplaySettings::ClearCustomResolutions()
   }
 }
 
-void CDisplaySettings::SettingOptionsCmsModesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsCmsModesFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
-  list.push_back(std::make_pair(g_localizeStrings.Get(36580), CMS_MODE_3DLUT));
+  list.emplace_back(g_localizeStrings.Get(36580), CMS_MODE_3DLUT);
 #ifdef HAVE_LCMS2
-  list.push_back(std::make_pair(g_localizeStrings.Get(36581), CMS_MODE_PROFILE));
+  list.emplace_back(g_localizeStrings.Get(36581), CMS_MODE_PROFILE);
 #endif
 }
 
-void CDisplaySettings::SettingOptionsCmsWhitepointsFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsCmsWhitepointsFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
-  list.push_back(std::make_pair(g_localizeStrings.Get(36586), CMS_WHITEPOINT_D65));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36587), CMS_WHITEPOINT_D93));
+  list.emplace_back(g_localizeStrings.Get(36586), CMS_WHITEPOINT_D65);
+  list.emplace_back(g_localizeStrings.Get(36587), CMS_WHITEPOINT_D93);
 }
 
-void CDisplaySettings::SettingOptionsCmsPrimariesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsCmsPrimariesFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
-  list.push_back(std::make_pair(g_localizeStrings.Get(36588), CMS_PRIMARIES_AUTO));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36589), CMS_PRIMARIES_BT709));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36579), CMS_PRIMARIES_BT2020));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36590), CMS_PRIMARIES_170M));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36591), CMS_PRIMARIES_BT470M));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36592), CMS_PRIMARIES_BT470BG));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36593), CMS_PRIMARIES_240M));
+  list.emplace_back(g_localizeStrings.Get(36588), CMS_PRIMARIES_AUTO);
+  list.emplace_back(g_localizeStrings.Get(36589), CMS_PRIMARIES_BT709);
+  list.emplace_back(g_localizeStrings.Get(36579), CMS_PRIMARIES_BT2020);
+  list.emplace_back(g_localizeStrings.Get(36590), CMS_PRIMARIES_170M);
+  list.emplace_back(g_localizeStrings.Get(36591), CMS_PRIMARIES_BT470M);
+  list.emplace_back(g_localizeStrings.Get(36592), CMS_PRIMARIES_BT470BG);
+  list.emplace_back(g_localizeStrings.Get(36593), CMS_PRIMARIES_240M);
 }
 
-void CDisplaySettings::SettingOptionsCmsGammaModesFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CDisplaySettings::SettingOptionsCmsGammaModesFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
-  list.push_back(std::make_pair(g_localizeStrings.Get(36582), CMS_TRC_BT1886));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36583), CMS_TRC_INPUT_OFFSET));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36584), CMS_TRC_OUTPUT_OFFSET));
-  list.push_back(std::make_pair(g_localizeStrings.Get(36585), CMS_TRC_ABSOLUTE));
+  list.emplace_back(g_localizeStrings.Get(36582), CMS_TRC_BT1886);
+  list.emplace_back(g_localizeStrings.Get(36583), CMS_TRC_INPUT_OFFSET);
+  list.emplace_back(g_localizeStrings.Get(36584), CMS_TRC_OUTPUT_OFFSET);
+  list.emplace_back(g_localizeStrings.Get(36585), CMS_TRC_ABSOLUTE);
 }
 

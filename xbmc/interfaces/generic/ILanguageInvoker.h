@@ -8,16 +8,17 @@
 
 #pragma once
 
+#include "addons/IAddon.h"
+
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "addons/IAddon.h"
-
 class CLanguageInvokerThread;
 class ILanguageInvocationHandler;
 
-typedef enum {
+typedef enum
+{
   InvokerStateUninitialized,
   InvokerStateInitialized,
   InvokerStateRunning,
@@ -49,12 +50,16 @@ public:
 protected:
   friend class CLanguageInvokerThread;
 
+  /**
+   * Called to notify the script is aborting.
+   */
+  virtual void AbortNotification();
+
   virtual bool execute(const std::string &script, const std::vector<std::string> &arguments) = 0;
   virtual bool stop(bool abort) = 0;
 
   virtual void pulseGlobalEvent();
   virtual bool onExecutionInitialized();
-  virtual void onAbortRequested();
   virtual void onExecutionFailed();
   virtual void onExecutionDone();
   virtual void onExecutionFinalized();

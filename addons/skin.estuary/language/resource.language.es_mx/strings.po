@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -47,6 +47,10 @@ msgstr "Películas al azar"
 msgctxt "#31007"
 msgid "Unwatched movies"
 msgstr "Películas sin mirar"
+
+msgctxt "#31008"
+msgid "Enable category widgets"
+msgstr "Habilitar categoría de widgets"
 
 msgctxt "#31009"
 msgid "Download icons"
@@ -108,6 +112,10 @@ msgctxt "#31023"
 msgid "Viewtype"
 msgstr "Tipo de vista"
 
+msgctxt "#31024"
+msgid "Choose rating to display for media items"
+msgstr "Escoger rating para mostrar para archivos multimedia"
+
 msgctxt "#31025"
 msgid "No favourites found. You can add any item from media views to this list by using the context menu."
 msgstr "No se han encontrado favoritos. Puede agregar cualquier elemento de las vistas de medios a esta lista mediante el menú contextual."
@@ -139,10 +147,6 @@ msgstr "Orden"
 msgctxt "#31033"
 msgid "Your rating"
 msgstr "Tu votación"
-
-msgctxt "#31034"
-msgid "Extended info"
-msgstr "Información extendida"
 
 msgctxt "#31035"
 msgid "Pages"
@@ -256,6 +260,10 @@ msgctxt "#31072"
 msgid "Power Options"
 msgstr "Opciones de Energía"
 
+msgctxt "#31074"
+msgid "Total duration"
+msgstr "Duración total"
+
 msgctxt "#31075"
 msgid "Movie sets"
 msgstr "conjunto de películas"
@@ -283,10 +291,6 @@ msgstr "Configuración de visualización"
 msgctxt "#31089"
 msgid "Available groups"
 msgstr "Grupos disponibles"
-
-msgctxt "#31090"
-msgid "Search trailer"
-msgstr "Buscar tráiler"
 
 msgctxt "#31092"
 msgid "Video menu"
@@ -368,10 +372,6 @@ msgctxt "#31114"
 msgid "Search YouTube"
 msgstr "Buscar en YouTube"
 
-msgctxt "#31115"
-msgid "Search TheMovieDB"
-msgstr "Buscar en TheMovieDB"
-
 msgctxt "#31116"
 msgid "Remove this main menu item"
 msgstr "Eliminar este elemento del menú principal"
@@ -404,10 +404,6 @@ msgctxt "#31123"
 msgid "Same director"
 msgstr "Mismo director"
 
-msgctxt "#31124"
-msgid "Show images on map"
-msgstr "Mostrar imágenes en el mapa"
-
 msgctxt "#31125"
 msgid "Press up for actor info"
 msgstr "Presione para arriba para información del actor"
@@ -435,6 +431,14 @@ msgstr "Ajustes relacionados con el menú principal: Configure la pantalla de in
 msgctxt "#31131"
 msgid "Choose skin fanart pack"
 msgstr "Elegir paquete de skin fanart"
+
+msgctxt "#31132"
+msgid "Select Program"
+msgstr "Seleccionar programa"
+
+msgctxt "#31133"
+msgid "Select Resolution"
+msgstr "Seleccionar Resolución"
 
 msgctxt "#31134"
 msgid "Remaining"
@@ -536,6 +540,26 @@ msgctxt "#31161"
 msgid "Numeric pad"
 msgstr "Teclado numérico"
 
+msgctxt "#31162"
+msgid "Play your personal games or download one of the many game add-ons from the official repository."
+msgstr "Jugar tu juego personal o descarga uno de los muchos complementos de juegos desde el repositorio oficial."
+
+msgctxt "#31163"
+msgid "Show Fanart background"
+msgstr "Mostrar Fanart de fondo"
+
+msgctxt "#31164"
+msgid "Choose kind of profile identification"
+msgstr "Escoja el tipo de identificación de perfil"
+
 msgctxt "#31165"
 msgid "Profile name"
 msgstr "Nombre de perfil"
+
+msgctxt "#31166"
+msgid "Profile avatar"
+msgstr "Avatar del perfil"
+
+msgctxt "#31167"
+msgid "Animate background"
+msgstr "Animar fondo"

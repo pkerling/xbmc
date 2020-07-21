@@ -32,7 +32,6 @@
 #include "network/Network.h"
 #include "network/Zeroconf.h"
 #include "network/ZeroconfBrowser.h"
-#include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "URL.h"
@@ -57,7 +56,6 @@
 using namespace XFILE;
 using namespace KODI::MESSAGING;
 
-DllLibShairplay *CAirTunesServer::m_pLibShairplay = NULL;
 CAirTunesServer *CAirTunesServer::ServerInstance = NULL;
 std::string CAirTunesServer::m_macAddress;
 std::string CAirTunesServer::m_metadata[3];
@@ -71,6 +69,10 @@ CCriticalSection CAirTunesServer::m_actionQueueLock;
 std::list<CAction> CAirTunesServer::m_actionQueue;
 CEvent CAirTunesServer::m_processActions;
 int CAirTunesServer::m_sampleRate = 44100;
+
+unsigned int CAirTunesServer::m_cachedStartTime = 0;
+unsigned int CAirTunesServer::m_cachedEndTime = 0;
+unsigned int CAirTunesServer::m_cachedCurrentTime = 0;
 
 
 //parse daap metadata - thx to project MythTV
@@ -398,15 +400,39 @@ void CAirTunesServer::AudioOutputFunctions::audio_remote_control_id(void *cls, c
   }
 }
 
+void CAirTunesServer::InformPlayerAboutPlayTimes()
+{
+  if (m_cachedEndTime > 0)
+  {
+    unsigned int duration = m_cachedEndTime - m_cachedStartTime;
+    unsigned int position = m_cachedCurrentTime - m_cachedStartTime;
+    duration /= m_sampleRate;
+    position /= m_sampleRate;
+  
+    if (g_application.GetAppPlayer().IsPlaying())
+    {
+      g_application.GetAppPlayer().SetTime(position * 1000);
+      g_application.GetAppPlayer().SetTotalTime(duration * 1000);
+      
+      // reset play times now that we have informed the player
+      m_cachedEndTime = 0;
+      m_cachedCurrentTime = 0;
+      m_cachedStartTime = 0;
+
+    }
+  }
+}
+
 void CAirTunesServer::AudioOutputFunctions::audio_set_progress(void *cls, void *session, unsigned int start, unsigned int curr, unsigned int end)
 {
-  unsigned int duration = end - start;
-  unsigned int position = curr - start;
-  duration /= m_sampleRate;
-  position /= m_sampleRate;
-
-  g_application.GetAppPlayer().SetTime(position * 1000);
-  g_application.GetAppPlayer().SetTotalTime(duration * 1000);
+  m_cachedStartTime = start;
+  m_cachedCurrentTime = curr;
+  m_cachedEndTime = end;
+  if (g_application.GetAppPlayer().IsPlaying())
+  {
+    // player is there - directly inform him about play times
+    InformPlayerAboutPlayTimes();
+  }
 }
 
 void CAirTunesServer::SetupRemoteControl()
@@ -462,6 +488,9 @@ void  CAirTunesServer::AudioOutputFunctions::audio_process(void *cls, void *sess
 {
   XFILE::CPipeFile *pipe=(XFILE::CPipeFile *)cls;
   pipe->Write(buffer, buflen);
+  
+  // in case there are some play times cached that are not yet sent to the player - do it here
+  InformPlayerAboutPlayTimes();
 }
 
 void  CAirTunesServer::AudioOutputFunctions::audio_destroy(void *cls, void *session)
@@ -500,7 +529,7 @@ void  CAirTunesServer::AudioOutputFunctions::audio_destroy(void *cls, void *sess
 void shairplay_log(void *cls, int level, const char *msg)
 {
   int xbmcLevel = LOGINFO;
-  if(!CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(LOGAIRTUNES))
+  if (!CServiceBroker::GetLogging().CanLogComponent(LOGAIRTUNES))
     return;
 
   switch(level)
@@ -568,22 +597,22 @@ bool CAirTunesServer::StartServer(int port, bool nonlocal, bool usePassword, con
                                              CSysInfo::GetDeviceName().c_str());
 
     std::vector<std::pair<std::string, std::string> > txt;
-    txt.push_back(std::make_pair("txtvers",  "1"));
-    txt.push_back(std::make_pair("cn", "0,1"));
-    txt.push_back(std::make_pair("ch", "2"));
-    txt.push_back(std::make_pair("ek", "1"));
-    txt.push_back(std::make_pair("et", "0,1"));
-    txt.push_back(std::make_pair("sv", "false"));
-    txt.push_back(std::make_pair("tp",  "UDP"));
-    txt.push_back(std::make_pair("sm",  "false"));
-    txt.push_back(std::make_pair("ss",  "16"));
-    txt.push_back(std::make_pair("sr",  "44100"));
-    txt.push_back(std::make_pair("pw",  usePassword?"true":"false"));
-    txt.push_back(std::make_pair("vn",  "3"));
-    txt.push_back(std::make_pair("da",  "true"));
-    txt.push_back(std::make_pair("md",  "0,1,2"));
-    txt.push_back(std::make_pair("am",  "Kodi,1"));
-    txt.push_back(std::make_pair("vs",  "130.14"));
+    txt.emplace_back("txtvers", "1");
+    txt.emplace_back("cn", "0,1");
+    txt.emplace_back("ch", "2");
+    txt.emplace_back("ek", "1");
+    txt.emplace_back("et", "0,1");
+    txt.emplace_back("sv", "false");
+    txt.emplace_back("tp", "UDP");
+    txt.emplace_back("sm", "false");
+    txt.emplace_back("ss", "16");
+    txt.emplace_back("sr", "44100");
+    txt.emplace_back("pw", usePassword ? "true" : "false");
+    txt.emplace_back("vn", "3");
+    txt.emplace_back("da", "true");
+    txt.emplace_back("md", "0,1,2");
+    txt.emplace_back("am", "Kodi,1");
+    txt.emplace_back("vs", "130.14");
 
     CZeroconf::GetInstance()->PublishService("servers.airtunes", "_raop._tcp", appName, port, txt);
   }
@@ -616,30 +645,23 @@ bool CAirTunesServer::IsRunning()
 
 bool CAirTunesServer::IsRAOPRunningInternal()
 {
-  if (m_pLibShairplay != nullptr && m_pRaop != nullptr)
+  if (m_pRaop)
   {
-    return m_pLibShairplay->raop_is_running(m_pRaop) != 0;
+    return raop_is_running(m_pRaop) != 0;
   }
+
   return false;
 }
 
-
 CAirTunesServer::CAirTunesServer(int port, bool nonlocal)
-: CThread("AirTunesActionThread"),
-  m_pRaop(nullptr)
+  : CThread("AirTunesActionThread")
 {
   m_port = port;
-  m_pLibShairplay = new DllLibShairplay();
-  m_pPipe         = new XFILE::CPipeFile;
+  m_pPipe = new XFILE::CPipeFile;
 }
 
 CAirTunesServer::~CAirTunesServer()
 {
-  if (m_pLibShairplay->IsLoaded())
-  {
-    m_pLibShairplay->Unload();
-  }
-  delete m_pLibShairplay;
   delete m_pPipe;
 }
 
@@ -665,45 +687,39 @@ bool CAirTunesServer::Initialize(const std::string &password)
 
   Deinitialize();
 
-  if (m_pLibShairplay->Load())
+  raop_callbacks_t ao = {};
+  ao.cls = m_pPipe;
+  ao.audio_init = AudioOutputFunctions::audio_init;
+  ao.audio_set_volume = AudioOutputFunctions::audio_set_volume;
+  ao.audio_set_metadata = AudioOutputFunctions::audio_set_metadata;
+  ao.audio_set_coverart = AudioOutputFunctions::audio_set_coverart;
+  ao.audio_process = AudioOutputFunctions::audio_process;
+  ao.audio_destroy = AudioOutputFunctions::audio_destroy;
+  ao.audio_remote_control_id = AudioOutputFunctions::audio_remote_control_id;
+  ao.audio_set_progress = AudioOutputFunctions::audio_set_progress;
+  m_pRaop = raop_init(1, &ao, RSA_KEY, nullptr); //1 - we handle one client at a time max
+
+  if (m_pRaop)
   {
+    char macAdr[6];
+    unsigned short port = (unsigned short)m_port;
 
-    raop_callbacks_t ao = {};
-    ao.cls                  = m_pPipe;
-    ao.audio_init           = AudioOutputFunctions::audio_init;
-    ao.audio_set_volume     = AudioOutputFunctions::audio_set_volume;
-    ao.audio_set_metadata   = AudioOutputFunctions::audio_set_metadata;
-    ao.audio_set_coverart   = AudioOutputFunctions::audio_set_coverart;
-    ao.audio_process        = AudioOutputFunctions::audio_process;
-    ao.audio_destroy        = AudioOutputFunctions::audio_destroy;
-    ao.audio_remote_control_id = AudioOutputFunctions::audio_remote_control_id;
-    ao.audio_set_progress   = AudioOutputFunctions::audio_set_progress;
-    m_pLibShairplay->EnableDelayedUnload(false);
-    m_pRaop = m_pLibShairplay->raop_init(1, &ao, RSA_KEY);//1 - we handle one client at a time max
-    ret = m_pRaop != NULL;
-
-    if(ret)
+    raop_set_log_level(m_pRaop, RAOP_LOG_WARNING);
+    if (CServiceBroker::GetLogging().CanLogComponent(LOGAIRTUNES))
     {
-      char macAdr[6];
-      unsigned short port = (unsigned short)m_port;
-
-      m_pLibShairplay->raop_set_log_level(m_pRaop, RAOP_LOG_WARNING);
-      if(CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(LOGAIRTUNES))
-      {
-        m_pLibShairplay->raop_set_log_level(m_pRaop, RAOP_LOG_DEBUG);
-      }
-
-      m_pLibShairplay->raop_set_log_callback(m_pRaop, shairplay_log, NULL);
-
-      CNetworkInterface *net = CServiceBroker::GetNetwork().GetFirstConnectedInterface();
-
-      if (net)
-      {
-        net->GetMacAddressRaw(macAdr);
-      }
-
-      ret = m_pLibShairplay->raop_start(m_pRaop, &port, macAdr, 6, password.c_str()) >= 0;
+      raop_set_log_level(m_pRaop, RAOP_LOG_DEBUG);
     }
+
+    raop_set_log_callback(m_pRaop, shairplay_log, NULL);
+
+    CNetworkInterface* net = CServiceBroker::GetNetwork().GetFirstConnectedInterface();
+
+    if (net)
+    {
+      net->GetMacAddressRaw(macAdr);
+    }
+
+    ret = raop_start(m_pRaop, &port, macAdr, 6, password.c_str()) >= 0;
   }
   return ret;
 }
@@ -712,11 +728,10 @@ void CAirTunesServer::Deinitialize()
 {
   RegisterActionListener(false);
 
-  if (m_pLibShairplay && m_pLibShairplay->IsLoaded())
+  if (m_pRaop)
   {
-    m_pLibShairplay->raop_stop(m_pRaop);
-    m_pLibShairplay->raop_destroy(m_pRaop);
-    m_pLibShairplay->Unload();
+    raop_stop(m_pRaop);
+    raop_destroy(m_pRaop);
     m_pRaop = nullptr;
   }
 }

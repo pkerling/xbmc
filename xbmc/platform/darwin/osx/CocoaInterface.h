@@ -9,7 +9,6 @@
 #pragma once
 
 #include <string>
-#include "platform/darwin/AutoPool.h"
 
 #ifdef __cplusplus
 extern "C"

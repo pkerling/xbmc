@@ -12,11 +12,9 @@
 #include "utils/log.h"
 
 #include <algorithm>
-#include "ServiceBroker.h"
-#include "cores/AudioEngine/Interfaces/AE.h"
 
 extern "C" {
-#include "libavcodec/avcodec.h"
+#include <libavcodec/avcodec.h>
 }
 
 #define TRUEHD_BUF_SIZE 61440
@@ -43,6 +41,10 @@ bool CDVDAudioCodecPassthrough::Open(CDVDStreamInfo &hints, CDVDCodecOptions &op
 
     case CAEStreamInfo::STREAM_TYPE_EAC3:
       m_codecName = "pt-eac3";
+      break;
+
+    case CAEStreamInfo::STREAM_TYPE_DTSHD_MA:
+      m_codecName = "pt-dtshd";
       break;
 
     case CAEStreamInfo::STREAM_TYPE_DTSHD:
@@ -111,15 +113,17 @@ bool CDVDAudioCodecPassthrough::AddData(const DemuxPacket &packet)
       if (m_nextPts != DVD_NOPTS_VALUE)
       {
         m_currentPts = m_nextPts;
-        m_nextPts = DVD_NOPTS_VALUE;
+        m_nextPts = packet.pts;
       }
       else if (packet.pts != DVD_NOPTS_VALUE)
       {
         m_currentPts = packet.pts;
       }
     }
-
-    m_nextPts = packet.pts;
+    else
+    {
+      m_nextPts = packet.pts;
+    }
   }
 
   if (pData && !m_backlogSize)
@@ -177,6 +181,13 @@ bool CDVDAudioCodecPassthrough::AddData(const DemuxPacket &packet)
     if (!m_trueHDoffset)
       memset(m_trueHDBuffer.get(), 0, TRUEHD_BUF_SIZE);
 
+    if (m_dataSize > 2560 - 2)
+    {
+      CLog::Log(LOGERROR,
+                "CDVDAudioCodecPassthrough::AddData - truncating TrueHD frame of %u bytes",
+                m_dataSize);
+      m_dataSize = 2560 - 2;
+    }
     memcpy(&(m_trueHDBuffer.get())[m_trueHDoffset], m_buffer, m_dataSize);
     uint8_t highByte = (m_dataSize >> 8) & 0xFF;
     uint8_t lowByte = m_dataSize & 0xFF;

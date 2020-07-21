@@ -9,9 +9,9 @@
 #pragma once
 
 #include <map>
-#include <vector>
-#include <string>
 #include <stdint.h>
+#include <string>
+#include <vector>
 #include <wchar.h>
 
 int64_t str2int64(const std::string &str, int64_t fallback = 0);
@@ -102,6 +102,7 @@ public:
   bool operator==(const CVariant &rhs) const;
   bool operator!=(const CVariant &rhs) const { return !(*this == rhs); }
 
+  void reserve(size_t length);
   void push_back(const CVariant &variant);
   void push_back(CVariant &&variant);
   void append(const CVariant &variant);

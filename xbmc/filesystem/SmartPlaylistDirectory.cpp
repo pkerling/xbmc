@@ -6,9 +6,8 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <math.h>
-
 #include "SmartPlaylistDirectory.h"
+
 #include "FileItem.h"
 #include "ServiceBroker.h"
 #include "filesystem/Directory.h"
@@ -22,6 +21,8 @@
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "video/VideoDatabase.h"
+
+#include <math.h>
 
 #define PROPERTY_PATH_DB            "path.db"
 #define PROPERTY_SORT_ORDER         "sort.order"
@@ -60,7 +61,12 @@ namespace XFILE
     sorting.sortAttributes = playlist.GetOrderAttributes();
     if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
       sorting.sortAttributes = (SortAttribute)(sorting.sortAttributes | SortAttributeIgnoreArticle);
-    items.SetSortIgnoreFolders((sorting.sortAttributes & SortAttributeIgnoreFolders) == SortAttributeIgnoreFolders);
+    if (playlist.IsMusicType() && CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(
+                                      CSettings::SETTING_MUSICLIBRARY_USEARTISTSORTNAME))
+      sorting.sortAttributes =
+          static_cast<SortAttribute>(sorting.sortAttributes | SortAttributeUseArtistSortName);
+    items.SetSortIgnoreFolders((sorting.sortAttributes & SortAttributeIgnoreFolders) ==
+                               SortAttributeIgnoreFolders);
 
     std::string option = !filter ? "xsp" : "filter";
     std::string group = playlist.GetGroup();
@@ -68,9 +74,9 @@ namespace XFILE
 
     // get all virtual folders and add them to the item list
     playlist.GetVirtualFolders(virtualFolders);
-    for (std::vector<std::string>::const_iterator virtualFolder = virtualFolders.begin(); virtualFolder != virtualFolders.end(); ++virtualFolder)
+    for (const std::string& virtualFolder : virtualFolders)
     {
-      CFileItemPtr pItem = CFileItemPtr(new CFileItem(*virtualFolder, true));
+      CFileItemPtr pItem = CFileItemPtr(new CFileItem(virtualFolder, true));
       IFileDirectory *dir = CFileDirectoryFactory::Create(pItem->GetURL(), pItem.get());
 
       if (dir != NULL)

@@ -8,39 +8,34 @@
 
 #pragma once
 
-#if defined (TARGET_DARWIN)
 #include "powermanagement/IPowerSyscall.h"
-#if defined(TARGET_DARWIN_IOS)
-#include <pthread.h>
-typedef mach_port_t io_object_t;
-typedef io_object_t io_service_t;
-#else
-#include <IOKit/pwr_mgt/IOPMLib.h>
+
 #include <IOKit/IOMessage.h>
-#endif
+#include <IOKit/pwr_mgt/IOPMLib.h>
 
 class CCocoaPowerSyscall : public CPowerSyscallWithoutEvents
 {
 public:
   CCocoaPowerSyscall();
-  ~CCocoaPowerSyscall();
+  ~CCocoaPowerSyscall() override;
 
   static IPowerSyscall* CreateInstance();
   static void Register();
 
-  virtual bool Powerdown(void);
-  virtual bool Suspend(void);
-  virtual bool Hibernate(void);
-  virtual bool Reboot(void);
+  bool Powerdown() override;
+  bool Suspend() override;
+  bool Hibernate() override;
+  bool Reboot() override;
 
-  virtual bool CanPowerdown(void);
-  virtual bool CanSuspend(void);
-  virtual bool CanHibernate(void);
-  virtual bool CanReboot(void);
-          bool HasBattery(void);
-  virtual int  BatteryLevel(void);
+  bool CanPowerdown() override;
+  bool CanSuspend() override;
+  bool CanHibernate() override;
+  bool CanReboot() override;
+  bool HasBattery();
+  int BatteryLevel() override;
 
-  virtual bool PumpPowerEvents(IPowerEventsCallback *callback);
+  bool PumpPowerEvents(IPowerEventsCallback* callback) override;
+
 private:
           void CreateOSPowerCallBacks(void);
           void DeleteOSPowerCallBacks(void);
@@ -56,12 +51,8 @@ private:
   int  m_BatteryPercent;
   bool m_SentBatteryMessage;
 
-#if defined(TARGET_DARWIN_OSX)
   io_connect_t m_root_port;             // a reference to the Root Power Domain IOService
   io_object_t  m_notifier_object;       // notifier object, used to deregister later
   IONotificationPortRef m_notify_port;  // notification port allocated by IORegisterForSystemPower
   CFRunLoopSourceRef m_power_source;
-#endif
 };
-#endif
-

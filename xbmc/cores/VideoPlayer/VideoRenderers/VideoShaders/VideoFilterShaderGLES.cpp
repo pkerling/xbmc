@@ -7,15 +7,16 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <string>
-#include <math.h>
-
 #include "VideoFilterShaderGLES.h"
-#include "ServiceBroker.h"
-#include "utils/log.h"
-#include "utils/GLUtils.h"
+
 #include "ConvolutionKernels.h"
+#include "ServiceBroker.h"
 #include "rendering/gles/RenderSystemGLES.h"
+#include "utils/GLUtils.h"
+#include "utils/log.h"
+
+#include <math.h>
+#include <string>
 
 using namespace Shaders;
 
@@ -99,12 +100,11 @@ ConvolutionFilterShader::ConvolutionFilterShader(ESCALINGMETHOD method)
   if (m_floattex)
   {
     m_internalformat = GL_RGBA16F_EXT;
-    defines = "#define HAS_FLOAT_TEXTURE 1\n";
+    defines = "#define HAS_FLOAT_TEXTURE\n";
   }
   else
   {
     m_internalformat = GL_RGBA;
-    defines = "#define HAS_FLOAT_TEXTURE 0\n";
   }
 
   CLog::Log(LOGDEBUG, "GL: ConvolutionFilterShader: using %s defines:\n%s", shadername.c_str(), defines.c_str());

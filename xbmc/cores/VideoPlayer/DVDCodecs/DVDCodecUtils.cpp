@@ -8,13 +8,11 @@
 
 #include "DVDCodecUtils.h"
 #include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
-#include "utils/log.h"
 #include "cores/FFmpeg.h"
-#include "cores/VideoPlayer/Process/VideoBuffer.h"
 #include "Util.h"
 
 extern "C" {
-#include "libswscale/swscale.h"
+#include <libswscale/swscale.h>
 }
 
 bool CDVDCodecUtils::IsVP3CompatibleWidth(int width)

@@ -7,10 +7,12 @@
  */
 
 #include "PeripheralBusUSB.h"
+
 #include "peripherals/Peripherals.h"
-#include "platform/win32/CharsetConverter.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/log.h"
+
+#include "platform/win32/CharsetConverter.h"
 
 const static GUID USB_RAW_GUID = { 0xA5DCBF10, 0x6530, 0x11D2, { 0x90, 0x1F, 0x00, 0xC0, 0x4F, 0xB9, 0x51, 0xED } };
 const static GUID USB_HID_GUID = { 0x4D1E55B2, 0xF16F, 0x11CF, { 0x88, 0xCB, 0x00, 0x11, 0x11, 0x00, 0x00, 0x30 } };
@@ -65,7 +67,7 @@ bool CPeripheralBusUSB::PerformDeviceScan(const GUID *guid, const PeripheralType
   {
     free(devicedetailData);
     free(deviceProperty);
-    CLog::Log(LOGSEVERE, "%s: memory allocation failed", __FUNCTION__);
+    CLog::Log(LOGFATAL, "%s: memory allocation failed", __FUNCTION__);
     return false;
   }
 
@@ -99,7 +101,7 @@ bool CPeripheralBusUSB::PerformDeviceScan(const GUID *guid, const PeripheralType
         if (!devicedetailData)
         {
           free(deviceProperty);
-          CLog::Log(LOGSEVERE, "%s: memory allocation failed", __FUNCTION__);
+          CLog::Log(LOGFATAL, "%s: memory allocation failed", __FUNCTION__);
           return false;
         }
         devicedetailData->cbSize = sizeof(SP_INTERFACE_DEVICE_DETAIL_DATA);
@@ -117,7 +119,7 @@ bool CPeripheralBusUSB::PerformDeviceScan(const GUID *guid, const PeripheralType
           if (!deviceProperty)
           {
             free(devicedetailData);
-            CLog::Log(LOGSEVERE, "%s: memory allocation failed", __FUNCTION__);
+            CLog::Log(LOGFATAL, "%s: memory allocation failed", __FUNCTION__);
             return false;
           }
           nPropertyBufferSize = required;

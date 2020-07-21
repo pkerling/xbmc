@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include <queue>
-#include <vector>
-#include <memory>
-
 #include "DVDAudioCodec.h"
 #include "DVDStreamInfo.h"
 #include "cores/AudioEngine/Utils/AEAudioFormat.h"
+
+#include <memory>
+#include <queue>
+#include <vector>
 
 class CJNIMediaCodec;
 class CJNIMediaCrypto;
@@ -28,7 +28,7 @@ class CDVDAudioCodecAndroidMediaCodec : public CDVDAudioCodec
 {
 public:
   CDVDAudioCodecAndroidMediaCodec(CProcessInfo &processInfo);
-  virtual ~CDVDAudioCodecAndroidMediaCodec();
+  ~CDVDAudioCodecAndroidMediaCodec() override;
 
   // registration
   static CDVDAudioCodec* Create(CProcessInfo &processInfo);

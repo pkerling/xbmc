@@ -8,19 +8,27 @@
 
 #pragma once
 
+#include "XBDateTime.h"
+#include "utils/Fanart.h"
+#include "utils/ScraperUrl.h"
+#include "utils/StringUtils.h"
+
 #include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "utils/StringUtils.h"
-#include "utils/Fanart.h"
-#include "utils/ScraperUrl.h"
-#include "XBDateTime.h"
-
 class TiXmlNode;
 class CAlbum;
 class CMusicDatabase;
+
+class CDiscoAlbum
+{
+public:
+  std::string strAlbum;
+  std::string strYear;
+  std::string strReleaseGroupMBID;
+};
 
 class CArtist
 {
@@ -65,6 +73,8 @@ public:
     idArtist = -1;
     strPath.clear();
     dateAdded.Reset();
+    dateUpdated.Reset();
+    dateNew.Reset();
     bScrapedMBID = false;
     strLastScraped.clear();
   }
@@ -80,6 +90,8 @@ public:
   bool Save(TiXmlNode *node, const std::string &tag, const std::string& strPath);
 
   void SetDateAdded(const std::string& strDateAdded);
+  void SetDateUpdated(const std::string& strDateUpdated);
+  void SetDateNew(const std::string& strDateNew);
 
   std::string strArtist;
   std::string strSortName;
@@ -101,8 +113,10 @@ public:
   CScraperUrl thumbURL; // Data for available thumbs
   CFanart fanart;  // Data for available fanart, urls etc.
   std::map<std::string, std::string> art;  // Current artwork - thumb, fanart etc.
-  std::vector<std::pair<std::string,std::string> > discography;
-  CDateTime dateAdded;
+  std::vector<CDiscoAlbum> discography;
+  CDateTime dateAdded; // From related file creation or modification times, or when (re-)scanned
+  CDateTime dateUpdated; // Time db record Last modified
+  CDateTime dateNew;  // Time db record created
   bool bScrapedMBID = false;
   std::string strLastScraped;
 };
@@ -159,6 +173,7 @@ typedef std::vector<CArtistCredit> VECARTISTCREDITS;
 const std::string BLANKARTIST_FAKEMUSICBRAINZID = "Artist Tag Missing";
 const std::string BLANKARTIST_NAME = "[Missing Tag]";
 const long BLANKARTIST_ID = 1;
+const std::string VARIOUSARTISTS_MBID = "89ad4ac3-39f7-470e-963a-56509c546377";
 
 #define ROLE_ARTIST 1  //Default role
 

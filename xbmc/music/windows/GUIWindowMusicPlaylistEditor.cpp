@@ -7,22 +7,23 @@
  */
 
 #include "GUIWindowMusicPlaylistEditor.h"
+
+#include "Autorun.h"
+#include "FileItem.h"
+#include "GUIUserMessages.h"
 #include "ServiceBroker.h"
 #include "Util.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
-#include "utils/Variant.h"
-#include "Autorun.h"
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "filesystem/PlaylistFileDirectory.h"
-#include "playlists/PlayListM3U.h"
 #include "guilib/GUIKeyboardFactory.h"
-#include "FileItem.h"
+#include "guilib/LocalizeStrings.h"
+#include "input/Key.h"
+#include "playlists/PlayListM3U.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "GUIUserMessages.h"
-#include "input/Key.h"
-#include "guilib/LocalizeStrings.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/Variant.h"
 
 #define CONTROL_LABELFILES        12
 
@@ -199,7 +200,7 @@ void CGUIWindowMusicPlaylistEditor::PlayItem(int iItem)
     CGUIWindowMusicBase::PlayItem(iItem);
 }
 
-void CGUIWindowMusicPlaylistEditor::OnQueueItem(int iItem)
+void CGUIWindowMusicPlaylistEditor::OnQueueItem(int iItem, bool)
 {
   if (iItem < 0 || iItem >= m_vecItems->Size())
     return;
@@ -340,7 +341,7 @@ void CGUIWindowMusicPlaylistEditor::OnLoadPlaylist()
   share.strPath = "special://musicplaylists/";
   if (find(shares.begin(), shares.end(), share) == shares.end())
     shares.push_back(share);
-  if (CGUIDialogFileBrowser::ShowAndGetFile(shares, ".m3u|.pls|.b4s|.wpl", g_localizeStrings.Get(656), playlist))
+  if (CGUIDialogFileBrowser::ShowAndGetFile(shares, ".m3u|.pls|.b4s|.wpl|.xspf", g_localizeStrings.Get(656), playlist))
     LoadPlaylist(playlist);
 }
 

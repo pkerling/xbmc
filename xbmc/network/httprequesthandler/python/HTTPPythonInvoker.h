@@ -8,11 +8,10 @@
 
 #pragma once
 
-#include <string>
-
 #include "interfaces/python/PythonInvoker.h"
-#include "network/httprequesthandler/IHTTPRequestHandler.h"
 #include "network/httprequesthandler/python/HTTPPythonRequest.h"
+
+#include <string>
 
 class CHTTPPythonInvoker : public CPythonInvoker
 {

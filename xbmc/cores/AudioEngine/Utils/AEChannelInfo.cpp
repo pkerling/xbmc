@@ -7,10 +7,11 @@
  */
 
 #include "AEChannelInfo.h"
+
 #include <algorithm>
+#include <assert.h>
 #include <limits>
 #include <string.h>
-#include <assert.h>
 
 CAEChannelInfo::CAEChannelInfo()
 {
@@ -179,7 +180,7 @@ CAEChannelInfo& CAEChannelInfo::operator=(const enum AEStdChLayout rhs)
 
 bool CAEChannelInfo::operator==(const CAEChannelInfo& rhs) const
 {
-  /* if the channel count doesnt match, no need to check further */
+  /* if the channel count doesn't match, no need to check further */
   if (m_channelCount != rhs.m_channelCount)
     return false;
 

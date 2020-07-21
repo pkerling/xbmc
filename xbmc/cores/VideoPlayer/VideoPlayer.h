@@ -8,71 +8,27 @@
 
 #pragma once
 
-#include <atomic>
-#include <memory>
-#include <utility>
-#include <vector>
-#include "cores/IPlayer.h"
-#include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
-#include "threads/Thread.h"
-#include "IVideoPlayer.h"
-#include "DVDMessageQueue.h"
 #include "DVDClock.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
-#include "VideoPlayerVideo.h"
-#include "VideoPlayerSubtitle.h"
-#include "VideoPlayerTeletext.h"
-#include "VideoPlayerRadioRDS.h"
+#include "DVDMessageQueue.h"
 #include "Edl.h"
 #include "FileItem.h"
+#include "IVideoPlayer.h"
+#include "VideoPlayerRadioRDS.h"
+#include "VideoPlayerSubtitle.h"
+#include "VideoPlayerTeletext.h"
+#include "VideoPlayerVideo.h"
+#include "cores/IPlayer.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
+#include "guilib/DispResource.h"
 #include "threads/SystemClock.h"
 #include "threads/Thread.h"
-#include "utils/StreamDetails.h"
-#include "guilib/DispResource.h"
+
+#include <atomic>
+#include <memory>
 #include <unordered_map>
-
-#ifdef TARGET_RASPBERRY_PI
-#include "OMXCore.h"
-#include "OMXClock.h"
-#include "platform/linux/RBP.h"
-#else
-
-
-// dummy class to avoid ifdefs where calls are made
-class OMXClock
-{
-public:
-  bool OMXInitialize(CDVDClock *clock) { return false; }
-  void OMXDeinitialize() {}
-  bool OMXIsPaused() { return false; }
-  bool OMXStop(bool lock = true) { return false; }
-  bool OMXStep(int steps = 1, bool lock = true) { return false; }
-  bool OMXReset(bool has_video, bool has_audio, bool lock = true) { return false; }
-  double OMXMediaTime(bool lock = true) { return 0.0; }
-  double OMXClockAdjustment(bool lock = true) { return 0.0; }
-  bool OMXMediaTime(double pts, bool lock = true) { return false; }
-  bool OMXPause(bool lock = true) { return false; }
-  bool OMXResume(bool lock = true) { return false; }
-  bool OMXSetSpeed(int speed, bool lock = true, bool pause_resume = false) { return false; }
-  bool OMXFlush(bool lock = true) { return false; }
-  bool OMXStateExecute(bool lock = true) { return false; }
-  void OMXStateIdle(bool lock = true) {}
-  bool HDMIClockSync(bool lock = true) { return false; }
-  void OMXSetSpeedAdjust(double adjust, bool lock = true) {}
-};
-#endif
-
-struct SOmxPlayerState
-{
-  OMXClock av_clock;              // openmax clock component
-  EINTERLACEMETHOD interlace_method; // current deinterlace method
-  bool bOmxWaitVideo;             // whether we need to wait for video to play out on EOS
-  bool bOmxWaitAudio;             // whether we need to wait for audio to play out on EOS
-  bool bOmxSentEOFs;              // flag if we've send EOFs to audio/video players
-  float threshold;                // current fifo threshold required to come out of buffering
-  unsigned int last_check_time;   // we periodically check for gpu underrun
-  double stamp;                   // last media timestamp
-};
+#include <utility>
+#include <vector>
 
 struct SPlayerState
 {
@@ -297,8 +253,6 @@ public:
   void SeekPercentage(float iPercent) override;
   float GetCachePercentage() override;
 
-  void SetVolume(float nVolume) override;
-  void SetMute(bool bOnOff) override;
   void SetDynamicRangeCompression(long drc) override;
   bool CanPause() override;
   void SetAVDelay(float fValue = 0.0f) override;
@@ -489,6 +443,7 @@ protected:
   CPlayerOptions m_playerOptions;
   bool m_bAbortRequest;
   bool m_error;
+  bool m_bCloseRequest;
 
   ECacheState  m_caching;
   XbmcThreads::EndTime m_cachingTimer;
@@ -583,14 +538,4 @@ protected:
   bool m_UpdateStreamDetails;
 
   std::atomic<bool> m_displayLost;
-
-  //@todo remove!
-  // RPI specific stuff
-  // omxplayer variables
-  struct SOmxPlayerState m_OmxPlayerState;
-  bool m_omxplayer_mode;            // using omxplayer acceleration
-#ifdef TARGET_RASPBERRY_PI
-  friend class OMXPlayerVideo;
-  friend class OMXPlayerAudio;
-#endif
 };

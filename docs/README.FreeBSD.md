@@ -1,7 +1,7 @@
 ![Kodi Logo](resources/banner_slim.png)
 
 # FreeBSD build guide
-This guide has been tested with FreeBSD 11.1 x86_64. Please read it in full before you proceed to familiarize yourself with the build procedure.
+This guide has been tested with FreeBSD 12.1 x86_64. Please read it in full before you proceed to familiarize yourself with the build procedure.
 
 Several other distributions have **[specific build guides](README.md)** and a general **[Linux build guide](README.Linux.md)** is also available.
 
@@ -72,9 +72,11 @@ git clone https://github.com/xbmc/xbmc kodi
 ## 3. Install the required packages
 If you get a `package not found` type of message with the below command, remove the offending package(s) from the install list and reissue the command. Take a note of the missing dependencies and, after a successful step completion, **[build the missing dependencies manually](#31-build-missing-dependencies)**.
 
+**NOTE:** Kodi requires a compiler with C++14 support, i.e. gcc >= 4.9 or clang >= 3.4
+
 Install build dependencies:
 ```
-sudo pkg install autoconf automake avahi-app binutils cmake curl dbus doxygen dri2proto dri3proto e2fsprogs-libuuid enca encodings flac flatbuffers font-util fontconfig freetype2 fribidi gawk gettext-tools giflib git glew glproto gmake gmp gnutls gperf gstreamer1-vaapi hal inputproto jpeg-turbo libaacs libass libbdplus libbluray libcapn libcdio libcec libedit libfmt libgcrypt libgpg-error libidn libinotify libmicrohttpd libnfs libogg libplist librtmp libtool libudev-devd libva libvdpau libvorbis libxslt lirc lzo2 m4 mesa-libs mysql57-client nasm openjdk8 p8-platform pkgconf python2 rapidjson samba46 shairplay sndio sqlite3 swig30 taglib tiff tinyxml xf86-input-keyboard xf86-input-mouse xf86vidmodeproto xorg-server xrandr zip
+sudo pkg install autoconf automake avahi-app binutils cmake curl dbus doxygen e2fsprogs-libuuid enca encodings flac flatbuffers font-util fontconfig freetype2 fribidi fstrcmp gawk gettext-tools giflib git glew gmake gmp gnutls googletest gperf gstreamer1-vaapi hal jpeg-turbo libaacs libass libbdplus libbluray libcapn libcdio libcec libedit libfmt libgcrypt libgpg-error libidn libinotify libmicrohttpd libnfs libogg libplist librtmp libtool libudev-devd libva libvdpau libvorbis libxslt lirc lzo2 m4 mesa-libs mysql57-client nasm openjdk8 p8-platform pkgconf python3 rapidjson shairplay sndio sqlite3 swig30 taglib tiff tinyxml xf86-input-keyboard xf86-input-mouse xorg-server xrandr zip
 ```
 
 **WARNING:** Make sure you copy paste the entire line or you might receive an error or miss a few dependencies.
@@ -114,10 +116,8 @@ cd $HOME/kodi-build
 
 Configure build:
 ```
-cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_INTERNAL_FSTRCMP=1
+cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local
 ```
-
-Internal libfstrcmp is used since it is not available through pkg.
 
 ### 4.2. Build
 ```

@@ -7,14 +7,16 @@
  */
 
 #include "PlayListM3U.h"
-#include "filesystem/File.h"
+
 #include "URL.h"
 #include "Util.h"
-#include "utils/CharsetConverter.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
-#include "video/VideoInfoTag.h"
+#include "filesystem/File.h"
 #include "music/tags/MusicInfoTag.h"
+#include "utils/CharsetConverter.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+#include "video/VideoInfoTag.h"
+
 #include <inttypes.h>
 
 using namespace PLAYLIST;
@@ -126,10 +128,9 @@ bool CPlayListM3U::Load(const std::string& strFileName)
         iEqualSign > iColon)
       {
         std::string strFirst, strSecond;
-        properties.push_back(std::make_pair(
-          StringUtils::Trim((strFirst = strLine.substr(iColon+1, iEqualSign - iColon -1))),
-          StringUtils::Trim((strSecond = strLine.substr(iEqualSign +1))))
-          );
+        properties.emplace_back(
+          StringUtils::Trim((strFirst = strLine.substr(iColon + 1, iEqualSign - iColon - 1))),
+          StringUtils::Trim((strSecond = strLine.substr(iEqualSign + 1))));
       }
     }
     else if (strLine != StartMarker &&

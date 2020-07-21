@@ -8,56 +8,17 @@
 
 #pragma once
 
-#include <memory>
-#include "cores/VideoPlayer/DVDStreamInfo.h"
+#include "cores/VideoPlayer/Buffers/VideoBuffer.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
-#include "cores/VideoPlayer/Process/VideoBuffer.h"
+#include "cores/VideoPlayer/DVDStreamInfo.h"
 
-extern "C" {
-#include "libavutil/frame.h"
-#include "libavutil/hwcontext_drm.h"
-}
+#include <memory>
 
-// Color enums is copied from linux include/drm/drm_color_mgmt.h (strangely not part of uapi)
-enum drm_color_encoding {
-  DRM_COLOR_YCBCR_BT601,
-  DRM_COLOR_YCBCR_BT709,
-  DRM_COLOR_YCBCR_BT2020,
-};
-enum drm_color_range {
-  DRM_COLOR_YCBCR_LIMITED_RANGE,
-  DRM_COLOR_YCBCR_FULL_RANGE,
-};
-
-class CVideoBufferPoolDRMPRIME;
-
-class CVideoBufferDRMPRIME
-  : public CVideoBuffer
-{
-public:
-  CVideoBufferDRMPRIME(IVideoBufferPool& pool, int id);
-  ~CVideoBufferDRMPRIME();
-  void SetRef(AVFrame* frame);
-  void Unref();
-
-  uint32_t m_fb_id = 0;
-  uint32_t m_handles[AV_DRM_MAX_PLANES] = {0};
-
-  AVDRMFrameDescriptor* GetDescriptor() const { return reinterpret_cast<AVDRMFrameDescriptor*>(m_pFrame->data[0]); }
-  uint32_t GetWidth() const { return m_pFrame->width; }
-  uint32_t GetHeight() const { return m_pFrame->height; }
-  int GetColorEncoding() const;
-  int GetColorRange() const;
-protected:
-  AVFrame* m_pFrame = nullptr;
-};
-
-class CDVDVideoCodecDRMPRIME
-  : public CDVDVideoCodec
+class CDVDVideoCodecDRMPRIME : public CDVDVideoCodec
 {
 public:
   explicit CDVDVideoCodecDRMPRIME(CProcessInfo& processInfo);
-  ~CDVDVideoCodecDRMPRIME();
+  ~CDVDVideoCodecDRMPRIME() override;
 
   static CDVDVideoCodec* Create(CProcessInfo& processInfo);
   static void Register();
@@ -66,17 +27,21 @@ public:
   bool AddData(const DemuxPacket& packet) override;
   void Reset() override;
   CDVDVideoCodec::VCReturn GetPicture(VideoPicture* pVideoPicture) override;
-  const char* GetName() override { return m_name.c_str(); };
-  unsigned GetAllowedReferences() override { return 5; };
-  void SetCodecControl(int flags) override { m_codecControlFlags = flags; };
+  const char* GetName() override { return m_name.c_str(); }
+  unsigned GetAllowedReferences() override { return 5; }
+  void SetCodecControl(int flags) override { m_codecControlFlags = flags; }
 
 protected:
   void Drain();
   void SetPictureParams(VideoPicture* pVideoPicture);
+  void UpdateProcessInfo(struct AVCodecContext* avctx, const enum AVPixelFormat fmt);
+  static enum AVPixelFormat GetFormat(struct AVCodecContext* avctx, const enum AVPixelFormat* fmt);
+  static int GetBuffer(struct AVCodecContext* avctx, AVFrame* frame, int flags);
 
   std::string m_name;
   int m_codecControlFlags = 0;
+  CDVDStreamInfo m_hints;
   AVCodecContext* m_pCodecContext = nullptr;
   AVFrame* m_pFrame = nullptr;
-  std::shared_ptr<CVideoBufferPoolDRMPRIME> m_videoBufferPool;
+  std::shared_ptr<IVideoBufferPool> m_videoBufferPool;
 };

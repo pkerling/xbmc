@@ -7,23 +7,24 @@
  */
 
 #include "PlayerCoreFactory.h"
-#include "threads/SingleLock.h"
-#include "cores/VideoPlayer/VideoPlayer.h"
-#include "cores/paplayer/PAPlayer.h"
-#include "cores/IPlayerCallback.h"
-#include "dialogs/GUIDialogContextMenu.h"
-#include "URL.h"
+
 #include "FileItem.h"
+#include "PlayerCoreConfig.h"
+#include "PlayerSelectionRule.h"
+#include "URL.h"
+#include "cores/IPlayerCallback.h"
+#include "cores/paplayer/PAPlayer.h"
+#include "dialogs/GUIDialogContextMenu.h"
+#include "guilib/LocalizeStrings.h"
 #include "profiles/ProfileManager.h"
-#include "settings/lib/SettingsManager.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "PlayerCoreConfig.h"
-#include "PlayerSelectionRule.h"
-#include "guilib/LocalizeStrings.h"
+#include "settings/lib/SettingsManager.h"
+#include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
 #include "utils/XMLUtils.h"
+
 #include <sstream>
 
 #define PLAYERCOREFACTORY_XML "playercorefactory.xml"
@@ -145,7 +146,7 @@ void CPlayerCoreFactory::GetPlayers(const CFileItem& item, std::vector<std::stri
   if (item.IsGame())
   {
     CLog::Log(LOGDEBUG, "CPlayerCoreFactory::GetPlayers: adding retroplayer");
-    players.push_back("RetroPlayer");
+    players.emplace_back("RetroPlayer");
   }
 
   CLog::Log(LOGDEBUG, "CPlayerCoreFactory::GetPlayers: added {0} players", players.size());
@@ -285,10 +286,10 @@ bool CPlayerCoreFactory::LoadConfiguration(const std::string &file, bool clear)
 {
   CSingleLock lock(m_section);
 
-  CLog::Log(LOGNOTICE, "Loading player core factory settings from %s.", file.c_str());
+  CLog::Log(LOGINFO, "Loading player core factory settings from %s.", file.c_str());
   if (!XFILE::CFile::Exists(file))
   { // tell the user it doesn't exist
-    CLog::Log(LOGNOTICE, "%s does not exist. Skipping.", file.c_str());
+    CLog::Log(LOGINFO, "%s does not exist. Skipping.", file.c_str());
     return false;
   }
 
@@ -330,7 +331,7 @@ bool CPlayerCoreFactory::LoadConfiguration(const std::string &file, bool clear)
     m_vecPlayerConfigs.push_back(retroPlayer);
   }
 
-  if (!pConfig || strcmpi(pConfig->Value(), "playercorefactory") != 0)
+  if (!pConfig || StringUtils::CompareNoCase(pConfig->Value(), "playercorefactory") != 0)
   {
     CLog::Log(LOGERROR, "Error loading configuration, no <playercorefactory> node");
     return false;
@@ -380,11 +381,11 @@ bool CPlayerCoreFactory::LoadConfiguration(const std::string &file, bool clear)
     const char* szAction = pRule->Attribute("action");
     if (szAction)
     {
-      if (stricmp(szAction, "append") == 0)
+      if (StringUtils::CompareNoCase(szAction, "append") == 0)
       {
         m_vecCoreSelectionRules.push_back(new CPlayerSelectionRule(pRule));
       }
-      else if (stricmp(szAction, "prepend") == 0)
+      else if (StringUtils::CompareNoCase(szAction, "prepend") == 0)
       {
         m_vecCoreSelectionRules.insert(m_vecCoreSelectionRules.begin(), 1, new CPlayerSelectionRule(pRule));
       }
@@ -403,7 +404,7 @@ bool CPlayerCoreFactory::LoadConfiguration(const std::string &file, bool clear)
   }
 
   // succeeded - tell the user it worked
-  CLog::Log(LOGNOTICE, "Loaded playercorefactory configuration");
+  CLog::Log(LOGINFO, "Loaded playercorefactory configuration");
 
   return true;
 }

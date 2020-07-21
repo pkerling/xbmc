@@ -7,8 +7,10 @@
  */
 
 #include "GUIListLabel.h"
-#include <limits>
+
 #include "addons/Skin.h"
+
+#include <limits>
 
 using namespace KODI::GUILIB;
 
@@ -27,11 +29,6 @@ CGUIListLabel::CGUIListLabel(int parentID, int controlID, float posX, float posY
 
 CGUIListLabel::~CGUIListLabel(void) = default;
 
-void CGUIListLabel::SetScrolling(bool scrolling)
-{
-  m_label.SetScrolling(scrolling);
-}
-
 void CGUIListLabel::SetSelected(bool selected)
 {
   if(m_label.SetColor(selected ? CGUILabel::COLOR_SELECTED : CGUILabel::COLOR_TEXT))
@@ -41,7 +38,10 @@ void CGUIListLabel::SetSelected(bool selected)
 void CGUIListLabel::SetFocus(bool focus)
 {
   CGUIControl::SetFocus(focus);
-  SetScrolling(focus);
+  if (m_scroll == CGUIControl::FOCUS)
+  {
+    m_label.SetScrolling(focus);
+  }
 }
 
 CRect CGUIListLabel::CalcRenderRegion() const

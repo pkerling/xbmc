@@ -1,9 +1,11 @@
-set(SOURCES AddonInterfaces.cpp
+set(SOURCES AddonBase.cpp
+            AudioEngine.cpp
             General.cpp
             Filesystem.cpp
             Network.cpp)
 
-set(HEADERS AddonInterfaces.h
+set(HEADERS AddonBase.h
+            AudioEngine.h
             General.h
             Filesystem.h
             Network.h)

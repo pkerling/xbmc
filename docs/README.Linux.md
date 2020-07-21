@@ -14,7 +14,9 @@ Several distribution **[specific build guides](README.md)** are available.
 4. **[Build Kodi](#4-build-kodi)**  
   4.1. **[Configure build](#41-configure-build)**  
   4.2. **[Build](#42-build)**
-5. **[Build binary add-ons](#5-build-binary-add-ons)**
+5. **[Build binary add-ons](#5-build-binary-add-ons)**  
+  5.1. **[In-tree building of binary add-ons](#51-in-tree-building-of-binary-add-ons)**  
+  5.2. **[Out-of-tree building of binary add-ons](#52-out-of-tree-building-of-binary-add-ons)**
 6. **[Run Kodi](#6-run-kodi)**
 7. **[Uninstall Kodi](#7-uninstall-kodi)**
 8. **[Test suite](#8-test-suite)**
@@ -70,10 +72,12 @@ git clone https://github.com/xbmc/xbmc kodi
 ## 3. Install the required packages
 The following is the list of packages that are used to build Kodi on Debian/Ubuntu (with all supported external libraries enabled).
 
-* autoconf, automake, autopoint, gettext, autotools-dev, cmake, curl, default-jre | openjdk-6-jre | openjdk-7-jre, gawk, gcc (>= 4.9) | gcc-4.9, g++ (>= 4.9) | g++-4.9, cpp (>= 4.9) | cpp-4.9, flatbuffers, gdc, gperf, libasound2-dev | libasound-dev, libass-dev (>= 0.9.8), libavahi-client-dev, libavahi-common-dev, libbluetooth-dev, libbluray-dev, libbz2-dev, libcdio-dev, libcec4-dev | libcec-dev, libp8-platform-dev, libcrossguid-dev, libcurl4-openssl-dev | libcurl4-gnutls-dev | libcurl-dev, libcwiid-dev, libdbus-1-dev, libegl1-mesa-dev, libenca-dev, libflac-dev, libfontconfig-dev, libfmt3-dev | libfmt-dev, libfreetype6-dev, libfribidi-dev, libfstrcmp-dev, libgcrypt-dev, libgif-dev (>= 5.0.5), libgles2-mesa-dev [armel] | libgl1-mesa-dev | libgl-dev, libglew-dev, libglu1-mesa-dev | libglu-dev, libgnutls-dev | libgnutls28-dev, libgpg-error-dev, libiso9660-dev, libjpeg-dev, liblcms2-dev, liblirc-dev, libltdl-dev, liblzo2-dev, libmicrohttpd-dev, libmysqlclient-dev, libnfs-dev, libogg-dev, libomxil-bellagio-dev [armel], libpcre3-dev, libplist-dev, libpng12-dev | libpng-dev, libpulse-dev, libshairplay-dev, libsmbclient-dev, libsqlite3-dev, libssl-dev, libtag1-dev (>= 1.8) | libtag1x8, libtiff5-dev | libtiff-dev | libtiff4-dev, libtinyxml-dev, libtool, libudev-dev, libva-dev, libvdpau-dev, libvorbis-dev, libxkbcommon-dev, libxmu-dev, libxrandr-dev, libxslt1-dev | libxslt-dev, libxt-dev, waylandpp-dev | netcat, wayland-protocols | wipe, lsb-release, nasm [!amd64], python-dev, python-pil | python-imaging, python-support | python-minimal, rapidjson-dev, swig, unzip, uuid-dev, yasm, zip, zlib1g-dev
+**NOTE:** Kodi requires a compiler with C++14 support, i.e. gcc >= 4.9 or clang >= 3.4
+
+* autoconf, automake, autopoint, gettext, autotools-dev, cmake, curl, default-jre | openjdk-6-jre | openjdk-7-jre, gawk, gcc (>= 4.9) | gcc-4.9, g++ (>= 4.9) | g++-4.9, cpp (>= 4.9) | cpp-4.9, flatbuffers, gdc, gperf, libasound2-dev | libasound-dev, libass-dev (>= 0.9.8), libavahi-client-dev, libavahi-common-dev, libbluetooth-dev, libbluray-dev, libbz2-dev, libcdio-dev, libcec4-dev | libcec-dev, libp8-platform-dev, libcrossguid-dev, libcurl4-openssl-dev | libcurl4-gnutls-dev | libcurl-dev, libcwiid-dev, libdbus-1-dev, libegl1-mesa-dev, libenca-dev, libflac-dev, libfontconfig-dev, libfmt3-dev | libfmt-dev, libfreetype6-dev, libfribidi-dev, libfstrcmp-dev, libgcrypt-dev, libgif-dev (>= 5.0.5), libgles2-mesa-dev [armel] | libgl1-mesa-dev | libgl-dev, libglew-dev, libglu1-mesa-dev | libglu-dev, libgnutls-dev | libgnutls28-dev, libgpg-error-dev, libgtest-dev, libiso9660-dev, libjpeg-dev, liblcms2-dev, liblirc-dev, libltdl-dev, liblzo2-dev, libmicrohttpd-dev, libmysqlclient-dev, libnfs-dev, libogg-dev, libomxil-bellagio-dev [armel], libpcre3-dev, libplist-dev, libpng12-dev | libpng-dev, libpulse-dev, libshairplay-dev, libsmbclient-dev, libspdlog-dev, libsqlite3-dev, libssl-dev, libtag1-dev (>= 1.8) | libtag1x8, libtiff5-dev | libtiff-dev | libtiff4-dev, libtinyxml-dev, libtool, libudev-dev, libva-dev, libvdpau-dev, libvorbis-dev, libxkbcommon-dev, libxmu-dev, libxrandr-dev, libxslt1-dev | libxslt-dev, libxt-dev, waylandpp-dev | netcat, wayland-protocols | wipe, lsb-release, meson (>= 0.47.0), nasm (>= 2.14), ninja-build, python3-dev, python3-pil | python-imaging, python-support | python3-minimal, rapidjson-dev, swig, unzip, uuid-dev, yasm, zip, zlib1g-dev
 
 ### 3.1. Build missing dependencies
-Some packages may be missing or outdated in older distributions. Notably `crossguid, libfmt, waylandpp, wayland-protocols, etc.` are known to be outdated or missing. Fortunately there is an easy way to build individual dependencies with **[Kodi's unified depends build system](../tools/depends/README.md)**.
+Some packages may be missing or outdated in older distributions. Notably `crossguid`, `libfmt`, `libspdlog`, `waylandpp`, `wayland-protocols`, etc. are known to be outdated or missing. Fortunately there is an easy way to build individual dependencies with **[Kodi's unified depends build system](../tools/depends/README.md)**.
 
 Change to Kodi's source code directory:
 ```
@@ -95,6 +99,11 @@ Build and install libfmt:
 sudo make -C tools/depends/target/libfmt PREFIX=/usr/local
 ```
 
+Build and install libspdlog:
+```
+sudo make -C tools/depends/target/libspdlog PREFIX=/usr/local
+```
+
 Build and install wayland-protocols:
 ```
 sudo make -C tools/depends/target/wayland-protocols PREFIX=/usr/local
@@ -110,7 +119,7 @@ sudo make -C tools/depends/target/waylandpp PREFIX=/usr/local
 **TIP:** Complete list of dependencies is available **[here](https://github.com/xbmc/xbmc/tree/master/tools/depends/target)**.
 
 ### 3.2. Enable internal dependencies
-Some dependencies can be configured to build before Kodi. That's the case with `flatbuffers`, `crossguid, libfmt and rapidjson`. To enable the internal build of a dependency, append `-DENABLE_INTERNAL_<DEPENDENCY_NAME>=ON` to the configure command below. For example, configuring an X11 build with internal `fmt` would become `cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_INTERNAL_FMT=ON` instead of `cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local`.
+Some dependencies can be configured to build before Kodi. That's the case with `flatbuffers`, `crossguid`, `libfmt`, `libspdlog`, `rapidjson` and `dav1d`. To enable the internal build of a dependency, append `-DENABLE_INTERNAL_<DEPENDENCY_NAME>=ON` to the configure command below. For example, configuring an X11 build with internal `fmt` would become `cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local -DENABLE_INTERNAL_FMT=ON` instead of `cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local`.
 
 **[back to top](#table-of-contents)** | **[back to section top](#3-installing-the-required-packages)**
 
@@ -132,8 +141,10 @@ cd $HOME/kodi-build
 
 Configure build for X11:
 ```
-cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local
+cmake ../kodi -DCMAKE_INSTALL_PREFIX=/usr/local -DX11_RENDER_SYSTEM=gl
 ```
+
+**NOTE:** You can use `gles` instead of `gl` if you want to build with `GLES`.
 
 Or configure build for Wayland:
 ```
@@ -199,6 +210,13 @@ sudo make install DESTDIR=$HOME/kodi
 ## 5. Build binary add-ons
 You can find a complete list of available binary add-ons **[here](https://github.com/xbmc/repo-binary-addons)**.
 
+In the following, two approaches to building binary add-ons are described.
+While the workflow of in-tree building is more automated,
+it is only supported as long as `-DCMAKE_INSTALL_PREFIX=/usr/local` is not changed from it's default of `/usr/local`.
+Thus when changing `DCMAKE_INSTALL_PREFIX`, you must follow the out-of-tree building instructions.
+
+### 5.1. In-tree building of binary add-ons
+
 Change to Kodi's source code directory:
 ```
 cd $HOME/kodi
@@ -222,6 +240,54 @@ sudo make -j$(getconf _NPROCESSORS_ONLN) -C tools/depends/target/binary-addons P
 **NOTE:** `PREFIX=/usr/local` should match Kodi's `-DCMAKE_INSTALL_PREFIX=` prefix used in **[section 4.1](#41-configure-build)**.
 
 **[back to top](#table-of-contents)**
+
+
+### 5.2. Out-of-tree building of binary add-ons
+
+You can find a complete list of available binary add-ons **[here](https://github.com/xbmc/repo-binary-addons)**.
+Exemplary, to install `pvr.demo`, follow below steps.
+For other addons, simply adapt the repository based on the information found in the `.txt` associated with the respective addon **[here](https://github.com/xbmc/repo-binary-addons)**
+
+Some addons have dependencies.
+You must install all required dependencies of an addon before installing the addon.
+Required dependencies can be found by checking the `depends` folder and
+it's subdirectories in the repository of the respective addons.
+
+A number of addons require the the `p8-platform` and `kodi-platform` add-ons.
+Note that dependencies on `p8-platform` and `kodi-platform` are typically not declared in the `depends` folder.
+They are only declared in the `CMakeLists.txt` file of the respective addon (e.g. via `find_package(p8-platform REQUIRED)`).
+Below we demonstrate how to build these two.
+First, the platform addon:
+
+```
+cd ~/src/
+git clone https://github.com/xbmc/platform.git
+cd ~/src/platform/
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local
+make && make install
+```
+
+Then the kodi-platform add-on:
+
+```
+cd ~/src/
+git clone https://github.com/xbmc/kodi-platform.git
+cd ~/src/kodi-platform/
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local
+make && make install
+```
+
+Finally, to install pvr.demo
+
+```
+cd ~/src
+git clone https://github.com/kodi-pvr/pvr.demo.git
+cd ~/src/pvr.demo/
+cmake -DCMAKE_INSTALL_PREFIX=/usr/local
+make && make install
+```
+
+**NOTE:** `-DCMAKE_INSTALL_PREFIX=` should match Kodi's `-DCMAKE_INSTALL_PREFIX=` prefix used in **[section 4.1](#41-configure-build)**.
 
 ## 6. Run Kodi
 If you chose to install Kodi using `/usr` or `/usr/local` as the `-DCMAKE_INSTALL_PREFIX=`, you can just issue *kodi* in a terminal session.

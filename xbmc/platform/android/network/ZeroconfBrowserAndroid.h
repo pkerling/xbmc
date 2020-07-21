@@ -9,13 +9,13 @@
 #pragma once
 
 #include "network/ZeroconfBrowser.h"
-
-#include <androidjni/NsdManager.h>
-#include <androidjni/NsdServiceInfo.h>
+#include "threads/Event.h"
 
 #include "platform/android/activity/JNIXBMCNsdManagerDiscoveryListener.h"
 #include "platform/android/activity/JNIXBMCNsdManagerResolveListener.h"
-#include "threads/Event.h"
+
+#include <androidjni/NsdManager.h>
+#include <androidjni/NsdServiceInfo.h>
 
 class CZeroconfBrowserAndroid;
 
@@ -27,12 +27,12 @@ public:
 
   // CJNINsdManagerDiscoveryListener interface
 public:
-  void onDiscoveryStarted(const std::string& serviceType);
-  void onDiscoveryStopped(const std::string& serviceType);
-  void onServiceFound(const jni::CJNINsdServiceInfo& serviceInfo);
-  void onServiceLost(const jni::CJNINsdServiceInfo& serviceInfo);
-  void onStartDiscoveryFailed(const std::string& serviceType, int errorCode);
-  void onStopDiscoveryFailed(const std::string& serviceType, int errorCode);
+  void onDiscoveryStarted(const std::string& serviceType) override;
+  void onDiscoveryStopped(const std::string& serviceType) override;
+  void onServiceFound(const jni::CJNINsdServiceInfo& serviceInfo) override;
+  void onServiceLost(const jni::CJNINsdServiceInfo& serviceInfo) override;
+  void onStartDiscoveryFailed(const std::string& serviceType, int errorCode) override;
+  void onStopDiscoveryFailed(const std::string& serviceType, int errorCode) override;
 
 protected:
   CZeroconfBrowserAndroid* m_browser;
@@ -46,8 +46,8 @@ public:
 
   // CJNINsdManagerResolveListener interface
 public:
-  void onResolveFailed(const jni::CJNINsdServiceInfo& serviceInfo, int errorCode);
-  void onServiceResolved(const jni::CJNINsdServiceInfo& serviceInfo);
+  void onResolveFailed(const jni::CJNINsdServiceInfo& serviceInfo, int errorCode) override;
+  void onServiceResolved(const jni::CJNINsdServiceInfo& serviceInfo) override;
 
   CEvent m_resolutionDone;
   int m_errorCode;
@@ -60,14 +60,14 @@ class CZeroconfBrowserAndroid : public CZeroconfBrowser
 
 public:
   CZeroconfBrowserAndroid();
-  virtual ~CZeroconfBrowserAndroid();
+  ~CZeroconfBrowserAndroid() override;
 
   // CZeroconfBrowser interface
 protected:
-  bool doAddServiceType(const std::string& fcr_service_type);
-  bool doRemoveServiceType(const std::string& fcr_service_type);
-  std::vector<ZeroconfService> doGetFoundServices();
-  bool doResolveService(ZeroconfService& fr_service, double f_timeout);
+  bool doAddServiceType(const std::string& fcr_service_type) override;
+  bool doRemoveServiceType(const std::string& fcr_service_type) override;
+  std::vector<ZeroconfService> doGetFoundServices() override;
+  bool doResolveService(ZeroconfService& fr_service, double f_timeout) override;
 
   void addDiscoveredService(CZeroconfBrowserAndroidDiscover* browser, const CZeroconfBrowser::ZeroconfService& fcr_service);
   void removeDiscoveredService(CZeroconfBrowserAndroidDiscover* browser, const CZeroconfBrowser::ZeroconfService& fcr_service);

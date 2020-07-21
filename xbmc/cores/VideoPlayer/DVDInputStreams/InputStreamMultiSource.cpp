@@ -7,13 +7,13 @@
  */
 
 #include "InputStreamMultiSource.h"
+
 #include "DVDFactoryInputStream.h"
 #include "filesystem/File.h"
-#include "filesystem/IFile.h"
-#include "settings/AdvancedSettings.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
-#include<map>
+#include "utils/log.h"
+
+#include <map>
 
 using namespace XFILE;
 

@@ -8,10 +8,13 @@
 
 #pragma once
 
-#include "system_gl.h"
+#include "GLESShader.h"
 #include "rendering/RenderSystem.h"
 #include "utils/Color.h"
-#include "GLESShader.h"
+
+#include <array>
+
+#include "system_gl.h"
 
 enum ESHADERMETHOD
 {
@@ -26,6 +29,7 @@ enum ESHADERMETHOD
   SM_TEXTURE_RGBA_BLENDCOLOR,
   SM_TEXTURE_RGBA_BOB,
   SM_TEXTURE_RGBA_BOB_OES,
+  SM_TEXTURE_NOALPHA,
   SM_MAX
 };
 
@@ -33,7 +37,7 @@ class CRenderSystemGLES : public CRenderSystemBase
 {
 public:
   CRenderSystemGLES();
-  virtual ~CRenderSystemGLES();
+  ~CRenderSystemGLES() override = default;
 
   bool InitRenderSystem() override;
   bool DestroyRenderSystem() override;
@@ -89,15 +93,13 @@ protected:
   virtual void PresentRenderImpl(bool rendered) = 0;
   void CalculateMaxTexturesize();
 
-  int        m_iVSyncMode;
-  int        m_iVSyncErrors;
-  bool       m_bVsyncInit;
-  int        m_width;
-  int        m_height;
+  bool m_bVsyncInit{false};
+  int m_width;
+  int m_height;
 
   std::string m_RenderExtensions;
 
-  std::unique_ptr<CGLESShader*[]> m_pShader;
+  std::array<std::unique_ptr<CGLESShader>, SM_MAX> m_pShader;
   ESHADERMETHOD m_method = SM_DEFAULT;
 
   GLint      m_viewPort[4];

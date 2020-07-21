@@ -8,13 +8,14 @@
 
 #pragma once
 
+#include "IStorageProvider.h"
+#include "MediaSource.h" // for VECSOURCES
+#include "threads/CriticalSection.h"
+#include "utils/Job.h"
+
 #include <map>
 #include <vector>
 
-#include "MediaSource.h" // for VECSOURCES
-#include "utils/Job.h"
-#include "IStorageProvider.h"
-#include "threads/CriticalSection.h"
 #include "PlatformDefs.h"
 
 #define TRAY_OPEN     16
@@ -27,6 +28,8 @@
 #define DRIVE_CLOSED_NO_MEDIA   3 // CLOSED...but no media in drive
 #define DRIVE_CLOSED_MEDIA_PRESENT  4 // Will be send once when the drive just have closed
 #define DRIVE_NONE  5 // system doesn't have an optical drive
+
+class CFileItem;
 
 class CNetworkLocation
 {
@@ -86,6 +89,9 @@ public:
   void OnStorageUnsafelyRemoved(const std::string &label) override;
 
   void OnJobComplete(unsigned int jobID, bool success, CJob *job) override { }
+
+  bool playStubFile(const CFileItem& item);
+
 protected:
   std::vector<CNetworkLocation> m_locations;
 
@@ -115,6 +121,3 @@ private:
   void RemoveDiscInfo(const std::string& devicePath);
   std::map<std::string, DiscInfo> m_mapDiscInfo;
 };
-
-extern class CMediaManager g_mediaManager;
-

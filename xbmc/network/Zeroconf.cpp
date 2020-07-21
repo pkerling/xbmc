@@ -18,10 +18,10 @@
 #include "utils/JobManager.h"
 
 #if defined(HAS_AVAHI)
-#include "platform/linux/network/ZeroconfAvahi.h"
+#include "platform/linux/network/zeroconf/ZeroconfAvahi.h"
 #elif defined(TARGET_DARWIN)
 //on osx use the native implementation
-#include "platform/darwin/osx/network/ZeroconfOSX.h"
+#include "platform/darwin/network/ZeroconfDarwin.h"
 #elif defined(TARGET_ANDROID)
 #include "platform/android/network/ZeroconfAndroid.h"
 #elif defined(HAS_MDNS)
@@ -138,7 +138,7 @@ CZeroconf*  CZeroconf::GetInstance()
     smp_instance = new CZeroconfDummy;
 #else
 #if defined(TARGET_DARWIN)
-    smp_instance = new CZeroconfOSX;
+    smp_instance = new CZeroconfDarwin;
 #elif defined(HAS_AVAHI)
     smp_instance  = new CZeroconfAvahi;
 #elif defined(TARGET_ANDROID)
@@ -171,8 +171,9 @@ CZeroconf::CPublish::CPublish(const tServiceMap& servmap)
 
 bool CZeroconf::CPublish::DoWork()
 {
-  for(tServiceMap::const_iterator it = m_servmap.begin(); it != m_servmap.end(); ++it)
-    CZeroconf::GetInstance()->doPublishService(it->first, it->second.type, it->second.name, it->second.port, it->second.txt);
+  for (const auto& it : m_servmap)
+    CZeroconf::GetInstance()->doPublishService(it.first, it.second.type, it.second.name,
+                                               it.second.port, it.second.txt);
 
   return true;
 }

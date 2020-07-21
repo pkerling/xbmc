@@ -6,9 +6,10 @@
  *  See LICENSES/README.md for more information.
  */
 #include "DBusMessage.h"
+
 #include "DBusUtil.h"
-#include "utils/log.h"
 #include "settings/AdvancedSettings.h"
+#include "utils/log.h"
 
 CDBusMessage::CDBusMessage(const char *destination, const char *object, const char *interface, const char *method)
 {
@@ -21,7 +22,8 @@ CDBusMessage::CDBusMessage(const char *destination, const char *object, const ch
   }
   m_haveArgs = false;
 
-  CLog::Log(LOGDEBUG, LOGDBUS, "DBus: Creating message to %s on %s with interface %s and method %s\n", destination, object, interface, method);
+  CLog::Log(LOGDEBUG, LOGDBUS, "DBus: Creating message to %s on %s with interface %s and method %s",
+            destination, object, interface, method);
 }
 
 CDBusMessage::CDBusMessage(const std::string& destination, const std::string& object, const std::string& interface, const std::string& method)

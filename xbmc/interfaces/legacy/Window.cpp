@@ -1,4 +1,4 @@
- /*
+/*
  *  Copyright (C) 2005-2018 Team Kodi
  *  This file is part of Kodi - https://kodi.tv
  *
@@ -7,17 +7,18 @@
  */
 
 #include "Window.h"
+
+#include "Application.h"
+#include "ServiceBroker.h"
+#include "WindowException.h"
 #include "WindowInterceptor.h"
-#include "guilib/GUIComponent.h"
 #include "guilib/GUIButtonControl.h"
+#include "guilib/GUIComponent.h"
 #include "guilib/GUIEditControl.h"
 #include "guilib/GUIRadioButtonControl.h"
 #include "guilib/GUIWindowManager.h"
-#include "Application.h"
-#include "ServiceBroker.h"
 #include "messaging/ApplicationMessenger.h"
 #include "utils/Variant.h"
-#include "WindowException.h"
 
 using namespace KODI::MESSAGING;
 
@@ -367,7 +368,7 @@ namespace XBMCAddon
 
       // It got this far so means the control isn't actually in the vector of controls
       // so lets add it to save doing all that next time
-      vecControls.push_back(AddonClass::Ref<Control>(pControl));
+      vecControls.emplace_back(pControl);
 
       // return the control with increased reference (+1)
       return pControl;
@@ -596,18 +597,6 @@ namespace XBMCAddon
       return resInfo.iWidth;
     }
 
-    long Window::getResolution()
-    {
-      XBMC_TRACE;
-      return (long)CServiceBroker::GetWinSystem()->GetGfxContext().GetVideoResolution();
-    }
-
-    void Window::setCoordinateResolution(long res)
-    {
-      XBMC_TRACE;
-      throw WindowException("not implemented.");
-    }
-
     void Window::setProperty(const char* key, const String& value)
     {
       XBMC_TRACE;
@@ -715,7 +704,7 @@ namespace XBMCAddon
       if(pControl->iControlId != 0)
         throw WindowException("Control is already used");
 
-      // lock xbmc GUI before accessing data from it
+      // lock kodi GUI before accessing data from it
       pControl->iParentId = iWindowId;
 
       {
@@ -739,7 +728,7 @@ namespace XBMCAddon
       pControl->pGUIControl->SetAction(ACTION_MOVE_RIGHT, CGUIAction(pControl->iControlRight));
 
       // add control to list and allocate resources for the control
-      vecControls.push_back(AddonClass::Ref<Control>(pControl));
+      vecControls.emplace_back(pControl);
       pControl->pGUIControl->AllocResources();
 
       // This calls the CGUIWindow parent class to do the final add

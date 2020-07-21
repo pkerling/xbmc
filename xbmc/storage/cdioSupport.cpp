@@ -7,18 +7,16 @@
  */
 
 #include "cdioSupport.h"
+
+#include "platform/Environment.h"
 #include "threads/SingleLock.h"
 #include "utils/log.h"
-#include "platform/Environment.h"
+
+#include <cdio/cd_types.h>
 #include <cdio/cdio.h>
 #include <cdio/logging.h>
-#include <cdio/util.h>
 #include <cdio/mmc.h>
-#include <cdio/cd_types.h>
-
-#if defined(TARGET_WINDOWS)
-#pragma comment(lib, "libcdio.lib")
-#endif
+#include <cdio/util.h>
 
 using namespace MEDIA_DETECT;
 
@@ -388,8 +386,7 @@ void CCdIoSupport::PrintAnalysis(int fs, int num_audio)
   {
   case FS_UDF:
   case FS_ISO_UDF:
-    CLog::Log(LOGINFO, "UDF: version %x.%2.2x\n",
-              m_nUDFVerMajor, m_nUDFVerMinor);
+    CLog::Log(LOGINFO, "UDF: version %x.%2.2x", m_nUDFVerMajor, m_nUDFVerMinor);
     break;
   }
 

@@ -12,8 +12,8 @@
 #include "MusicAlbumInfo.h"
 #include "MusicInfoScraper.h"
 #include "music/MusicDatabase.h"
-#include "threads/Thread.h"
 #include "threads/IRunnable.h"
+#include "threads/Thread.h"
 
 class CAlbum;
 class CArtist;
@@ -77,6 +77,7 @@ public:
 protected:
   virtual void Process();
   bool DoScan(const std::string& strDirectory) override;
+
 
   /*! \brief Find art for albums
    Based on the albums in the folder, finds whether we have unique album art
@@ -142,14 +143,6 @@ protected:
    \param pDialog [in] a progress dialog which this and downstream functions can update with status, if required
    */
   INFO_RET DownloadArtistInfo(const CArtist& artist, const ADDON::ScraperPtr& scraper, MUSIC_GRABBER::CMusicArtistInfo& artistInfo, bool bUseScrapedMBID, CGUIDialogProgress* pDialog = NULL);
-
-
-  /*! \brief Get the types of art for an artist or album that are to be
-  automatically fetched from local files during scanning
-  \param mediaType [in] artist or album
-  \return vector of art types that are to be fetched during scanning
-  */
-  std::vector<std::string> GetArtTypesToScan(const MediaType& mediaType);
 
   /*! \brief Get the types of art for an artist or album that can be
    automatically found during scanning, and are not in the provided set of art

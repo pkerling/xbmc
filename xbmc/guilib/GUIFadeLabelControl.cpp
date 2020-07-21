@@ -7,6 +7,7 @@
  */
 
 #include "GUIFadeLabelControl.h"
+
 #include "GUIMessage.h"
 #include "utils/Random.h"
 
@@ -44,6 +45,7 @@ CGUIFadeLabelControl::CGUIFadeLabelControl(const CGUIFadeLabelControl &from)
   m_shortText = from.m_shortText;
   m_scroll = from.m_scroll;
   m_randomized = from.m_randomized;
+  m_allLabelsShown = from.m_allLabelsShown;
 }
 
 CGUIFadeLabelControl::~CGUIFadeLabelControl(void) = default;
@@ -52,13 +54,15 @@ void CGUIFadeLabelControl::SetInfo(const std::vector<GUIINFO::CGUIInfoLabel> &in
 {
   m_lastLabel = -1;
   m_infoLabels = infoLabels;
+  m_allLabelsShown = m_infoLabels.empty();
   if (m_randomized)
     KODI::UTILS::RandomShuffle(m_infoLabels.begin(), m_infoLabels.end());
 }
 
 void CGUIFadeLabelControl::AddLabel(const std::string &label)
 {
-  m_infoLabels.push_back(GUIINFO::CGUIInfoLabel(label, "", GetParentID()));
+  m_infoLabels.emplace_back(label, "", GetParentID());
+  m_allLabelsShown = false;
 }
 
 void CGUIFadeLabelControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
@@ -87,12 +91,18 @@ void CGUIFadeLabelControl::Process(unsigned int currentTime, CDirtyRegionList &d
       m_scrollInfo.Reset();
       m_fadeAnim.ResetAnimation();
     }
+    MarkDirtyRegion();
   }
+
+  if (m_shortText && m_infoLabels.size() == 1)
+    m_allLabelsShown = true;
+
   if (m_currentLabel != m_lastLabel)
   { // new label - reset scrolling
     m_scrollInfo.Reset();
     m_fadeAnim.QueueAnimation(ANIM_PROCESS_REVERSE);
     m_lastLabel = m_currentLabel;
+    MarkDirtyRegion();
   }
 
   if (m_infoLabels.size() > 1 || !m_shortText)
@@ -129,7 +139,10 @@ void CGUIFadeLabelControl::Process(unsigned int currentTime, CDirtyRegionList &d
       if (m_fadeAnim.GetProcess() != ANIM_PROCESS_NORMAL)
       {
         if (++m_currentLabel >= m_infoLabels.size())
+        {
           m_currentLabel = 0;
+          m_allLabelsShown = true;
+        }
         m_scrollInfo.Reset();
         m_fadeAnim.QueueAnimation(ANIM_PROCESS_REVERSE);
       }
@@ -214,6 +227,7 @@ bool CGUIFadeLabelControl::OnMessage(CGUIMessage& message)
     {
       m_lastLabel = -1;
       m_infoLabels.clear();
+      m_allLabelsShown = true;
       m_scrollInfo.Reset();
       return true;
     }
@@ -221,6 +235,7 @@ bool CGUIFadeLabelControl::OnMessage(CGUIMessage& message)
     {
       m_lastLabel = -1;
       m_infoLabels.clear();
+      m_allLabelsShown = true;
       m_scrollInfo.Reset();
       AddLabel(message.GetLabel());
       return true;

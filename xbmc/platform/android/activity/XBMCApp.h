@@ -8,24 +8,6 @@
 
 #pragma once
 
-#include <math.h>
-#include <pthread.h>
-#include <string>
-#include <vector>
-#include <map>
-#include <memory>
-
-#include <android/native_activity.h>
-
-#include <androidjni/Activity.h>
-#include <androidjni/AudioManager.h>
-#include <androidjni/BroadcastReceiver.h>
-#include <androidjni/SurfaceHolder.h>
-#include <androidjni/View.h>
-
-#include "threads/Event.h"
-#include "interfaces/IAnnouncer.h"
-
 #include "IActivityHandler.h"
 #include "IInputHandler.h"
 #include "JNIMainActivity.h"
@@ -33,8 +15,24 @@
 #include "JNIXBMCDisplayManagerDisplayListener.h"
 #include "JNIXBMCMainView.h"
 #include "JNIXBMCMediaSession.h"
+#include "interfaces/IAnnouncer.h"
 #include "platform/xbmc.h"
+#include "threads/Event.h"
 #include "utils/Geometry.h"
+
+#include <map>
+#include <math.h>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include <android/native_activity.h>
+#include <androidjni/Activity.h>
+#include <androidjni/AudioManager.h>
+#include <androidjni/BroadcastReceiver.h>
+#include <androidjni/SurfaceHolder.h>
+#include <androidjni/View.h>
+#include <pthread.h>
 
 // forward declares
 class CJNIWakeLock;
@@ -43,6 +41,8 @@ class CVariant;
 class IInputDeviceCallbacks;
 class IInputDeviceEventHandler;
 class CVideoSyncAndroid;
+class CJNIActivityManager;
+
 typedef struct _JNIEnv JNIEnv;
 
 struct androidIcon
@@ -85,20 +85,20 @@ class CXBMCApp
     , public CJNISurfaceHolderCallback
 {
 public:
-  explicit CXBMCApp(ANativeActivity *nativeActivity);
-  virtual ~CXBMCApp();
+  explicit CXBMCApp(ANativeActivity* nativeActivity, IInputHandler& inputhandler);
+  ~CXBMCApp() override;
   static CXBMCApp* get() { return m_xbmcappinstance; }
 
   // IAnnouncer IF
-  virtual void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data) override;
+  void Announce(ANNOUNCEMENT::AnnouncementFlag flag, const char* sender, const char* message, const CVariant& data) override;
 
-  virtual void onReceive(CJNIIntent intent) override;
-  virtual void onNewIntent(CJNIIntent intent) override;
-  virtual void onActivityResult(int requestCode, int resultCode, CJNIIntent resultData) override;
-  virtual void onVolumeChanged(int volume) override;
+  void onReceive(CJNIIntent intent) override;
+  void onNewIntent(CJNIIntent intent) override;
+  void onActivityResult(int requestCode, int resultCode, CJNIIntent resultData) override;
+  void onVolumeChanged(int volume) override;
   virtual void onAudioFocusChange(int focusChange);
-  virtual void doFrame(int64_t frameTimeNanos) override;
-  virtual void onVisibleBehindCanceled() override;
+  void doFrame(int64_t frameTimeNanos) override;
+  void onVisibleBehindCanceled() override;
 
   // implementation of CJNIInputManagerInputDeviceListener
   void onInputDeviceAdded(int deviceId) override;
@@ -191,11 +191,13 @@ public:
   void ProcessSlow();
 
   static bool WaitVSync(unsigned int milliSeconds);
-  static int64_t GetNextFrameTime(){ return m_frameTimeNanos; };
+  static int64_t GetNextFrameTime();
+  static float GetFrameLatencyMs();
 
   bool getVideosurfaceInUse();
   void setVideosurfaceInUse(bool videosurfaceInUse);
 
+  bool GetMemoryInfo(long& availMem, long& totalMem);
 protected:
   // limit who can access Volume
   friend class CAESinkAUDIOTRACK;
@@ -222,20 +224,24 @@ private:
   static void RegisterDisplayListener(CVariant*);
 
   static ANativeActivity *m_activity;
+  IInputHandler& m_inputHandler;
   static CJNIWakeLock *m_wakeLock;
   static int m_batteryLevel;
   static bool m_hasFocus;
   static bool m_headsetPlugged;
   static bool m_hdmiPlugged;
   static bool m_hdmiReportedState;
+  static bool m_hdmiSource;
   static IInputDeviceCallbacks* m_inputDeviceCallbacks;
   static IInputDeviceEventHandler* m_inputDeviceEventHandler;
   static bool m_hasReqVisible;
   bool m_videosurfaceInUse;
   bool m_firstrun;
   bool m_exiting;
+  bool m_bResumePlayback = false;
   pthread_t m_thread;
   static CCriticalSection m_applicationsMutex;
+  static CCriticalSection m_activityResultMutex;
   static std::vector<androidPackage> m_applications;
   static std::vector<CActivityResultEvent*> m_activityResultEvents;
 
@@ -243,6 +249,9 @@ private:
 
   static CVideoSyncAndroid* m_syncImpl;
   static CEvent m_vsyncEvent;
+  static CEvent m_displayChangeEvent;
+
+  std::unique_ptr<CJNIActivityManager> m_activityManager;
 
   void XBMC_Pause(bool pause);
   void XBMC_Stop();

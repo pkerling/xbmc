@@ -13,14 +13,14 @@
 \brief
 */
 
-#include <vector>
-
+#include "DirtyRegion.h"
+#include "VisibleEffect.h" // needed for the CAnimation members
+#include "guiinfo/GUIInfoBool.h"
+#include "guiinfo/GUIInfoColor.h" // needed for CGUIInfoColor to handle infolabel'ed colors
 #include "utils/Color.h"
 #include "windowing/GraphicContext.h" // needed by any rendering operation (all controls)
-#include "VisibleEffect.h"  // needed for the CAnimation members
-#include "guiinfo/GUIInfoColor.h" // needed for CGUIInfoColor to handle infolabel'ed colors
-#include "guiinfo/GUIInfoBool.h"
-#include "DirtyRegion.h"
+
+#include <vector>
 
 class CGUIListItem; // forward
 class CAction;
@@ -285,7 +285,8 @@ public:
     GUICONTAINER_WRAPLIST,
     GUICONTAINER_FIXEDLIST,
     GUICONTAINER_EPGGRID,
-    GUICONTAINER_PANEL
+    GUICONTAINER_PANEL,
+    GUICONTROL_RANGES
   };
   GUICONTROLTYPES GetControlType() const { return ControlType; }
 

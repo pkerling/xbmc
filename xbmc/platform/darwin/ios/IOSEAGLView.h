@@ -6,9 +6,9 @@
  *  See LICENSES/README.md for more information.
  */
 
-#import <UIKit/UIKit.h>
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/ES2/gl.h>
+#import <UIKit/UIKit.h>
 
 // This class wraps the CAEAGLLayer from CoreAnimation into a convenient UIView subclass.
 // The view content is basically an EAGL surface you render your OpenGL scene into.
@@ -33,7 +33,7 @@
   BOOL pause;
   NSConditionLock* animationThreadLock;
   NSThread* animationThread;
-  UIScreen *currentScreen;
+  UIScreen* __weak currentScreen;
 
   BOOL framebufferResizeRequested;
 }
@@ -41,7 +41,7 @@
 @property (readonly, nonatomic, getter=isXBMCAlive) BOOL xbmcAlive;
 @property (readonly, nonatomic, getter=isReadyToRun) BOOL readyToRun;
 @property (readonly, nonatomic, getter=isPause) BOOL pause;
-@property (readonly, getter=getCurrentScreen) UIScreen *currentScreen;
+@property(weak, readonly, getter=getCurrentScreen) UIScreen* currentScreen;
 @property (readonly, getter=getCurrentEAGLContext) EAGLContext *context;
 @property BOOL framebufferResizeRequested;
 

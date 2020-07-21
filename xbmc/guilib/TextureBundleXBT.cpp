@@ -10,25 +10,26 @@
 
 #include "ServiceBroker.h"
 #include "Texture.h"
-#include "windowing/GraphicContext.h"
-#include "utils/log.h"
-#include "settings/Settings.h"
-#include "settings/SettingsComponent.h"
-#include "filesystem/SpecialProtocol.h"
-#include "filesystem/XbtManager.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
 #include "XBTF.h"
 #include "XBTFReader.h"
+#include "filesystem/SpecialProtocol.h"
+#include "filesystem/XbtManager.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+
+#include <inttypes.h>
+
 #include <lzo/lzo1x.h>
 
 #ifdef TARGET_WINDOWS_DESKTOP
 #ifdef NDEBUG
 #pragma comment(lib,"lzo2.lib")
-#elif defined _WIN64
-#pragma comment(lib, "lzo2d.lib")
 #else
-#pragma comment(lib, "lzo2-no_idb.lib")
+#pragma comment(lib, "lzo2d.lib")
 #endif
 #endif
 
@@ -45,6 +46,11 @@ CTextureBundleXBT::CTextureBundleXBT(bool themeBundle)
 }
 
 CTextureBundleXBT::~CTextureBundleXBT(void)
+{
+  CloseBundle();
+}
+
+void CTextureBundleXBT::CloseBundle()
 {
   if (m_XBTFReader != nullptr && m_XBTFReader->IsOpen())
   {

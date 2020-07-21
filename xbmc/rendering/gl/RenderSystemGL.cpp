@@ -7,24 +7,22 @@
  */
 
 #include "RenderSystemGL.h"
+
 #include "filesystem/File.h"
 #include "rendering/MatrixGL.h"
-#include "windowing/GraphicContext.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/DisplaySettings.h"
-#include "utils/log.h"
 #include "utils/GLUtils.h"
-#include "utils/TimeUtils.h"
-#include "utils/SystemInfo.h"
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
-#ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
-#endif
+#include "utils/SystemInfo.h"
+#include "utils/TimeUtils.h"
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
 
 CRenderSystemGL::CRenderSystemGL() : CRenderSystemBase()
 {
-  m_pShader.reset(new CGLShader*[SM_MAX]);
 }
 
 CRenderSystemGL::~CRenderSystemGL() = default;
@@ -45,25 +43,32 @@ bool CRenderSystemGL::InitRenderSystem()
     m_RenderVersion = ver;
   }
 
+  CLog::Log(LOGINFO, "CRenderSystemGL::%s - Version: %s, Major: %d, Minor: %d", __FUNCTION__, ver,
+            m_RenderVersionMajor, m_RenderVersionMinor);
+
   m_RenderExtensions  = " ";
   if (m_RenderVersionMajor > 3 ||
       (m_RenderVersionMajor == 3 && m_RenderVersionMinor >= 2))
   {
-    GLint n;
+    GLint n = 0;
     glGetIntegerv(GL_NUM_EXTENSIONS, &n);
     if (n > 0)
     {
       GLint i;
       for (i = 0; i < n; i++)
       {
-        m_RenderExtensions += (const char*)glGetStringi(GL_EXTENSIONS, i);
+        m_RenderExtensions += (const char*) glGetStringi(GL_EXTENSIONS, i);
         m_RenderExtensions += " ";
       }
     }
   }
   else
   {
-    m_RenderExtensions += (const char*) glGetString(GL_EXTENSIONS);
+    auto extensions = (const char*) glGetString(GL_EXTENSIONS);
+    if (extensions)
+    {
+      m_RenderExtensions += extensions;
+    }
   }
   m_RenderExtensions += " ";
 
@@ -102,16 +107,14 @@ bool CRenderSystemGL::InitRenderSystem()
 
   InitialiseShaders();
 
-  if (IsExtSupported("GL_ARB_texture_non_power_of_two"))
-    m_supportsNPOT = true;
-  else
-    m_supportsNPOT = false;
-
   return true;
 }
 
 bool CRenderSystemGL::ResetRenderSystem(int width, int height)
 {
+  if (!m_bRenderCreated)
+    return false;
+
   m_width = width;
   m_height = height;
 
@@ -123,6 +126,9 @@ bool CRenderSystemGL::ResetRenderSystem(int width, int height)
     glGenVertexArrays(1, &m_vertexArray);
     glBindVertexArray(m_vertexArray);
   }
+
+  ReleaseShaders();
+  InitialiseShaders();
 
   glClearColor( 0.0f, 0.0f, 0.0f, 0.0f );
 
@@ -152,28 +158,28 @@ bool CRenderSystemGL::ResetRenderSystem(int width, int height)
     ResetGLErrors();
 
     GLint maxtex;
-    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS_ARB, &maxtex);
+    glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxtex);
 
     //some sanity checks
     GLenum error = glGetError();
     if (error != GL_NO_ERROR)
     {
-      CLog::Log(LOGERROR, "ResetRenderSystem() GL_MAX_TEXTURE_IMAGE_UNITS_ARB returned error %i", (int)error);
+      CLog::Log(LOGERROR, "ResetRenderSystem() GL_MAX_TEXTURE_IMAGE_UNITS returned error %i", (int)error);
       maxtex = 3;
     }
     else if (maxtex < 1 || maxtex > 32)
     {
-      CLog::Log(LOGERROR, "ResetRenderSystem() GL_MAX_TEXTURE_IMAGE_UNITS_ARB returned invalid value %i", (int)maxtex);
+      CLog::Log(LOGERROR, "ResetRenderSystem() GL_MAX_TEXTURE_IMAGE_UNITS returned invalid value %i", (int)maxtex);
       maxtex = 3;
     }
 
     //reset texture matrix for all textures
     for (GLint i = 0; i < maxtex; i++)
     {
-      glActiveTextureARB(GL_TEXTURE0 + i);
+      glActiveTexture(GL_TEXTURE0 + i);
       glMatrixTexture.Load();
     }
-    glActiveTextureARB(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0);
   }
 
   glBlendFunc(GL_SRC_ALPHA, GL_ONE);
@@ -268,7 +274,7 @@ bool CRenderSystemGL::IsExtSupported(const char* extension) const
 
 bool CRenderSystemGL::SupportsNPOT(bool dxt) const
 {
-  return m_supportsNPOT;
+  return true;
 }
 
 void CRenderSystemGL::PresentRender(bool rendered, bool videoLayer)
@@ -281,7 +287,7 @@ void CRenderSystemGL::PresentRender(bool rendered, bool videoLayer)
   PresentRenderImpl(rendered);
 
   if (!rendered)
-    Sleep(40);
+    KODI::TIME::Sleep(40);
 }
 
 void CRenderSystemGL::SetVSync(bool enable)
@@ -394,20 +400,6 @@ void CRenderSystemGL::CalculateMaxTexturesize()
       break;
     }
   }
-
-#ifdef TARGET_DARWIN_OSX
-  // Max Texture size reported on some apple machines seems incorrect
-  // Displaying a picture with that resolution results in a corrupted output
-  // So force it to a lower value
-  // Problem noticed on:
-  // iMac with ATI Radeon X1600, both on 10.5.8 (GL_VERSION: 2.0 ATI-1.5.48)
-  // and 10.6.2 (GL_VERSION: 2.0 ATI-1.6.6)
-  if (m_RenderRenderer == "ATI Radeon X1600 OpenGL Engine")
-    m_maxTextureSize = 2048;
-  // Mac mini G4 with ATI Radeon 9200 (GL_VERSION: 1.3 ATI-1.5.48)
-  else if (m_RenderRenderer == "ATI Radeon 9200 OpenGL Engine")
-    m_maxTextureSize = 1024;
-#endif
 
   CLog::Log(LOGINFO, "GL: Maximum texture width: %u", m_maxTextureSize);
 }
@@ -612,66 +604,59 @@ void CRenderSystemGL::InitialiseShaders()
     defines += "#define KODI_LIMITED_RANGE 1\n";
   }
 
-  m_pShader[SM_DEFAULT] = new CGLShader("gl_shader_vert_default.glsl", "gl_shader_frag_default.glsl", defines);
+  m_pShader[SM_DEFAULT].reset(new CGLShader("gl_shader_vert_default.glsl", "gl_shader_frag_default.glsl", defines));
   if (!m_pShader[SM_DEFAULT]->CompileAndLink())
   {
     m_pShader[SM_DEFAULT]->Free();
-    delete m_pShader[SM_DEFAULT];
-    m_pShader[SM_DEFAULT] = nullptr;
+    m_pShader[SM_DEFAULT].reset();
     CLog::Log(LOGERROR, "GUI Shader gl_shader_frag_default.glsl - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE] = new CGLShader("gl_shader_frag_texture.glsl", defines);
+  m_pShader[SM_TEXTURE].reset(new CGLShader("gl_shader_frag_texture.glsl", defines));
   if (!m_pShader[SM_TEXTURE]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE]->Free();
-    delete m_pShader[SM_TEXTURE];
-    m_pShader[SM_TEXTURE] = nullptr;
+    m_pShader[SM_TEXTURE].reset();
     CLog::Log(LOGERROR, "GUI Shader gl_shader_frag_texture.glsl - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE_LIM] = new CGLShader("gl_shader_frag_texture_lim.glsl", defines);
+  m_pShader[SM_TEXTURE_LIM].reset(new CGLShader("gl_shader_frag_texture_lim.glsl", defines));
   if (!m_pShader[SM_TEXTURE_LIM]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE_LIM]->Free();
-    delete m_pShader[SM_TEXTURE_LIM];
-    m_pShader[SM_TEXTURE_LIM] = nullptr;
+    m_pShader[SM_TEXTURE_LIM].reset();
     CLog::Log(LOGERROR, "GUI Shader gl_shader_frag_texture_lim.glsl - compile and link failed");
   }
 
-  m_pShader[SM_MULTI] = new CGLShader("gl_shader_frag_multi.glsl", defines);
+  m_pShader[SM_MULTI].reset(new CGLShader("gl_shader_frag_multi.glsl", defines));
   if (!m_pShader[SM_MULTI]->CompileAndLink())
   {
     m_pShader[SM_MULTI]->Free();
-    delete m_pShader[SM_MULTI];
-    m_pShader[SM_MULTI] = nullptr;
+    m_pShader[SM_MULTI].reset();
     CLog::Log(LOGERROR, "GUI Shader gl_shader_frag_multi.glsl - compile and link failed");
   }
 
-  m_pShader[SM_FONTS] = new CGLShader("gl_shader_frag_fonts.glsl", defines);
+  m_pShader[SM_FONTS].reset(new CGLShader("gl_shader_frag_fonts.glsl", defines));
   if (!m_pShader[SM_FONTS]->CompileAndLink())
   {
     m_pShader[SM_FONTS]->Free();
-    delete m_pShader[SM_FONTS];
-    m_pShader[SM_FONTS] = nullptr;
+    m_pShader[SM_FONTS].reset();
     CLog::Log(LOGERROR, "GUI Shader gl_shader_frag_fonts.glsl - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE_NOBLEND] = new CGLShader("gl_shader_frag_texture_noblend.glsl", defines);
+  m_pShader[SM_TEXTURE_NOBLEND].reset(new CGLShader("gl_shader_frag_texture_noblend.glsl", defines));
   if (!m_pShader[SM_TEXTURE_NOBLEND]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE_NOBLEND]->Free();
-    delete m_pShader[SM_TEXTURE_NOBLEND];
-    m_pShader[SM_TEXTURE_NOBLEND] = nullptr;
+    m_pShader[SM_TEXTURE_NOBLEND].reset();
     CLog::Log(LOGERROR, "GUI Shader gl_shader_frag_texture_noblend.glsl - compile and link failed");
   }
 
-  m_pShader[SM_MULTI_BLENDCOLOR] = new CGLShader("gl_shader_frag_multi_blendcolor.glsl", defines);
+  m_pShader[SM_MULTI_BLENDCOLOR].reset(new CGLShader("gl_shader_frag_multi_blendcolor.glsl", defines));
   if (!m_pShader[SM_MULTI_BLENDCOLOR]->CompileAndLink())
   {
     m_pShader[SM_MULTI_BLENDCOLOR]->Free();
-    delete m_pShader[SM_MULTI_BLENDCOLOR];
-    m_pShader[SM_MULTI_BLENDCOLOR] = nullptr;
+    m_pShader[SM_MULTI_BLENDCOLOR].reset();
     CLog::Log(LOGERROR, "GUI Shader gl_shader_frag_multi_blendcolor.glsl - compile and link failed");
   }
 }
@@ -680,38 +665,31 @@ void CRenderSystemGL::ReleaseShaders()
 {
   if (m_pShader[SM_DEFAULT])
     m_pShader[SM_DEFAULT]->Free();
-  delete m_pShader[SM_DEFAULT];
-  m_pShader[SM_DEFAULT] = nullptr;
+  m_pShader[SM_DEFAULT].reset();
 
   if (m_pShader[SM_TEXTURE])
     m_pShader[SM_TEXTURE]->Free();
-  delete m_pShader[SM_TEXTURE];
-  m_pShader[SM_TEXTURE] = nullptr;
+  m_pShader[SM_TEXTURE].reset();
 
   if (m_pShader[SM_TEXTURE_LIM])
     m_pShader[SM_TEXTURE_LIM]->Free();
-  delete m_pShader[SM_TEXTURE_LIM];
-  m_pShader[SM_TEXTURE_LIM] = nullptr;
+  m_pShader[SM_TEXTURE_LIM].reset();
 
   if (m_pShader[SM_MULTI])
     m_pShader[SM_MULTI]->Free();
-  delete m_pShader[SM_MULTI];
-  m_pShader[SM_MULTI] = nullptr;
+  m_pShader[SM_MULTI].reset();
 
   if (m_pShader[SM_FONTS])
     m_pShader[SM_FONTS]->Free();
-  delete m_pShader[SM_FONTS];
-  m_pShader[SM_FONTS] = nullptr;
+  m_pShader[SM_FONTS].reset();
 
   if (m_pShader[SM_TEXTURE_NOBLEND])
     m_pShader[SM_TEXTURE_NOBLEND]->Free();
-  delete m_pShader[SM_TEXTURE_NOBLEND];
-  m_pShader[SM_TEXTURE_NOBLEND] = nullptr;
+  m_pShader[SM_TEXTURE_NOBLEND].reset();
 
   if (m_pShader[SM_MULTI_BLENDCOLOR])
     m_pShader[SM_MULTI_BLENDCOLOR]->Free();
-  delete m_pShader[SM_MULTI_BLENDCOLOR];
-  m_pShader[SM_MULTI_BLENDCOLOR] = nullptr;
+  m_pShader[SM_MULTI_BLENDCOLOR].reset();
 }
 
 void CRenderSystemGL::EnableShader(ESHADERMETHOD method)

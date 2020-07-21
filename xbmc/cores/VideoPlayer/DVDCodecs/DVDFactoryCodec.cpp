@@ -6,30 +6,25 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "utils/log.h"
-
 #include "DVDFactoryCodec.h"
-#include "Video/AddonVideoCodec.h"
-#include "Video/DVDVideoCodec.h"
+
 #include "Audio/DVDAudioCodec.h"
-#include "Overlay/DVDOverlayCodec.h"
-#include "cores/VideoPlayer/DVDCodecs/DVDCodecs.h"
-
-#include "addons/AddonProvider.h"
-
-#include "Video/DVDVideoCodecFFmpeg.h"
-
 #include "Audio/DVDAudioCodecFFmpeg.h"
 #include "Audio/DVDAudioCodecPassthrough.h"
-#include "Overlay/DVDOverlayCodecSSA.h"
-#include "Overlay/DVDOverlayCodecText.h"
-#include "Overlay/DVDOverlayCodecTX3G.h"
-#include "Overlay/DVDOverlayCodecFFmpeg.h"
-
-
 #include "DVDStreamInfo.h"
+#include "Overlay/DVDOverlayCodec.h"
+#include "Overlay/DVDOverlayCodecFFmpeg.h"
+#include "Overlay/DVDOverlayCodecSSA.h"
+#include "Overlay/DVDOverlayCodecTX3G.h"
+#include "Overlay/DVDOverlayCodecText.h"
+#include "Video/AddonVideoCodec.h"
+#include "Video/DVDVideoCodec.h"
+#include "Video/DVDVideoCodecFFmpeg.h"
+#include "addons/AddonProvider.h"
+#include "cores/VideoPlayer/DVDCodecs/DVDCodecs.h"
 #include "threads/SingleLock.h"
 #include "utils/StringUtils.h"
+#include "utils/log.h"
 
 
 //------------------------------------------------------------------------------
@@ -54,9 +49,9 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, CProces
 
   if (hint.externalInterfaces)
   {
-    ADDON::BinaryAddonBasePtr addonInfo;
-    kodi::addon::IAddonInstance* parentInstance;
-    hint.externalInterfaces->getAddonInstance(ADDON::IAddonProvider::INSTANCE_VIDEOCODEC, addonInfo, parentInstance);
+    ADDON::AddonInfoPtr addonInfo;
+    KODI_HANDLE parentInstance;
+    hint.externalInterfaces->GetAddonInstance(ADDON::IAddonProvider::INSTANCE_VIDEOCODEC, addonInfo, parentInstance);
     if (addonInfo && parentInstance)
     {
       pCodec.reset(new CAddonVideoCodec(processInfo, addonInfo, parentInstance));
@@ -171,10 +166,10 @@ CDVDAudioCodec* CDVDFactoryCodec::CreateAudioCodec(CDVDStreamInfo &hint, CProces
   CDVDCodecOptions options;
 
   if (allowpassthrough && ptStreamType != CAEStreamInfo::STREAM_TYPE_NULL)
-    options.m_keys.push_back(CDVDCodecOption("ptstreamtype", StringUtils::SizeToString(ptStreamType)));
+    options.m_keys.emplace_back("ptstreamtype", StringUtils::SizeToString(ptStreamType));
 
   if (!allowdtshddecode)
-    options.m_keys.push_back(CDVDCodecOption("allowdtshddecode", "0"));
+    options.m_keys.emplace_back("allowdtshddecode", "0");
 
   // platform specifig audio decoders
   for (auto &codec : m_hwAudioCodecs)

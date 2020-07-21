@@ -8,14 +8,15 @@
 
 #pragma once
 
+#include "settings/lib/ISettingCallback.h"
+#include "utils/GlobalsHandling.h"
+
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "settings/lib/ISettingCallback.h"
-#include "utils/GlobalsHandling.h"
-
 class CSetting;
+struct StringSettingOption;
 
 class CCharsetConverter : public ISettingCallback
 {
@@ -97,9 +98,14 @@ public:
    * @param logicalStringSrc    is source string with logical characters order
    * @param visualStringDst     is output string with visual characters order, empty on any error
    * @param forceLTRReadingOrder        force LTR reading order
+   * @param visualToLogicalMap    is output mapping of positions in the visual string to the logical string
    * @return true on success, false otherwise
    */
-  static bool utf32logicalToVisualBiDi(const std::u32string& logicalStringSrc, std::u32string& visualStringDst, bool forceLTRReadingOrder = false, bool failOnBadString = false);
+  static bool utf32logicalToVisualBiDi(const std::u32string& logicalStringSrc,
+                                       std::u32string& visualStringDst,
+                                       bool forceLTRReadingOrder = false,
+                                       bool failOnBadString = false,
+                                       int* visualToLogicalMap = nullptr);
   /**
    * Strictly convert wchar_t string (wstring) to UTF-32 string.
    * No RTL visual-logical transformation is performed.
@@ -114,7 +120,6 @@ public:
   static bool utf8ToW(const std::string& utf8StringSrc, std::wstring& wStringDst,
                 bool bVisualBiDiFlip = true, bool forceLTRReadingOrder = false,
                 bool failOnBadChar = false);
-  static bool utf8ToASCII(const std::string& utf8StringSrc, std::string& asciiStringDst, bool failOnBadChar = false);
 
   static bool utf16LEtoW(const std::u16string& utf16String, std::wstring& wString);
 
@@ -133,7 +138,6 @@ public:
   static bool ToUtf8(const std::string& strSourceCharset, const std::string& stringSrc, std::string& utf8StringDst, bool failOnBadChar = false);
 
   static bool wToUTF8(const std::wstring& wStringSrc, std::string& utf8StringDst, bool failOnBadChar = false);
-  static bool wToASCII(const std::wstring& wStringSrc, std::string& asciiStringDst, bool failOnBadChar = false);
   static bool utf16BEtoUTF8(const std::u16string& utf16StringSrc, std::string& utf8StringDst);
   static bool utf16LEtoUTF8(const std::u16string& utf16StringSrc, std::string& utf8StringDst);
   static bool ucs2ToUTF8(const std::u16string& ucs2StringSrc, std::string& utf8StringDst);
@@ -152,7 +156,7 @@ public:
   static bool toW(const std::string& stringSrc, std::wstring& wStringDst, const std::string& enc);
   static bool fromW(const std::wstring& wStringSrc, std::string& stringDst, const std::string& enc);
 
-  static void SettingOptionsCharsetsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> >& list, std::string& current, void *data);
+  static void SettingOptionsCharsetsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption>& list, std::string& current, void *data);
 private:
   static void resetUserCharset(void);
   static void resetSubtitleCharset(void);

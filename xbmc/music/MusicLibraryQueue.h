@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include <map>
-#include <set>
-
 #include "FileItem.h"
 #include "settings/LibExportSettings.h"
 #include "threads/CriticalSection.h"
 #include "utils/JobManager.h"
+
+#include <map>
+#include <set>
 
 class CGUIDialogProgressBarHandle;
 class CMusicLibraryJob;
@@ -42,6 +42,13 @@ public:
    \param[in] showDialog Show a progress dialog while (asynchronously) exporting, otherwise export in synchronous
   */
   void ExportLibrary(const CLibExportSettings& settings, bool showDialog = false);
+
+  /*!
+  \brief Enqueue a music library import job.
+  \param[in] xmlFile    xml file to import
+  \param[in] showDialog Show a progress dialog while (asynchronously) exporting, otherwise export in synchronous
+  */
+  void ImportLibrary(const std::string& xmlFile, bool showDialog = false);
 
   /*!
    \brief Enqueue a music library update job, scanning tags embedded in music files and optionally scraping additional data.

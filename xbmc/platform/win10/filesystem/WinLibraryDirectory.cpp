@@ -7,14 +7,18 @@
  */
 
 #include "WinLibraryDirectory.h"
+
 #include "FileItem.h"
 #include "URL.h"
-#include "platform/win10/AsyncHelpers.h"
-#include "platform/win32/CharsetConverter.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/log.h"
+
+#include "platform/win10/AsyncHelpers.h"
+#include "platform/win32/CharsetConverter.h"
+
 #include <string>
+
 #include <winrt/Windows.Storage.FileProperties.h>
 
 using namespace XFILE;
@@ -125,7 +129,11 @@ bool CWinLibraryDirectory::GetDirectory(const CURL& url, CFileItemList& items)
 
     auto props = Wait(item.GetBasicPropertiesAsync());
 
-    pItem->m_dateTime = winrt::clock::to_FILETIME(props.DateModified());
+    FILETIME fileTime1 = winrt::clock::to_FILETIME(props.DateModified());
+    KODI::TIME::FileTime fileTime2;
+    fileTime2.highDateTime = fileTime1.dwHighDateTime;
+    fileTime2.lowDateTime = fileTime1.dwLowDateTime;
+    pItem->m_dateTime = fileTime2;
     if (!pItem->m_bIsFolder)
       pItem->m_dwSize = static_cast<int64_t>(props.Size());
 

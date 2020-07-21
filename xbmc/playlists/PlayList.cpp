@@ -7,23 +7,23 @@
  */
 
 #include "PlayList.h"
+
 #include "PlayListFactory.h"
-#include "video/VideoInfoTag.h"
-#include "music/tags/MusicInfoTag.h"
+#include "ServiceBroker.h"
 #include "filesystem/File.h"
-#include "utils/log.h"
+#include "interfaces/AnnouncementManager.h"
+#include "music/tags/MusicInfoTag.h"
 #include "utils/Random.h"
+#include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
-#include "utils/StringUtils.h"
-#include "interfaces/AnnouncementManager.h"
-#include "ServiceBroker.h"
+#include "utils/log.h"
 
 #include <algorithm>
 #include <cassert>
 #include <iostream>
-#include <string>
 #include <sstream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -452,7 +452,7 @@ bool CPlayList::Expand(int position)
 {
   CFileItemPtr item = m_vecItems[position];
   std::unique_ptr<CPlayList> playlist (CPlayListFactory::Create(*item.get()));
-  if (playlist.get() == nullptr)
+  if (playlist == nullptr)
     return false;
 
   std::string path = item->GetDynPath();

@@ -7,11 +7,12 @@
  */
 
 #include "VideoPlayerTeletext.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+
 #include "DVDStreamInfo.h"
 #include "cores/VideoPlayer/Interface/Addon/DemuxPacket.h"
-#include "utils/log.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
 #include "threads/SingleLock.h"
+#include "utils/log.h"
 
 const uint8_t rev_lut[32] =
 {
@@ -114,7 +115,7 @@ bool CDVDTeletextData::OpenStream(CDVDStreamInfo hints)
 
   if (hints.codec == AV_CODEC_ID_DVB_TELETEXT)
   {
-    CLog::Log(LOGNOTICE, "Creating teletext data thread");
+    CLog::Log(LOGINFO, "Creating teletext data thread");
     Create();
     return true;
   }
@@ -127,7 +128,7 @@ void CDVDTeletextData::CloseStream(bool bWaitForBuffers)
   m_messageQueue.Abort();
 
   // wait for decode_video thread to end
-  CLog::Log(LOGNOTICE, "waiting for teletext data thread to exit");
+  CLog::Log(LOGINFO, "waiting for teletext data thread to exit");
 
   StopThread(); // will set this->m_bStop to true
 
@@ -222,7 +223,7 @@ void CDVDTeletextData::Process()
   unsigned char   magazine  = 0xff;
 //  int             doupdate  = 0;
 
-  CLog::Log(LOGNOTICE, "running thread: CDVDTeletextData");
+  CLog::Log(LOGINFO, "running thread: CDVDTeletextData");
 
   while (!m_bStop)
   {
@@ -637,7 +638,7 @@ void CDVDTeletextData::Process()
 
 void CDVDTeletextData::OnExit()
 {
-  CLog::Log(LOGNOTICE, "thread end: data_thread");
+  CLog::Log(LOGINFO, "thread end: data_thread");
 }
 
 void CDVDTeletextData::Flush()

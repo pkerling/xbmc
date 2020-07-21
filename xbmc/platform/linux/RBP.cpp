@@ -8,18 +8,18 @@
 
 #include "RBP.h"
 
-#include <assert.h>
 #include "ServiceBroker.h"
+#include "cores/omxplayer/OMXImage.h"
+#include "rpi/rpi_user_vcsm.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "utils/TimeUtils.h"
 #include "utils/log.h"
 
-#include "cores/omxplayer/OMXImage.h"
-#include <interface/mmal/mmal.h>
+#include <assert.h>
 
+#include <interface/mmal/mmal.h>
 #include <sys/ioctl.h>
-#include "rpi/rpi_user_vcsm.h"
-#include "utils/TimeUtils.h"
 
 #define MAJOR_NUM 100
 #define IOCTL_MBOX_PROPERTY _IOWR(MAJOR_NUM, 0, char *)
@@ -132,14 +132,15 @@ void CRBP::LogFirmwareVersion()
   char  response[1024];
   m_DllBcmHost->vc_gencmd(response, sizeof response, "version");
   response[sizeof(response) - 1] = '\0';
-  CLog::Log(LOGNOTICE, "Raspberry PI firmware version: %s", response);
-  CLog::Log(LOGNOTICE, "ARM mem: %dMB GPU mem: %dMB MPG2:%d WVC1:%d", m_arm_mem, m_gpu_mem, m_codec_mpg2_enabled, m_codec_wvc1_enabled);
+  CLog::Log(LOGINFO, "Raspberry PI firmware version: %s", response);
+  CLog::Log(LOGINFO, "ARM mem: %dMB GPU mem: %dMB MPG2:%d WVC1:%d", m_arm_mem, m_gpu_mem,
+            m_codec_mpg2_enabled, m_codec_wvc1_enabled);
   m_DllBcmHost->vc_gencmd(response, sizeof response, "get_config int");
   response[sizeof(response) - 1] = '\0';
-  CLog::Log(LOGNOTICE, "Config:\n%s", response);
+  CLog::Log(LOGINFO, "Config:\n%s", response);
   m_DllBcmHost->vc_gencmd(response, sizeof response, "get_config str");
   response[sizeof(response) - 1] = '\0';
-  CLog::Log(LOGNOTICE, "Config:\n%s", response);
+  CLog::Log(LOGINFO, "Config:\n%s", response);
 }
 
 static void vsync_callback_static(DISPMANX_UPDATE_HANDLE_T u, void *arg)

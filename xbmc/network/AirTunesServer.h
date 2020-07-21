@@ -11,20 +11,21 @@
 
 #pragma once
 
-#include "DllLibShairplay.h"
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
+#include "filesystem/PipeFile.h"
+#include "interfaces/IActionListener.h"
+#include "interfaces/IAnnouncer.h"
+#include "threads/CriticalSection.h"
+#include "threads/Thread.h"
+
+#include <list>
 #include <string>
 #include <vector>
-#include <list>
-#include "threads/Thread.h"
-#include "threads/CriticalSection.h"
-#include "utils/HttpParser.h"
-#include "filesystem/PipeFile.h"
-#include "interfaces/IAnnouncer.h"
-#include "interfaces/IActionListener.h"
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <shairplay/raop.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 class CDACP;
 class CVariant;
@@ -60,10 +61,10 @@ private:
   static void RefreshCoverArt(const char *outputFilename = NULL);
   static void RefreshMetadata();
   static void ResetMetadata();
+  static void InformPlayerAboutPlayTimes();
 
   int m_port;
-  static DllLibShairplay *m_pLibShairplay;//the lib
-  raop_t *m_pRaop;
+  raop_t* m_pRaop = nullptr;
   XFILE::CPipeFile *m_pPipe;
   static CAirTunesServer *ServerInstance;
   static std::string m_macAddress;
@@ -78,6 +79,9 @@ private:
   static std::list<CAction> m_actionQueue;
   static CEvent m_processActions;
   static int m_sampleRate;
+  static unsigned int m_cachedStartTime;
+  static unsigned int m_cachedEndTime;
+  static unsigned int m_cachedCurrentTime;
 
   class AudioOutputFunctions
   {

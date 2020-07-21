@@ -9,7 +9,6 @@
 #pragma once
 
 #include "ContextMenuItem.h"
-#include "guilib/GUIWindowManager.h"
 #include "VideoLibraryQueue.h"
 
 namespace CONTEXTMENU
@@ -79,4 +78,26 @@ struct CPlay : IContextMenuItem
   bool IsVisible(const CFileItem& item) const override;
   bool Execute(const CFileItemPtr& _item) const override;
 };
+
+struct CQueue : CStaticContextMenuAction
+{
+  CQueue() : CStaticContextMenuAction(13347) {} // Queue item
+  bool IsVisible(const CFileItem& item) const override;
+  bool Execute(const CFileItemPtr& item) const override;
+};
+
+struct CPlayNext : CStaticContextMenuAction
+{
+  CPlayNext() : CStaticContextMenuAction(10008) {} // Play next
+  bool IsVisible(const CFileItem& item) const override;
+  bool Execute(const CFileItemPtr& item) const override;
+};
+
+struct CPlayAndQueue : CStaticContextMenuAction
+{
+  CPlayAndQueue() : CStaticContextMenuAction(13412) {} // Play from here
+  bool IsVisible(const CFileItem& item) const override;
+  bool Execute(const CFileItemPtr& item) const override;
+};
+
 }

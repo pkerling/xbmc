@@ -7,9 +7,9 @@
  */
 
 #include "Port.h"
+
 #include "InputSink.h"
 #include "games/addons/GameClient.h"
-#include "games/addons/input/GameClientInput.h"
 #include "guilib/WindowIDs.h"
 #include "input/joysticks/keymaps/KeymapHandling.h"
 #include "peripherals/devices/Peripheral.h"
@@ -17,15 +17,14 @@
 using namespace KODI;
 using namespace GAME;
 
-CPort::CPort(JOYSTICK::IInputHandler *gameInput) :
-  m_gameInput(gameInput),
-  m_inputSink(new CInputSink(gameInput))
+CPort::CPort(JOYSTICK::IInputHandler* gameInput)
+  : m_gameInput(gameInput), m_inputSink(new CInputSink(gameInput))
 {
 }
 
 CPort::~CPort() = default;
 
-void CPort::RegisterInput(JOYSTICK::IInputProvider *provider)
+void CPort::RegisterInput(JOYSTICK::IInputProvider* provider)
 {
   // Give input sink the lowest priority by registering it before the other
   // input handlers
@@ -38,12 +37,18 @@ void CPort::RegisterInput(JOYSTICK::IInputProvider *provider)
   m_appInput.reset(new JOYSTICK::CKeymapHandling(provider, false, this));
 }
 
-void CPort::UnregisterInput(JOYSTICK::IInputProvider *provider)
+void CPort::UnregisterInput(JOYSTICK::IInputProvider* provider)
 {
   // Unregister in reverse order
+  if (provider == nullptr)
+    m_appInput->UnregisterInputProvider();
   m_appInput.reset();
-  provider->UnregisterInputHandler(this);
-  provider->UnregisterInputHandler(m_inputSink.get());
+
+  if (provider != nullptr)
+  {
+    provider->UnregisterInputHandler(this);
+    provider->UnregisterInputHandler(m_inputSink.get());
+  }
 }
 
 std::string CPort::ControllerID() const
@@ -77,7 +82,10 @@ bool CPort::OnButtonMotion(const std::string& feature, float magnitude, unsigned
   return m_gameInput->OnButtonMotion(feature, magnitude, motionTimeMs);
 }
 
-bool CPort::OnAnalogStickMotion(const std::string& feature, float x, float y, unsigned int motionTimeMs)
+bool CPort::OnAnalogStickMotion(const std::string& feature,
+                                float x,
+                                float y,
+                                unsigned int motionTimeMs)
 {
   if ((x != 0.0f || y != 0.0f) && !m_gameInput->AcceptsInput(feature))
     return false;

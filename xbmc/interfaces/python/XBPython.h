@@ -9,17 +9,14 @@
 #pragma once
 
 #include "cores/IPlayerCallback.h"
+#include "interfaces/IAnnouncer.h"
+#include "interfaces/generic/ILanguageInvocationHandler.h"
 #include "threads/CriticalSection.h"
 #include "threads/Event.h"
 #include "threads/Thread.h"
-#include "interfaces/IAnnouncer.h"
-#include "interfaces/generic/ILanguageInvocationHandler.h"
-#include "ServiceBroker.h"
 
 #include <memory>
 #include <vector>
-
-#define g_pythonParser CServiceBroker::GetXBPython()
 
 class CPythonInvoker;
 class CVariant;
@@ -90,8 +87,8 @@ public:
   void Uninitialize() override;
   bool OnScriptInitialized(ILanguageInvoker *invoker) override;
   void OnScriptStarted(ILanguageInvoker *invoker) override;
-  void OnScriptAbortRequested(ILanguageInvoker *invoker) override;
-  void OnExecutionEnded(ILanguageInvoker *invoker) override;
+  void NotifyScriptAborting(ILanguageInvoker *invoker) override;
+  void OnExecutionEnded(ILanguageInvoker* invoker) override;
   void OnScriptFinalized(ILanguageInvoker *invoker) override;
   ILanguageInvoker* CreateInvoker() override;
 
@@ -105,10 +102,7 @@ private:
   void Finalize();
 
   CCriticalSection    m_critSection;
-  bool              FileExist(const char* strFile);
-
   void*             m_mainThreadState;
-  ThreadIdentifier  m_ThreadId;
   bool              m_bInitialized;
   int               m_iDllScriptCounter; // to keep track of the total scripts running that need the dll
   unsigned int      m_endtime;

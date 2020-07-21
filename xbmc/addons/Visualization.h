@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/Visualization.h"
 #include "addons/binary-addons/AddonInstanceHandler.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/Visualization.h"
 
 namespace ADDON
 {
@@ -17,7 +17,7 @@ namespace ADDON
 class CVisualization : public IAddonInstanceHandler
 {
 public:
-  CVisualization(ADDON::BinaryAddonBasePtr addonBase, float x, float y, float w, float h);
+  CVisualization(const AddonInfoPtr& addonInfo, float x, float y, float w, float h);
   ~CVisualization() override;
 
   bool Start(int channels, int samplesPerSec, int bitsPerSample, const std::string& songName);
@@ -43,6 +43,7 @@ private:
 
   // Static function to transfer data from add-on to kodi
   static void transfer_preset(void* kodiInstance, const char* preset);
+  static void clear_presets(void* kodiInstance);
 };
 
 } /* namespace ADDON */

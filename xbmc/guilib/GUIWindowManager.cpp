@@ -7,63 +7,57 @@
  */
 
 #include "GUIWindowManager.h"
+
+#include "Application.h"
 #include "GUIAudioManager.h"
 #include "GUIDialog.h"
-#include "Application.h"
-#include "messaging/ApplicationMessenger.h"
-#include "messaging/helpers/DialogHelper.h"
-#include "GUIPassword.h"
 #include "GUIInfoManager.h"
-#include "threads/SingleLock.h"
-#include "utils/URIUtils.h"
-#include "SeekHandler.h"
-#include "settings/AdvancedSettings.h"
-#include "settings/SettingsComponent.h"
-#include "addons/Skin.h"
+#include "GUIPassword.h"
 #include "GUITexture.h"
-#include "utils/Variant.h"
-#include "input/Key.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-
-#include "windows/GUIWindowHome.h"
+#include "addons/GUIWindowAddonBrowser.h"
+#include "addons/Skin.h"
+#include "addons/interfaces/gui/Window.h"
 #include "events/windows/GUIWindowEventLog.h"
 #include "favourites/GUIDialogFavourites.h"
-#include "settings/windows/GUIWindowSettings.h"
-#include "windows/GUIWindowFileManager.h"
-#include "settings/windows/GUIWindowSettingsCategory.h"
-#include "music/windows/GUIWindowMusicPlaylist.h"
-#include "music/windows/GUIWindowMusicNav.h"
-#include "music/windows/GUIWindowMusicPlaylistEditor.h"
-#include "video/windows/GUIWindowVideoPlaylist.h"
+#include "input/Key.h"
+#include "messaging/ApplicationMessenger.h"
+#include "messaging/helpers/DialogHelper.h"
 #include "music/dialogs/GUIDialogInfoProviderSettings.h"
 #include "music/dialogs/GUIDialogMusicInfo.h"
-#include "video/dialogs/GUIDialogVideoInfo.h"
-#include "video/windows/GUIWindowVideoNav.h"
-#include "profiles/windows/GUIWindowSettingsProfile.h"
-#ifdef HAS_GL
-#include "rendering/gl/GUIWindowTestPatternGL.h"
-#endif
-#ifdef HAS_DX
-#include "rendering/dx/GUIWindowTestPatternDX.h"
-#endif
-#include "settings/windows/GUIWindowSettingsScreenCalibration.h"
-#include "programs/GUIWindowPrograms.h"
-#include "pictures/GUIWindowPictures.h"
-#include "weather/GUIWindowWeather.h"
-#include "windows/GUIWindowLoginScreen.h"
-#include "addons/GUIWindowAddonBrowser.h"
+#include "music/windows/GUIWindowMusicNav.h"
+#include "music/windows/GUIWindowMusicPlaylist.h"
+#include "music/windows/GUIWindowMusicPlaylistEditor.h"
 #include "music/windows/GUIWindowVisualisation.h"
+#include "pictures/GUIWindowPictures.h"
+#include "pictures/GUIWindowSlideShow.h"
+#include "profiles/windows/GUIWindowSettingsProfile.h"
+#include "programs/GUIWindowPrograms.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
+#include "settings/windows/GUIWindowSettings.h"
+#include "settings/windows/GUIWindowSettingsCategory.h"
+#include "settings/windows/GUIWindowSettingsScreenCalibration.h"
+#include "threads/SingleLock.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
+#include "video/dialogs/GUIDialogVideoInfo.h"
+#include "video/dialogs/GUIDialogVideoOSD.h"
+#include "video/windows/GUIWindowFullScreen.h"
+#include "video/windows/GUIWindowVideoNav.h"
+#include "video/windows/GUIWindowVideoPlaylist.h"
+#include "weather/GUIWindowWeather.h"
 #include "windows/GUIWindowDebugInfo.h"
+#include "windows/GUIWindowFileManager.h"
+#include "windows/GUIWindowHome.h"
+#include "windows/GUIWindowLoginScreen.h"
 #include "windows/GUIWindowPointer.h"
-#include "windows/GUIWindowSystemInfo.h"
 #include "windows/GUIWindowScreensaver.h"
 #include "windows/GUIWindowScreensaverDim.h"
-#include "pictures/GUIWindowSlideShow.h"
 #include "windows/GUIWindowSplash.h"
 #include "windows/GUIWindowStartup.h"
-#include "video/windows/GUIWindowFullScreen.h"
-#include "video/dialogs/GUIDialogVideoOSD.h"
+#include "windows/GUIWindowSystemInfo.h"
 
 // Dialog includes
 #include "music/dialogs/GUIDialogMusicOSD.h"
@@ -107,29 +101,27 @@
 #include "pictures/GUIDialogPictureInfo.h"
 #include "addons/settings/GUIDialogAddonSettings.h"
 #include "addons/GUIDialogAddonInfo.h"
-#ifdef HAS_LINUX_NETWORK
-#include "network/GUIDialogAccessPoints.h"
-#endif
 
 /* PVR related include Files */
 #include "pvr/PVRManager.h"
-#include "pvr/windows/GUIWindowPVRChannels.h"
-#include "pvr/windows/GUIWindowPVRRecordings.h"
-#include "pvr/windows/GUIWindowPVRGuide.h"
-#include "pvr/windows/GUIWindowPVRTimers.h"
-#include "pvr/windows/GUIWindowPVRTimerRules.h"
-#include "pvr/windows/GUIWindowPVRSearch.h"
+#include "pvr/dialogs/GUIDialogPVRChannelGuide.h"
 #include "pvr/dialogs/GUIDialogPVRChannelManager.h"
 #include "pvr/dialogs/GUIDialogPVRChannelsOSD.h"
 #include "pvr/dialogs/GUIDialogPVRClientPriorities.h"
 #include "pvr/dialogs/GUIDialogPVRGroupManager.h"
+#include "pvr/dialogs/GUIDialogPVRGuideControls.h"
 #include "pvr/dialogs/GUIDialogPVRGuideInfo.h"
-#include "pvr/dialogs/GUIDialogPVRChannelGuide.h"
 #include "pvr/dialogs/GUIDialogPVRGuideSearch.h"
 #include "pvr/dialogs/GUIDialogPVRRadioRDSInfo.h"
 #include "pvr/dialogs/GUIDialogPVRRecordingInfo.h"
 #include "pvr/dialogs/GUIDialogPVRRecordingSettings.h"
 #include "pvr/dialogs/GUIDialogPVRTimerSettings.h"
+#include "pvr/windows/GUIWindowPVRChannels.h"
+#include "pvr/windows/GUIWindowPVRGuide.h"
+#include "pvr/windows/GUIWindowPVRRecordings.h"
+#include "pvr/windows/GUIWindowPVRSearch.h"
+#include "pvr/windows/GUIWindowPVRTimerRules.h"
+#include "pvr/windows/GUIWindowPVRTimers.h"
 
 #include "video/dialogs/GUIDialogTeletext.h"
 #include "dialogs/GUIDialogSlider.h"
@@ -139,7 +131,6 @@
 
 #include "peripherals/dialogs/GUIDialogPeripherals.h"
 #include "peripherals/dialogs/GUIDialogPeripheralSettings.h"
-#include "addons/interfaces/AddonInterfaces.h"
 
 /* Game related include files */
 #include "cores/RetroPlayer/guiwindows/GameWindowFullScreen.h"
@@ -185,12 +176,6 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIWindowFileManager);
   Add(new CGUIWindowSettings);
   Add(new CGUIWindowSystemInfo);
-#ifdef HAS_GL
-  Add(new CGUIWindowTestPatternGL);
-#endif
-#ifdef HAS_DX
-  Add(new CGUIWindowTestPatternDX);
-#endif
   Add(new CGUIWindowSettingsScreenCalibration);
   Add(new CGUIWindowSettingsCategory);
   Add(new CGUIWindowVideoNav);
@@ -240,9 +225,6 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIDialogPictureInfo);
   Add(new CGUIDialogAddonInfo);
   Add(new CGUIDialogAddonSettings);
-#ifdef HAS_LINUX_NETWORK
-  Add(new CGUIDialogAccessPoints);
-#endif
 
   Add(new CGUIDialogLockSettings);
 
@@ -289,6 +271,7 @@ void CGUIWindowManager::CreateWindows()
   Add(new CGUIDialogPVRChannelGuide);
   Add(new CGUIDialogPVRRecordingSettings);
   Add(new CGUIDialogPVRClientPriorities);
+  Add(new CGUIDialogPVRGuideControls);
 
   Add(new CGUIDialogSelect);
   Add(new CGUIDialogMusicInfo);
@@ -368,7 +351,6 @@ bool CGUIWindowManager::DestroyWindows()
     DestroyWindow(WINDOW_DIALOG_PICTURE_INFO);
     DestroyWindow(WINDOW_DIALOG_ADDON_INFO);
     DestroyWindow(WINDOW_DIALOG_ADDON_SETTINGS);
-    DestroyWindow(WINDOW_DIALOG_ACCESS_POINTS);
     DestroyWindow(WINDOW_DIALOG_SLIDER);
     DestroyWindow(WINDOW_DIALOG_MEDIA_FILTER);
     DestroyWindow(WINDOW_DIALOG_SUBTITLES);
@@ -400,6 +382,7 @@ bool CGUIWindowManager::DestroyWindows()
     DestroyWindow(WINDOW_DIALOG_OSD_TELETEXT);
     DestroyWindow(WINDOW_DIALOG_PVR_RECORDING_SETTING);
     DestroyWindow(WINDOW_DIALOG_PVR_CLIENT_PRIORITIES);
+    DestroyWindow(WINDOW_DIALOG_PVR_GUIDE_CONTROLS);
 
     DestroyWindow(WINDOW_DIALOG_TEXT_VIEWER);
     DestroyWindow(WINDOW_DIALOG_PLAY_EJECT);
@@ -408,7 +391,6 @@ bool CGUIWindowManager::DestroyWindows()
     DestroyWindow(WINDOW_VISUALISATION);
     DestroyWindow(WINDOW_SETTINGS_MENU);
     DestroyWindow(WINDOW_SETTINGS_PROFILES);
-    DestroyWindow(WINDOW_TEST_PATTERN);
     DestroyWindow(WINDOW_SCREEN_CALIBRATION);
     DestroyWindow(WINDOW_SYSTEM_INFORMATION);
     DestroyWindow(WINDOW_SCREENSAVER);
@@ -737,7 +719,6 @@ void CGUIWindowManager::PreviousWindow()
   pNewWindow->OnMessage(msg2);
 
   CServiceBroker::GetGUI()->GetInfoManager().GetInfoProviders().GetGUIControlsInfoProvider().SetPreviousWindow(WINDOW_INVALID);
-  return;
 }
 
 void CGUIWindowManager::ChangeActiveWindow(int newWindow, const std::string& strPath)
@@ -790,9 +771,22 @@ void CGUIWindowManager::ActivateWindow_Internal(int iWindowID, const std::vector
   // debug
   CLog::Log(LOGDEBUG, "Activating window ID: %i", iWindowID);
 
+  // make sure we check mediasources from home
+  if (GetActiveWindow() == WINDOW_HOME)
+  {
+    g_passwordManager.SetMediaSourcePath(!params.empty() ? params[0] : "");
+  }
+  else
+  {
+    g_passwordManager.SetMediaSourcePath("");
+  }
+
   if (!g_passwordManager.CheckMenuLock(iWindowID))
   {
-    CLog::Log(LOGERROR, "MasterCode is Wrong: Window with id %d will not be loaded! Enter a correct MasterCode!", iWindowID);
+    CLog::Log(LOGERROR,
+              "MasterCode or MediaSource-code is wrong: Window with id {} will not be loaded! "
+              "Enter a correct code!",
+              iWindowID);
     if (GetActiveWindow() == WINDOW_INVALID && iWindowID != WINDOW_HOME)
       ActivateWindow(WINDOW_HOME);
     return;
@@ -870,7 +864,8 @@ void CGUIWindowManager::CloseDialogs(bool forceClose) const
   auto activeDialogs = m_activeDialogs;
   for (const auto& window : activeDialogs)
   {
-    window->Close(forceClose);
+    if (window->IsModalDialog())
+      window->Close(forceClose);
   }
 }
 
@@ -895,7 +890,7 @@ void CGUIWindowManager::OnApplicationMessage(ThreadMessage* pMsg)
   case TMSG_GUI_DIALOG_OPEN:
   {
     if (pMsg->lpVoid)
-      static_cast<CGUIDialog*>(pMsg->lpVoid)->Open(pMsg->strParam);
+      static_cast<CGUIDialog*>(pMsg->lpVoid)->Open(pMsg->param2, pMsg->strParam);
     else
     {
       CGUIDialog* pDialog = static_cast<CGUIDialog*>(GetWindow(pMsg->param1));
@@ -929,7 +924,7 @@ void CGUIWindowManager::OnApplicationMessage(ThreadMessage* pMsg)
   {
     if (pMsg->lpVoid)
     {
-      ADDON::CAddonInterfaces::OnApplicationMessage(pMsg);
+      static_cast<ADDON::CGUIAddonWindowDialog*>(pMsg->lpVoid)->Show_Internal(pMsg->param2 > 0);
     }
   }
   break;
@@ -1116,8 +1111,8 @@ void CGUIWindowManager::Process(unsigned int currentTime)
       pWindow->DoProcess(currentTime, m_dirtyregions);
   }
 
-  for (CDirtyRegionList::iterator itr = m_dirtyregions.begin(); itr != m_dirtyregions.end(); ++itr)
-    m_tracker.MarkDirtyRegion(*itr);
+  for (auto& itr : m_dirtyregions)
+    m_tracker.MarkDirtyRegion(itr);
 }
 
 void CGUIWindowManager::MarkDirty()
@@ -1202,12 +1197,12 @@ bool CGUIWindowManager::Render()
   }
   else
   {
-    for (CDirtyRegionList::const_iterator i = dirtyRegions.begin(); i != dirtyRegions.end(); ++i)
+    for (const auto& i : dirtyRegions)
     {
-      if (i->IsEmpty())
+      if (i.IsEmpty())
         continue;
 
-      CServiceBroker::GetWinSystem()->GetGfxContext().SetScissors(*i);
+      CServiceBroker::GetWinSystem()->GetGfxContext().SetScissors(i);
       RenderPass();
       hasRendered = true;
     }
@@ -1218,10 +1213,10 @@ bool CGUIWindowManager::Render()
   {
     CServiceBroker::GetWinSystem()->GetGfxContext().SetRenderingResolution(CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo(), false);
     const CDirtyRegionList &markedRegions  = m_tracker.GetMarkedRegions();
-    for (CDirtyRegionList::const_iterator i = markedRegions.begin(); i != markedRegions.end(); ++i)
-      CGUITexture::DrawQuad(*i, 0x0fff0000);
-    for (CDirtyRegionList::const_iterator i = dirtyRegions.begin(); i != dirtyRegions.end(); ++i)
-      CGUITexture::DrawQuad(*i, 0x4c00ff00);
+    for (const auto& i : markedRegions)
+      CGUITexture::DrawQuad(i, 0x0fff0000);
+    for (const auto& i : dirtyRegions)
+      CGUITexture::DrawQuad(i, 0x4c00ff00);
   }
 
   return hasRendered;
@@ -1303,8 +1298,11 @@ CGUIWindow* CGUIWindowManager::GetWindow(int id) const
 
 bool CGUIWindowManager::ProcessRenderLoop(bool renderOnly)
 {
+  bool renderGui = true;
+
   if (g_application.IsCurrentThread() && m_pCallback)
   {
+    renderGui = m_pCallback->GetRenderGUI();
     m_iNested++;
     if (!renderOnly)
       m_pCallback->Process();
@@ -1312,7 +1310,7 @@ bool CGUIWindowManager::ProcessRenderLoop(bool renderOnly)
     m_pCallback->Render();
     m_iNested--;
   }
-  if (g_application.m_bStop)
+  if (g_application.m_bStop || !renderGui)
     return false;
   else
     return true;
@@ -1684,8 +1682,10 @@ void CGUIWindowManager::CloseWindowSync(CGUIWindow *window, int nextWindowID /*=
   }
 
   window->Close(false, nextWindowID);
-  while (window->IsAnimating(ANIM_TYPE_WINDOW_CLOSE))
-    ProcessRenderLoop(true);
+
+  bool renderLoopProcessed = true;
+  while (window->IsAnimating(ANIM_TYPE_WINDOW_CLOSE) && renderLoopProcessed)
+    renderLoopProcessed = ProcessRenderLoop(true);
 }
 
 #ifdef _DEBUG

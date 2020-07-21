@@ -6,14 +6,15 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
-
 #include "AddonVersion.h"
-#include "utils/log.h"
+
 #include "utils/StringUtils.h"
+#include "utils/log.h"
+
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 namespace {
 // Add-on versions are used e.g. in file names and should
@@ -26,7 +27,13 @@ const std::string VALID_ADDON_VERSION_CHARACTERS = "abcdefghijklmnopqrstuvwxyzAB
 namespace ADDON
 {
   AddonVersion::AddonVersion(const std::string& version)
-  : mEpoch(0), mUpstream(version.empty() ? "0.0.0" : version)
+  : mEpoch(0), mUpstream(version.empty() ?
+                         "0.0.0" :
+                         [&version] {
+                             auto versionLowerCase = std::string(version);
+                             StringUtils::ToLower(versionLowerCase);
+                             return versionLowerCase;
+                         }())
   {
     size_t pos = mUpstream.find(':');
     if (pos != std::string::npos)
@@ -52,6 +59,11 @@ namespace ADDON
       CLog::Log(LOGERROR, "AddonVersion: {} is not a valid version", mUpstream);
       mUpstream = "0.0.0";
     }
+  }
+
+  AddonVersion::AddonVersion(const char* version)
+    : AddonVersion(std::string(version ? version : ""))
+  {
   }
 
   /**Compare two components of a Debian-style version.  Return -1, 0, or 1

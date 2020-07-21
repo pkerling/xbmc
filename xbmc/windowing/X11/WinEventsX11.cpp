@@ -6,23 +6,26 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "xbmc/windowing/WinEvents.h"
 #include "WinEventsX11.h"
-#include "Application.h"
+
 #include "AppInboundProtocol.h"
-#include "messaging/ApplicationMessenger.h"
-#include <X11/Xlib.h>
-#include <X11/extensions/Xrandr.h>
-#include "xbmc/windowing/X11/WinSystemX11.h"
-#include "X11/keysymdef.h"
-#include "X11/XF86keysym.h"
-#include "utils/log.h"
-#include "utils/CharsetConverter.h"
+#include "Application.h"
+#include "ServiceBroker.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
-#include "input/mouse/MouseStat.h"
 #include "input/InputManager.h"
-#include "ServiceBroker.h"
+#include "input/mouse/MouseStat.h"
+#include "messaging/ApplicationMessenger.h"
+#include "utils/CharsetConverter.h"
+#include "utils/log.h"
+#include "windowing/WinEvents.h"
+#include "windowing/X11/WinSystemX11.h"
+
+#include <X11/XF86keysym.h>
+#include <X11/Xlib.h>
+#include <X11/extensions/Xrandr.h>
+#include <X11/keysymdef.h>
 
 using namespace KODI::MESSAGING;
 
@@ -291,19 +294,36 @@ bool CWinEventsX11::MessagePump()
 
     if (m_display && (xevent.type == m_RREventBase + RRScreenChangeNotify))
     {
-      XRRUpdateConfiguration(&xevent);
-      if (xevent.xgeneric.serial != serial)
+      if (xevent.xgeneric.serial == serial)
+        continue;
+
+      if (m_xrrEventPending)
+      {
         m_winSystem.NotifyXRREvent();
-      m_xrrEventPending = false;
-      serial = xevent.xgeneric.serial;
+        m_xrrEventPending = false;
+        serial = xevent.xgeneric.serial;
+      }
+
       continue;
     }
     else if (m_display && (xevent.type == m_RREventBase + RRNotify))
     {
-      if (xevent.xgeneric.serial != serial)
-        m_winSystem.NotifyXRREvent();
-      m_xrrEventPending = false;
-      serial = xevent.xgeneric.serial;
+      if (xevent.xgeneric.serial == serial)
+        continue;
+
+      XRRNotifyEvent* rrEvent = reinterpret_cast<XRRNotifyEvent*>(&xevent);
+      if (rrEvent->subtype == RRNotify_OutputChange)
+      {
+        XRROutputChangeNotifyEvent* changeEvent = reinterpret_cast<XRROutputChangeNotifyEvent*>(&xevent);
+        if (changeEvent->connection == RR_Connected ||
+            changeEvent->connection == RR_Disconnected)
+        {
+          m_winSystem.NotifyXRREvent();
+          CServiceBroker::GetActiveAE()->DeviceChange();
+          serial = xevent.xgeneric.serial;
+        }
+      }
+
       continue;
     }
 

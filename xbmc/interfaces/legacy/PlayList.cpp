@@ -7,8 +7,9 @@
  */
 
 #include "PlayList.h"
-#include "PlayListPlayer.h"
+
 #include "Application.h"
+#include "PlayListPlayer.h"
 #include "playlists/PlayListFactory.h"
 #include "utils/URIUtils.h"
 
@@ -69,7 +70,7 @@ namespace XBMCAddon
         // load a playlist like .m3u, .pls
         // first get correct factory to load playlist
         std::unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(item));
-        if ( NULL != pPlayList.get())
+        if (nullptr != pPlayList)
         {
           // load it
           if (!pPlayList->Load(item.GetPath()))

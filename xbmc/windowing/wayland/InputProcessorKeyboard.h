@@ -8,16 +8,15 @@
 
 #pragma once
 
-#include <atomic>
-#include <cstdint>
-#include <memory>
-
-#include <wayland-client-protocol.hpp>
-
+#include "Seat.h"
+#include "XkbcommonKeymap.h"
 #include "input/XBMC_keysym.h"
 #include "threads/Timer.h"
 #include "windowing/XBMC_events.h"
-#include "XkbcommonKeymap.h"
+
+#include <atomic>
+#include <cstdint>
+#include <memory>
 
 namespace KODI
 {
@@ -35,10 +34,17 @@ public:
   virtual ~IInputHandlerKeyboard() = default;
 };
 
-class CInputProcessorKeyboard
+class CInputProcessorKeyboard final : public IRawInputHandlerKeyboard
 {
 public:
-  CInputProcessorKeyboard(wayland::keyboard_t const& keyboard, IInputHandlerKeyboard& handler);
+  CInputProcessorKeyboard(IInputHandlerKeyboard& handler);
+
+  void OnKeyboardKeymap(CSeat* seat, wayland::keyboard_keymap_format format, std::string const& keymap) override;
+  void OnKeyboardEnter(CSeat* seat, std::uint32_t serial, wayland::surface_t surface, wayland::array_t keys) override;
+  void OnKeyboardLeave(CSeat* seat, std::uint32_t serial, wayland::surface_t surface) override;
+  void OnKeyboardKey(CSeat* seat, std::uint32_t serial, std::uint32_t time, std::uint32_t key, wayland::keyboard_key_state state) override;
+  void OnKeyboardModifiers(CSeat* seat, std::uint32_t serial, std::uint32_t modsDepressed, std::uint32_t modsLatched, std::uint32_t modsLocked, std::uint32_t group) override;
+  void OnKeyboardRepeatInfo(CSeat* seat, std::int32_t rate, std::int32_t delay) override;
 
 private:
   CInputProcessorKeyboard(CInputProcessorKeyboard const& other) = delete;
@@ -48,7 +54,6 @@ private:
   XBMC_Event SendKey(unsigned char scancode, XBMCKey key, std::uint16_t unicodeCodepoint, bool pressed);
   void KeyRepeatTimeout();
 
-  wayland::keyboard_t m_keyboard;
   IInputHandlerKeyboard& m_handler;
 
   std::unique_ptr<CXkbcommonContext> m_xkbContext;

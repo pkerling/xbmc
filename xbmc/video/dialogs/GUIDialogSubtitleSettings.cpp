@@ -8,37 +8,39 @@
 
 #include "GUIDialogSubtitleSettings.h"
 
-#include <string>
-#include <vector>
-
-#include "addons/Skin.h"
 #include "Application.h"
+#include "FileItem.h"
+#include "GUIDialogSubtitles.h"
+#include "GUIPassword.h"
 #include "ServiceBroker.h"
+#include "URL.h"
+#include "addons/Skin.h"
+#include "addons/VFSEntry.h"
 #include "cores/IPlayer.h"
 #include "dialogs/GUIDialogFileBrowser.h"
 #include "dialogs/GUIDialogYesNo.h"
-#include "FileItem.h"
 #include "filesystem/File.h"
-#include "GUIPassword.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
 #include "profiles/ProfileManager.h"
 #include "settings/AdvancedSettings.h"
-#include "settings/lib/Setting.h"
-#include "settings/lib/SettingsManager.h"
 #include "settings/MediaSettings.h"
 #include "settings/MediaSourceSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "URL.h"
+#include "settings/lib/Setting.h"
+#include "settings/lib/SettingDefinitions.h"
+#include "settings/lib/SettingsManager.h"
 #include "utils/LangCodeExpander.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 #include "video/VideoDatabase.h"
-#include "GUIDialogSubtitles.h"
+
+#include <string>
+#include <vector>
 
 #define SETTING_SUBTITLE_ENABLE                "subtitles.enable"
 #define SETTING_SUBTITLE_DELAY                 "subtitles.delay"
@@ -105,15 +107,26 @@ void CGUIDialogSubtitleSettings::OnSettingChanged(std::shared_ptr<const CSetting
 
 std::string CGUIDialogSubtitleSettings::BrowseForSubtitle()
 {
+  std::string extras;
+  for (const auto& vfsAddon : CServiceBroker::GetVFSAddonCache().GetAddonInstances())
+  {
+    if (vfsAddon->ID() == "vfs.rar" || vfsAddon->ID() == "vfs.libarchive")
+      extras += '|' + vfsAddon->GetExtensions();
+  }
+
   std::string strPath;
   if (URIUtils::IsInRAR(g_application.CurrentFileItem().GetPath()) || URIUtils::IsInZIP(g_application.CurrentFileItem().GetPath()))
     strPath = CURL(g_application.CurrentFileItem().GetPath()).GetHostName();
   else
     strPath = g_application.CurrentFileItem().GetPath();
 
-  std::string strMask = ".utf|.utf8|.utf-8|.sub|.srt|.smi|.rt|.txt|.ssa|.aqt|.jss|.ass|.idx|.rar|.zip";
+  std::string strMask = ".utf|.utf8|.utf-8|.sub|.srt|.smi|.rt|.txt|.ssa|.aqt|.jss|.ass|.idx|.zip";
+
   if (g_application.GetCurrentPlayer() == "VideoPlayer")
-    strMask = ".srt|.rar|.zip|.ifo|.smi|.sub|.idx|.ass|.ssa|.txt";
+    strMask = ".srt|.zip|.ifo|.smi|.sub|.idx|.ass|.ssa|.txt";
+
+  strMask += extras;
+
   VECSOURCES shares(*CMediaSourceSettings::GetInstance().GetSources("video"));
   if (CMediaSettings::GetInstance().GetAdditionalSubtitleDirectoryChecked() != -1 && !CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_SUBTITLES_CUSTOMPATH).empty())
   {
@@ -295,7 +308,7 @@ void CGUIDialogSubtitleSettings::AddSubtitleStreams(std::shared_ptr<CSettingGrou
   m_subtitleStreamSetting = AddList(group, settingId, 462, SettingLevel::Basic, m_subtitleStream, SubtitleStreamsOptionFiller, 462);
 }
 
-void CGUIDialogSubtitleSettings::SubtitleStreamsOptionFiller(SettingConstPtr setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data)
+void CGUIDialogSubtitleSettings::SubtitleStreamsOptionFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   int subtitleStreamCount = g_application.GetAppPlayer().GetSubtitleCount();
 
@@ -319,13 +332,13 @@ void CGUIDialogSubtitleSettings::SubtitleStreamsOptionFiller(SettingConstPtr set
     strItem += FormatFlags(info.flags);
     strItem += StringUtils::Format(" (%i/%i)", i + 1, subtitleStreamCount);
 
-    list.push_back(make_pair(strItem, i));
+    list.emplace_back(strItem, i);
   }
 
   // no subtitle streams - just add a "None" entry
   if (list.empty())
   {
-    list.push_back(make_pair(g_localizeStrings.Get(231), -1));
+    list.emplace_back(g_localizeStrings.Get(231), -1);
     current = -1;
   }
 }

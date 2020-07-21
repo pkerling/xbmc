@@ -10,16 +10,18 @@
 #include <sys\stat.h>
 #endif
 
-#ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
+#include "FileItem.h"
+#include "NFSDirectory.h"
+#include "threads/SingleLock.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
+
+#ifdef TARGET_WINDOWS
+#include <sys\stat.h>
 #endif
 
-#include "NFSDirectory.h"
-#include "FileItem.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
-#include "threads/SingleLock.h"
 using namespace XFILE;
 #include <limits.h>
 #include <nfsc/libnfs.h>
@@ -51,24 +53,23 @@ bool CNFSDirectory::GetDirectoryFromExportList(const std::string& strPath, CFile
   CURL url(strPath);
   std::string nonConstStrPath(strPath);
   std::list<std::string> exportList=gNfsConnection.GetExportList(url);
-  std::list<std::string>::iterator it;
 
-  for(it=exportList.begin();it!=exportList.end();++it)
+  for (const std::string& it : exportList)
   {
-      std::string currentExport(*it);
-      URIUtils::RemoveSlashAtEnd(nonConstStrPath);
+    std::string currentExport(it);
+    URIUtils::RemoveSlashAtEnd(nonConstStrPath);
 
-      CFileItemPtr pItem(new CFileItem(currentExport));
-      std::string path(nonConstStrPath + currentExport);
-      URIUtils::AddSlashAtEnd(path);
-      pItem->SetPath(path);
-      pItem->m_dateTime=0;
+    CFileItemPtr pItem(new CFileItem(currentExport));
+    std::string path(nonConstStrPath + currentExport);
+    URIUtils::AddSlashAtEnd(path);
+    pItem->SetPath(path);
+    pItem->m_dateTime = 0;
 
-      pItem->m_bIsFolder = true;
-      items.Add(pItem);
+    pItem->m_bIsFolder = true;
+    items.Add(pItem);
   }
 
-  return exportList.empty()? false : true;
+  return exportList.empty() ? false : true;
 }
 
 bool CNFSDirectory::GetServerList(CFileItemList &items)
@@ -77,7 +78,7 @@ bool CNFSDirectory::GetServerList(CFileItemList &items)
   struct nfs_server_list *srv;
   bool ret = false;
 
-  srvrs = nfs_find_local_servers();	
+  srvrs = nfs_find_local_servers();
 
   for (srv=srvrs; srv; srv = srv->next)
   {
@@ -143,7 +144,8 @@ bool CNFSDirectory::ResolveSymlink( const std::string &dirName, struct nfsdirent
 
     if (ret != 0)
     {
-      CLog::Log(LOGERROR, "NFS: Failed to stat(%s) on link resolve %s\n", fullpath.c_str(), nfs_get_error(gNfsConnection.GetNfsContext()));
+      CLog::Log(LOGERROR, "NFS: Failed to stat(%s) on link resolve %s", fullpath.c_str(),
+                nfs_get_error(gNfsConnection.GetNfsContext()));
       retVal = false;
     }
     else
@@ -167,7 +169,8 @@ bool CNFSDirectory::ResolveSymlink( const std::string &dirName, struct nfsdirent
   }
   else
   {
-    CLog::Log(LOGERROR, "Failed to readlink(%s) %s\n", fullpath.c_str(), nfs_get_error(gNfsConnection.GetNfsContext()));
+    CLog::Log(LOGERROR, "Failed to readlink(%s) %s", fullpath.c_str(),
+              nfs_get_error(gNfsConnection.GetNfsContext()));
     retVal = false;
   }
   return retVal;
@@ -177,7 +180,7 @@ bool CNFSDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 {
   // We accept nfs://server/path[/file]]]]
   int ret = 0;
-  FILETIME fileTime, localTime;
+  KODI::TIME::FileTime fileTime, localTime;
   CSingleLock lock(gNfsConnection);
   std::string strDirName="";
   std::string myStrPath(url.Get());
@@ -210,7 +213,8 @@ bool CNFSDirectory::GetDirectory(const CURL& url, CFileItemList &items)
 
   if(ret != 0)
   {
-    CLog::Log(LOGERROR, "Failed to open(%s) %s\n", strDirName.c_str(), nfs_get_error(gNfsConnection.GetNfsContext()));
+    CLog::Log(LOGERROR, "Failed to open(%s) %s", strDirName.c_str(),
+              nfs_get_error(gNfsConnection.GetNfsContext()));
     return false;
   }
   lock.Leave();
@@ -252,9 +256,9 @@ bool CNFSDirectory::GetDirectory(const CURL& url, CFileItemList &items)
       long long ll = lTimeDate & 0xffffffff;
       ll *= 10000000ll;
       ll += 116444736000000000ll;
-      fileTime.dwLowDateTime = (DWORD) (ll & 0xffffffff);
-      fileTime.dwHighDateTime = (DWORD)(ll >> 32);
-      FileTimeToLocalFileTime(&fileTime, &localTime);
+      fileTime.lowDateTime = (DWORD)(ll & 0xffffffff);
+      fileTime.highDateTime = (DWORD)(ll >> 32);
+      KODI::TIME::FileTimeToLocalFileTime(&fileTime, &localTime);
 
       CFileItemPtr pItem(new CFileItem(tmpDirent.name));
       pItem->m_dateTime=localTime;
@@ -303,7 +307,8 @@ bool CNFSDirectory::Create(const CURL& url2)
 
   success = (ret == 0 || -EEXIST == ret);
   if(!success)
-    CLog::Log(LOGERROR, "NFS: Failed to create(%s) %s\n", folderName.c_str(), nfs_get_error(gNfsConnection.GetNfsContext()));
+    CLog::Log(LOGERROR, "NFS: Failed to create(%s) %s", folderName.c_str(),
+              nfs_get_error(gNfsConnection.GetNfsContext()));
   return success;
 }
 

@@ -7,17 +7,19 @@
  */
 
 #include "GUIWindowSystemInfo.h"
+
 #include "GUIInfoManager.h"
-#include "guilib/GUIMessage.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/WindowIDs.h"
-#include "guilib/LocalizeStrings.h"
-#include "pvr/PVRManager.h"
-#include "utils/SystemInfo.h"
-#include "utils/StringUtils.h"
-#include "storage/MediaManager.h"
-#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "ServiceBroker.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIMessage.h"
+#include "guilib/LocalizeStrings.h"
+#include "guilib/WindowIDs.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
+#include "pvr/PVRManager.h"
+#include "storage/MediaManager.h"
+#include "utils/CPUInfo.h"
+#include "utils/StringUtils.h"
+#include "utils/SystemInfo.h"
 
 #define CONTROL_TB_POLICY   30
 #define CONTROL_BT_STORAGE  94
@@ -104,7 +106,7 @@ void CGUIWindowSystemInfo::FrameMove()
   {
     SET_CONTROL_LABEL(40, g_localizeStrings.Get(20155));
     if (m_diskUsage.empty())
-      m_diskUsage = g_mediaManager.GetDiskUsage();
+      m_diskUsage = CServiceBroker::GetMediaManager().GetDiskUsage();
 
     for (size_t d = 0; d < m_diskUsage.size(); d++)
     {
@@ -144,14 +146,14 @@ void CGUIWindowSystemInfo::FrameMove()
   else if (m_section == CONTROL_BT_HARDWARE)
   {
     SET_CONTROL_LABEL(40,g_localizeStrings.Get(20160));
-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUModel());
+    SET_CONTROL_LABEL(i++, "CPU: " + CServiceBroker::GetCPUInfo()->GetCPUModel());
 #if defined(__arm__) && defined(TARGET_LINUX)
-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUBogoMips());
-    if (!g_sysinfo.GetCPUSoC().empty())
-      SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUSoC());
-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUHardware());
-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPURevision());
-    SET_CONTROL_LABEL(i++, g_sysinfo.GetCPUSerial());
+    SET_CONTROL_LABEL(i++, "BogoMips: " + CServiceBroker::GetCPUInfo()->GetCPUBogoMips());
+    if (!CServiceBroker::GetCPUInfo()->GetCPUSoC().empty())
+      SET_CONTROL_LABEL(i++, "SoC: " + CServiceBroker::GetCPUInfo()->GetCPUSoC());
+    SET_CONTROL_LABEL(i++, "Hardware: " + CServiceBroker::GetCPUInfo()->GetCPUHardware());
+    SET_CONTROL_LABEL(i++, "Revision: " + CServiceBroker::GetCPUInfo()->GetCPURevision());
+    SET_CONTROL_LABEL(i++, "Serial: " + CServiceBroker::GetCPUInfo()->GetCPUSerial());
 #endif
     SetControlLabel(i++, "%s %s", 22011, SYSTEM_CPU_TEMPERATURE);
 #if (!defined(__arm__) && !defined(__aarch64__)) || defined(TARGET_RASPBERRY_PI)

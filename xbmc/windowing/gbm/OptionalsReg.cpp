@@ -16,100 +16,102 @@
 #include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
 #include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererVAAPIGLES.h"
 
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
+
 class CVaapiProxy : public VAAPI::IVaapiWinSystem
 {
 public:
-  CVaapiProxy() = default;
+  CVaapiProxy(int fd) : m_fd(fd) {};
   virtual ~CVaapiProxy() = default;
   VADisplay GetVADisplay() override;
   void *GetEGLDisplay() override { return eglDisplay; };
 
   VADisplay vaDpy;
   void *eglDisplay;
+
+private:
+  int m_fd{-1};
 };
 
 VADisplay CVaapiProxy::GetVADisplay()
 {
-  int const buf_size{128};
-  char name[buf_size];
-  int fd{-1};
-
-  // 128 is the start of the NUM in renderD<NUM>
-  for (int i = 128; i < (128 + 16); i++)
-  {
-    snprintf(name, buf_size, "/dev/dri/renderD%u", i);
-
-    fd = open(name, O_RDWR);
-
-    if (fd < 0)
-    {
-      continue;
-    }
-
-    auto display = vaGetDisplayDRM(fd);
-
-    if (display != nullptr)
-    {
-      return display;
-    }
-  }
-
-  return nullptr;
+  return vaGetDisplayDRM(m_fd);
 }
 
-CVaapiProxy* GBM::VaapiProxyCreate()
+CVaapiProxy* VaapiProxyCreate(int fd)
 {
-  return new CVaapiProxy();
+  return new CVaapiProxy(fd);
 }
 
-void GBM::VaapiProxyDelete(CVaapiProxy *proxy)
+void VaapiProxyDelete(CVaapiProxy *proxy)
 {
   delete proxy;
 }
 
-void GBM::VaapiProxyConfig(CVaapiProxy *proxy, void *eglDpy)
+void VaapiProxyConfig(CVaapiProxy *proxy, void *eglDpy)
 {
   proxy->vaDpy = proxy->GetVADisplay();
   proxy->eglDisplay = eglDpy;
 }
 
-void GBM::VAAPIRegister(CVaapiProxy *winSystem, bool deepColor)
+void VAAPIRegister(CVaapiProxy *winSystem, bool deepColor)
 {
   VAAPI::CDecoder::Register(winSystem, deepColor);
 }
 
-void GBM::VAAPIRegisterRender(CVaapiProxy *winSystem, bool &general, bool &deepColor)
+void VAAPIRegisterRender(CVaapiProxy *winSystem, bool &general, bool &deepColor)
 {
   CRendererVAAPI::Register(winSystem, winSystem->vaDpy, winSystem->eglDisplay, general, deepColor);
 }
 
+}
+}
+}
+
 #else
+
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
 
 class CVaapiProxy
 {
 };
 
-CVaapiProxy* GBM::VaapiProxyCreate()
+CVaapiProxy* VaapiProxyCreate(int fd)
 {
   return nullptr;
 }
 
-void GBM::VaapiProxyDelete(CVaapiProxy *proxy)
+void VaapiProxyDelete(CVaapiProxy *proxy)
 {
 }
 
-void GBM::VaapiProxyConfig(CVaapiProxy *proxy, void *eglDpy)
-{
-
-}
-
-void GBM::VAAPIRegister(CVaapiProxy *winSystem, bool deepColor)
+void VaapiProxyConfig(CVaapiProxy *proxy, void *eglDpy)
 {
 
 }
 
-void GBM::VAAPIRegisterRender(CVaapiProxy *winSystem, bool &general, bool &deepColor)
+void VAAPIRegister(CVaapiProxy *winSystem, bool deepColor)
 {
 
 }
+
+void VAAPIRegisterRender(CVaapiProxy *winSystem, bool &general, bool &deepColor)
+{
+
+}
+
+}
+}
+}
+
 #endif

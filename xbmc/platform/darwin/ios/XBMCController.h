@@ -6,22 +6,17 @@
  *  See LICENSES/README.md for more information.
  */
 
-#import <UIKit/UIKit.h>
+#include "input/XBMC_keysym.h"
+#include "windowing/XBMC_events.h"
+
+#import "platform/darwin/ios-common/DarwinEmbedNowPlayingInfoManager.h"
+
+#import <AudioToolbox/AudioToolbox.h>
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/ES2/gl.h>
-#import <AudioToolbox/AudioToolbox.h>
-
-#import "windowing/XBMC_events.h"
-#include "input/XBMC_keysym.h"
+#import <UIKit/UIKit.h>
 
 @class IOSEAGLView;
-
-typedef enum
-{
-  IOS_PLAYBACK_STOPPED,
-  IOS_PLAYBACK_PAUSED,
-  IOS_PLAYBACK_PLAYING
-} IOSPlaybackState;
 
 @interface XBMCController : UIViewController <UIGestureRecognizerDelegate, UIKeyInput>
 {
@@ -41,8 +36,6 @@ typedef enum
   bool m_isPlayingBeforeInactive;
   UIBackgroundTaskIdentifier m_bgTask;
   NSTimer *m_networkAutoSuspendTimer;
-  IOSPlaybackState m_playbackState;
-  NSDictionary *nowPlayingInfo;
   bool nativeKeyboardActive;
 }
 @property (readonly, nonatomic, getter=isAnimating) BOOL animating;
@@ -51,8 +44,8 @@ typedef enum
 @property bool touchBeginSignaled;
 @property int  m_screenIdx;
 @property CGSize screensize;
-@property (nonatomic, retain) NSTimer *m_networkAutoSuspendTimer;
-@property (nonatomic, retain) NSDictionary *nowPlayingInfo;
+@property(nonatomic, strong) NSTimer* m_networkAutoSuspendTimer;
+@property(nonatomic, strong) DarwinEmbedNowPlayingInfoManager* MPNPInfoManager;
 @property bool nativeKeyboardActive;
 
 // message from which our instance is obtained
@@ -63,13 +56,14 @@ typedef enum
 - (void) enterBackground;
 - (void) enterForeground;
 - (void) becomeInactive;
-- (void) setIOSNowPlayingInfo:(NSDictionary *)info;
 - (void) sendKey: (XBMCKey) key;
 - (void) observeDefaultCenterStuff: (NSNotification *) notification;
+- (CGRect)fullscreenSubviewFrame;
+- (void)onXbmcAlive;
+- (void)setGUIInsetsFromMainThread:(BOOL)isMainThread;
 - (void) setFramebuffer;
 - (bool) presentFramebuffer;
 - (CGSize) getScreenSize;
-- (CGFloat) getScreenScale:(UIScreen *)screen;
 - (UIInterfaceOrientation) getOrientation;
 - (void) createGestureRecognizers;
 - (void) activateKeyboard:(UIView *)view;
@@ -78,6 +72,7 @@ typedef enum
 
 - (void) disableNetworkAutoSuspend;
 - (void) enableNetworkAutoSuspend:(id)obj;
+- (void)rescheduleNetworkAutoSuspend;
 - (void) disableSystemSleep;
 - (void) enableSystemSleep;
 - (void) disableScreenSaver;
@@ -85,7 +80,7 @@ typedef enum
 - (bool) changeScreen: (unsigned int)screenIdx withMode:(UIScreenMode *)mode;
 - (void) activateScreen: (UIScreen *)screen withOrientation:(UIInterfaceOrientation)newOrientation;
 - (id)   initWithFrame:(CGRect)frame withScreen:(UIScreen *)screen;
-- (void*) getEAGLContextObj;
+- (CVEAGLContext)getEAGLContextObj;
 @end
 
 extern XBMCController *g_xbmcController;

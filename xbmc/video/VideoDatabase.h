@@ -8,17 +8,17 @@
 
 #pragma once
 
+#include "Bookmark.h"
+#include "VideoInfoTag.h"
+#include "addons/Scraper.h"
+#include "dbwrappers/Database.h"
+#include "utils/SortUtils.h"
+#include "video/VideoDbUrl.h"
+
 #include <memory>
 #include <set>
 #include <utility>
 #include <vector>
-
-#include "addons/Scraper.h"
-#include "Bookmark.h"
-#include "dbwrappers/Database.h"
-#include "utils/SortUtils.h"
-#include "video/VideoDbUrl.h"
-#include "VideoInfoTag.h"
 
 class CFileItem;
 class CFileItemList;
@@ -206,7 +206,7 @@ const struct SDbTableOffsets
   { VIDEODB_TYPE_INT, my_offsetof(CVideoInfoTag,m_iIdRating) },
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_writingCredits) },
   { VIDEODB_TYPE_UNUSED, 0 }, // unused
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_xml) },
+  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_data) },
   { VIDEODB_TYPE_INT, my_offsetof(CVideoInfoTag,m_iIdUniqueID) },
   { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strSortTitle) },
   { VIDEODB_TYPE_INT, my_offsetof(CVideoInfoTag,m_duration) },
@@ -215,7 +215,7 @@ const struct SDbTableOffsets
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_genre) },
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_director) },
   { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strOriginalTitle) },
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_spoof) },
+  { VIDEODB_TYPE_UNUSED, 0 }, // unused
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_studio) },
   { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strTrailer) },
   { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_fanart.m_xml) },
@@ -255,8 +255,8 @@ const struct SDbTableOffsets DbTvShowOffsets[] =
   { VIDEODB_TYPE_UNUSED, 0 }, //unused
   { VIDEODB_TYPE_INT, my_offsetof(CVideoInfoTag,m_iIdRating) },
   { VIDEODB_TYPE_DATE, my_offsetof(CVideoInfoTag,m_premiered) },
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_xml) },
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_spoof) },
+  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_data) },
+  { VIDEODB_TYPE_UNUSED, 0 }, // unused
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_genre) },
   { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strOriginalTitle)},
   { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strEpisodeGuide)},
@@ -325,8 +325,8 @@ const struct SDbTableOffsets DbEpisodeOffsets[] =
   { VIDEODB_TYPE_INT, my_offsetof(CVideoInfoTag,m_iIdRating) },
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_writingCredits) },
   { VIDEODB_TYPE_DATE, my_offsetof(CVideoInfoTag,m_firstAired) },
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_xml) },
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_spoof) },
+  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_data) },
+  { VIDEODB_TYPE_UNUSED, 0 }, // unused
   { VIDEODB_TYPE_UNUSED, 0 }, // unused
   { VIDEODB_TYPE_INT, my_offsetof(CVideoInfoTag,m_duration) },
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_director) },
@@ -366,8 +366,8 @@ typedef enum // this enum MUST match the offset struct further down!! and make s
 const struct SDbTableOffsets DbMusicVideoOffsets[] =
 {
   { VIDEODB_TYPE_STRING, my_offsetof(class CVideoInfoTag,m_strTitle) },
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_xml) },
-  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_spoof) },
+  { VIDEODB_TYPE_STRING, my_offsetof(CVideoInfoTag,m_strPictureURL.m_data) },
+  { VIDEODB_TYPE_UNUSED, 0 }, // unused
   { VIDEODB_TYPE_UNUSED, 0 }, // unused
   { VIDEODB_TYPE_INT, my_offsetof(CVideoInfoTag,m_duration) },
   { VIDEODB_TYPE_STRINGARRAY, my_offsetof(CVideoInfoTag,m_director) },
@@ -550,6 +550,7 @@ public:
   void DeleteMusicVideo(const std::string& strFilenameAndPath, bool bKeepId = false);
   void DeleteDetailsForTvShow(int idTvShow);
   void DeleteDetailsForTvShow(const std::string& strPath);
+  void DeleteStreamDetails(int idFile);
   void RemoveContentForPath(const std::string& strPath,CGUIDialogProgress *progress = NULL);
   void UpdateFanart(const CFileItem &item, VIDEODB_CONTENT_TYPE type);
   void DeleteSet(int idSet);
@@ -808,8 +809,12 @@ public:
   std::string GetItemById(const std::string &itemType, int id);
 
   // partymode
-  unsigned int GetMusicVideoIDs(const std::string& strWhere, std::vector<std::pair<int, int> > &songIDs);
-  bool GetRandomMusicVideo(CFileItem* item, int& idSong, const std::string& strWhere);
+  /*! \brief Gets music video IDs in random order that match the where clause
+  \param strWhere the SQL where clause to apply in the query
+  \param songIDs a vector of <2, id> pairs suited to party mode use
+  \return count of music video IDs found.
+  */
+  unsigned int GetRandomMusicVideoIDs(const std::string& strWhere, std::vector<std::pair<int, int> > &songIDs);
 
   static void VideoContentTypeToString(VIDEODB_CONTENT_TYPE type, std::string& out)
   {
@@ -836,12 +841,21 @@ public:
   void SetArtForItem(int mediaId, const MediaType &mediaType, const std::map<std::string, std::string> &art);
   bool GetArtForItem(int mediaId, const MediaType &mediaType, std::map<std::string, std::string> &art);
   std::string GetArtForItem(int mediaId, const MediaType &mediaType, const std::string &artType);
+  bool HasArtForItem(int mediaId, const MediaType &mediaType);
   bool RemoveArtForItem(int mediaId, const MediaType &mediaType, const std::string &artType);
   bool RemoveArtForItem(int mediaId, const MediaType &mediaType, const std::set<std::string> &artTypes);
   bool GetTvShowSeasons(int showId, std::map<int, int> &seasons);
   bool GetTvShowNamedSeasons(int showId, std::map<int, std::string> &seasons);
   bool GetTvShowSeasonArt(int mediaId, std::map<int, std::map<std::string, std::string> > &seasonArt);
   bool GetArtTypes(const MediaType &mediaType, std::vector<std::string> &artTypes);
+
+  /*! \brief Fetch the distinct types of available-but-unassigned art held in the
+  database for a specific media item.
+  \param mediaId the id in the media table.
+  \param mediaType the type of media, which corresponds to the table the item resides in.
+  \return the types of art e.g. "thumb", "fanart", etc.
+  */
+  std::vector<std::string> GetAvailableArtTypesForItem(int mediaId, const MediaType& mediaType);
 
   int AddTag(const std::string &tag);
   void AddTagToItem(int idItem, int idTag, const std::string &type);
@@ -916,7 +930,6 @@ protected:
 
   void AddCast(int mediaId, const char *mediaType, const std::vector<SActorInfo> &cast);
 
-  void DeleteStreamDetails(int idFile);
   CVideoInfoTag GetDetailsForMovie(std::unique_ptr<dbiplus::Dataset> &pDS, int getDetails = VideoDbDetailsNone);
   CVideoInfoTag GetDetailsForMovie(const dbiplus::sql_record* const record, int getDetails = VideoDbDetailsNone);
   CVideoInfoTag GetDetailsForTvShow(std::unique_ptr<dbiplus::Dataset> &pDS, int getDetails = VideoDbDetailsNone, CFileItem* item = NULL);

@@ -55,6 +55,7 @@
               <option label="351">0</option> <!-- ADJUST_REFRESHRATE_OFF -->
               <option label="36035">1</option> <!-- ADJUST_REFRESHRATE_ALWAYS -->
               <option label="36036">2</option> <!-- ADJUST_REFRESHRATE_ON_STARTSTOP -->
+              <option label="36050">3</option> <!-- ADJUST_REFRESHRATE_ON_START -->
             </options>
           </constraints>
           <control type="list" format="string" />
@@ -112,81 +113,6 @@
             <formatlabel>14047</formatlabel>
           </control>
         </setting>
-        <setting id="videoplayer.useamcodec" type="boolean" label="13438" help="36422">
-          <requirement>HAVE_AMCODEC</requirement>
-          <level>2</level>
-          <default>true</default>
-          <updates>
-            <update type="change" />
-          </updates>
-          <control type="toggle" />
-        </setting>
-        <setting id="videoplayer.useamcodecmpeg2" type="integer" label="39001" >
-          <requirement>HAVE_AMCODEC</requirement>
-          <level>2</level>
-          <default>0</default>
-          <constraints>
-            <options>
-              <option label="20420">9999</option>   <!-- Never -->
-              <option label="39000">800</option>  <!-- HD -->
-              <option label="20422">0</option>  <!-- Always -->
-            </options>
-          </constraints>
-          <updates>
-            <update type="change" />
-          </updates>
-          <dependencies>
-            <dependency type="enable">
-              <condition setting="videoplayer.useamcodec" operator="is">true</condition> <!-- USE AMCODEC -->
-            </dependency>
-          </dependencies>
-          <control type="spinner" format="string" />
-          <control type="edit" format="integer" />
-        </setting>
-        <setting id="videoplayer.useamcodecmpeg4" type="integer" label="39002">
-          <requirement>HAVE_AMCODEC</requirement>
-          <level>2</level>
-          <default>800</default>
-          <constraints>
-            <options>
-              <option label="20420">9999</option>   <!-- Never -->
-              <option label="39000">800</option>  <!-- HD -->
-              <option label="20422">0</option>  <!-- Always -->
-            </options>
-          </constraints>
-          <updates>
-            <update type="change" />
-          </updates>
-          <dependencies>
-            <dependency type="enable">
-              <condition setting="videoplayer.useamcodec" operator="is">true</condition> <!-- USE AMCODEC -->
-            </dependency>
-          </dependencies>
-          <control type="spinner" format="string" />
-          <control type="edit" format="integer" />
-        </setting>
-        <setting id="videoplayer.useamcodech264" type="integer" label="39003">
-          <requirement>HAVE_AMCODEC</requirement>
-          <level>2</level>
-          <default>0</default>
-          <constraints>
-            <options>
-              <option label="20420">9999</option>   <!-- Never -->
-              <option label="39000">800</option>  <!-- HD -->
-              <option label="20422">0</option>  <!-- Always -->
-            </options>
-          </constraints>
-          <updates>
-            <update type="change" />
-          </updates>
-          <dependencies>
-            <dependency type="enable">
-              <condition setting="videoplayer.useamcodec" operator="is">true</condition> <!-- USE AMCODEC -->
-            </dependency>
-          </dependencies>
-          <control type="spinner" format="string" />
-          <control type="edit" format="integer" />
-        </setting>
         <setting id="videoplayer.usemediacodecsurface" type="boolean" label="13440" help="36544">
           <requirement>HAS_MEDIACODEC</requirement>
           <level>2</level>
@@ -211,14 +137,18 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
-        <setting id="videoplayer.useomxplayer" type="boolean" label="13458" help="13459">
-          <requirement>HAS_OMXPLAYER</requirement>
+        <setting id="videoplayer.usevtb" type="boolean" label="13429" help="36160">
+          <requirement>HasVTB</requirement>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
         </setting>
-        <setting id="videoplayer.usevtb" type="boolean" label="13429" help="36160">
-          <requirement>HasVTB</requirement>
+        <setting id="winsystem.ishdrdisplay" type="boolean" label="13436" help="36299">
+          <dependencies>
+            <dependency type="visible">
+              <condition on="property" name="ishdrdisplay" />
+            </dependency>
+          </dependencies>
           <level>2</level>
           <default>true</default>
           <control type="toggle" />
@@ -633,12 +563,21 @@
               <option label="765">5</option> <!-- Cyan -->
               <option label="766">6</option> <!-- Light grey -->
               <option label="767">7</option> <!-- Grey -->
+              <option label="768">8</option> <!-- Dark Grey -->
             </options>
           </constraints>
           <dependencies>
             <dependency type="enable" on="property" name="IsUsingTTFSubtitles" setting="subtitles.font" />
           </dependencies>
           <control type="list" format="string" />
+        </setting>
+        <setting id="subtitles.opacity" type="integer" parent="subtitles.font" label="752" help="36295">
+          <level>3</level>
+          <default>100</default>
+          <dependencies>
+            <dependency type="enable" on="property" name="IsUsingTTFSubtitles" setting="subtitles.font" />
+          </dependencies>
+          <control type="slider" format="percentage" range="0,100" />
         </setting>
         <setting id="subtitles.bgcolor" type="integer" parent="subtitles.font" label="745" help="36228">
           <level>3</level>
@@ -925,6 +864,7 @@
               <option label="208">1</option> <!-- SELECT_ACTION_PLAY_OR_RESUME -->
               <option label="13404">2</option> <!-- SELECT_ACTION_RESUME -->
               <option label="22081">3</option> <!-- SELECT_ACTION_INFO -->
+              <option label="13347">7</option> <!-- SELECT_ACTION_QUEUE -->
             </options>
           </constraints>
           <control type="list" format="string" />
@@ -968,10 +908,21 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
-        <setting id="videolibrary.showunwatchedplots" type="boolean" label="20369" help="36141">
+        <setting id="videolibrary.showunwatchedplots" type="list[integer]" label="20369" help="36141">
           <level>0</level>
-          <default>true</default>
-          <control type="toggle" />
+          <default>0,1,2</default> <!-- Show plot for both -->
+          <constraints>
+            <options>
+              <option label="39115">0</option> <!-- Show plot for unwatched movies only -->
+              <option label="39116">1</option> <!-- Show plot for unwatched tv show episodes only -->
+              <option label="39114">2</option> <!-- Show thumb for unwatched tv show episodes only -->
+            </options>
+            <delimiter>,</delimiter>
+          </constraints>
+          <control type="list" format="string">
+            <multiselect>true</multiselect>
+            <hidevalue>false</hidevalue>
+          </control>
         </setting>
         <setting id="videolibrary.groupmoviesets" type="boolean" label="20458" help="36145">
           <level>1</level>
@@ -1038,10 +989,25 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="videolibrary.moviesetsfolder" type="path" label="20226" help="36300">
+          <level>1</level>
+          <default></default>
+          <constraints>
+            <allowempty>true</allowempty>
+          </constraints>
+          <control type="button" format="path">
+            <heading>657</heading>
+          </control>
+        </setting>
       </group>
     </category>
     <category id="music" label="14216" help="38108">
       <group id="1" label="593">
+        <setting id="musicfiles.selectaction" type="boolean" label="12381" help="38112">
+          <level>0</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
         <setting id="musicfiles.trackformat" type="string" label="13307" help="36275">
           <level>3</level>
           <default>[%N. ]%A - %T</default>
@@ -1093,8 +1059,18 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="musiclibrary.showdiscs" type="boolean" label="13522" help="13523">
+          <level>0</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
         <setting id="musiclibrary.useartistsortname" type="boolean" label="20228" help="36294">
           <level>1</level>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="musiclibrary.useoriginaldate" type="boolean" label="13524" help="13525">
+          <level>2</level>
           <default>false</default>
           <control type="toggle" />
         </setting>
@@ -1125,7 +1101,7 @@
         </setting>
         <setting id="musiclibrary.albumsscraper" type="addon" label="20193" help="36257">
           <level>1</level>
-          <default>metadata.album.universal</default>
+          <default>metadata.generic.albums</default>
           <constraints>
             <addontype>xbmc.metadata.scraper.albums</addontype>
           </constraints>
@@ -1135,7 +1111,7 @@
         </setting>
         <setting id="musiclibrary.artistsscraper" type="addon" label="20194" help="36258">
           <level>1</level>
-          <default>metadata.artists.universal</default>
+          <default>metadata.generic.artists</default>
           <constraints>
             <addontype>xbmc.metadata.scraper.artists</addontype>
           </constraints>
@@ -1200,7 +1176,7 @@
         </setting>
         <setting id="scrapers.tvshowsdefault" type="addon" label="21414" help="36199">
           <level>4</level>
-          <default>metadata.tvdb.com</default>
+          <default>metadata.tvshows.themoviedb.org</default>
           <constraints>
             <addontype>xbmc.metadata.scraper.tvshows</addontype>
           </constraints>
@@ -1236,10 +1212,32 @@
           <default>true</default>
           <control type="toggle" />
         </setting>
+        <setting id="pvrmanager.usebackendchannelnumbersalways" type="boolean" label="19329" help="36358">
+          <level>3</level>
+          <dependencies>
+            <dependency type="visible" on="property" name="pvrsettingvisible" setting="pvrmanager.usebackendchannelnumbersalways" operator="is">true</dependency>
+          </dependencies>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
         <setting id="pvrmanager.usebackendchannelnumbers" type="boolean" label="19234" help="36206">
           <level>2</level>
           <dependencies>
+            <dependency type="visible">
+              <or>
+                <condition type="visible" on="property" name="pvrsettingvisible" setting="pvrmanager.usebackendchannelnumbers" operator="is">true</condition>
+                <condition setting="pvrmanager.usebackendchannelnumbersalways" operator="is">true</condition>
+              </or>
+            </dependency>
+          </dependencies>
+          <default>false</default>
+          <control type="toggle" />
+        </setting>
+        <setting id="pvrmanager.startgroupchannelnumbersfromone" type="boolean" parent="pvrmanager.usebackendchannelnumbers" label="19316" help="36306">
+          <level>2</level>
+          <dependencies>
             <dependency type="visible" on="property" name="pvrsettingvisible" setting="pvrmanager.usebackendchannelnumbers" operator="is">true</dependency>
+            <dependency type="enable" setting="pvrmanager.usebackendchannelnumbers" operator="is">false</dependency>
           </dependencies>
           <default>false</default>
           <control type="toggle" />
@@ -1270,14 +1268,7 @@
       </group>
     </category>
     <category id="pvrmenu" label="19181" help="36211">
-      <group id="1" label="128">
-        <setting id="pvrmenu.usesimpletimeshiftosd" type="boolean" label="19303" help="36235">
-          <level>2</level>
-          <default>true</default>
-          <control type="toggle" />
-        </setting>
-      </group>
-      <group id="2" label="14301">
+      <group id="1" label="14301">
         <setting id="pvrmenu.displaychannelinfo" type="integer" label="19178" help="36212">
           <level>2</level>
           <default>5</default>
@@ -1290,8 +1281,13 @@
             <formatlabel>14045</formatlabel>
           </control>
         </setting>
+        <setting id="pvrmenu.closechannelosdonswitch" type="boolean" label="19303" help="36235">
+          <level>2</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
       </group>
-      <group id="3" label="14302">
+      <group id="2" label="14302">
         <setting id="pvrmenu.iconpath" type="path" label="19018" help="36216">
           <level>2</level>
           <default></default>
@@ -1380,11 +1376,6 @@
           <default>false</default>
           <control type="toggle" />
         </setting>
-        <setting id="epg.ignoredbforclient" type="boolean" label="19072" help="36223">
-          <level>2</level>
-          <default>false</default>
-          <control type="toggle" />
-        </setting>
         <setting id="epg.resetepg" type="action" label="19185" help="36225">
           <level>1</level>
           <control type="button" format="action" />
@@ -1393,10 +1384,18 @@
     </category>
     <category id="pvrplayback" label="19177" help="36226">
       <group id="1" label="128">
-        <setting id="pvrplayback.switchtofullscreen" type="boolean" label="19171" help="36227">
+        <setting id="pvrplayback.switchtofullscreenchanneltypes" type="integer" label="19171" help="36227">
           <level>1</level>
-          <default>true</default>
-          <control type="toggle" />
+          <default>3</default> <!-- TV and radio channels -->
+          <constraints>
+            <options>
+              <option label="20420">0</option> <!-- Never -->
+              <option label="19180">1</option> <!-- TV channels -->
+              <option label="19183">2</option> <!-- Radio channels -->
+              <option label="19250">3</option> <!-- TV and radio channels -->
+            </options>
+          </constraints>
+          <control type="list" format="string" />
         </setting>
         <setting id="pvrplayback.signalquality" type="boolean" label="19037" help="36229">
           <level>2</level>
@@ -1418,6 +1417,18 @@
           </constraints>
           <control type="spinner" format="string">
             <formatlabel>14046</formatlabel>
+          </control>
+        </setting>
+        <setting id="pvrplayback.delaymarklastwatched" type="integer" label="19195" help="36236">
+          <level>3</level>
+          <default>0</default>
+          <constraints>
+            <minimum>0</minimum>
+            <step>30</step>
+            <maximum>600</maximum>
+          </constraints>
+          <control type="spinner" format="string">
+            <formatlabel>14045</formatlabel>
           </control>
         </setting>
         <setting id="pvrplayback.fps" type="integer" label="19108" help="36261">
@@ -1515,6 +1526,27 @@
         <setting id="pvrrecord.grouprecordings" type="boolean" label="" help="">
           <default>true</default>
           <level>4</level>
+        </setting>
+      </group>
+    </category>
+    <category id="pvrreminders" label="19215" help="36296">
+      <group id="1" label="128">
+        <setting id="pvrreminders.autoclosedelay" type="integer" label="19313" help="36297">
+          <level>1</level>
+          <default>10</default>
+          <constraints>
+            <minimum>1</minimum>
+            <step>1</step>
+            <maximum>60</maximum>
+          </constraints>
+          <control type="spinner" format="string">
+            <formatlabel>14045</formatlabel>
+          </control>
+        </setting>
+        <setting id="pvrreminders.autorecord" type="boolean" label="19314" help="36298">
+          <level>1</level>
+          <default>true</default>
+          <control type="toggle" />
         </setting>
       </group>
     </category>
@@ -1691,18 +1723,17 @@
           </updates>
           <control type="edit" format="integer" />
         </setting>
+        <setting id="services.webserverauthentication" parent="services.webserver" type="boolean" label="1052" help="1053">
+          <level>1</level>
+          <default>true</default>
+          <control type="toggle" />
+        </setting>
         <setting id="services.webserverusername" type="string" parent="services.webserver" label="1048" help="36330">
           <level>1</level>
           <default>kodi</default>
-          <constraints>
-            <allowempty>true</allowempty>
-          </constraints>
           <updates>
             <update type="change" />
           </updates>
-          <dependencies>
-            <dependency type="enable" setting="services.webserver">true</dependency>
-          </dependencies>
           <control type="edit" format="string" />
         </setting>
         <setting id="services.webserverpassword" type="string" parent="services.webserver" label="733" help="36331">
@@ -1711,9 +1742,6 @@
           <constraints>
             <allowempty>true</allowempty>
           </constraints>
-          <dependencies>
-            <dependency type="enable" setting="services.webserver">true</dependency>
-          </dependencies>
           <control type="edit" format="string">
             <hidden>true</hidden>
           </control>
@@ -2090,7 +2118,7 @@
           <control type="spinner" format="string" delayed="true" />
         </setting>
         <setting id="videoscreen.whitelist" type="list[string]" parent="videoscreen.screen" label="14085" help="36356">
-          <level>1</level>
+          <level>3</level>
           <constraints>
             <options>modes</options>
             <default></default>
@@ -2397,16 +2425,6 @@
           <level>3</level>
           <control type="button" format="action" />
         </setting>
-        <setting id="videoscreen.testpattern" type="action" label="226" help="36358">
-          <requirement>
-            <or>
-              <condition>HAS_GL</condition>
-              <condition>HAS_DX</condition>
-            </or>
-          </requirement>
-          <level>3</level>
-          <control type="button" format="action" />
-        </setting>
       </group>
     </category>
     <category id="audio" label="14221" help="36360">
@@ -2700,7 +2718,12 @@
       </group>
       <group id="2" label="14094">
         <setting id="input.enablemouse" type="boolean" label="21369" help="36377">
-          <level>0</level>
+          <level>2</level>
+          <control type="toggle" />
+          <default>true</default>
+        </setting>
+        <setting id="input.enablejoystick" type="boolean" label="35100" help="36378">
+          <level>2</level>
           <control type="toggle" />
           <default>true</default>
         </setting>
@@ -2917,6 +2940,20 @@
           <level>0</level>
           <default>false</default>
           <control type="toggle" />
+        </setting>
+        <setting id="addons.updatemode" type="integer" parent="addons.unknownsources" label="36422" help="36423">
+          <level>1</level>
+          <default>0</default>
+          <constraints>
+            <options>
+              <option label="36437">0</option> <!-- OFFICIAL_ONLY -->
+              <option label="36438">1</option> <!-- ANY_REPOSITORY -->
+            </options>
+          </constraints>
+          <dependencies>
+            <dependency type="enable" setting="addons.unknownsources" operator="is">true</dependency>
+          </dependencies>
+          <control type="list" format="string" />
         </setting>
       </group>
     </category>

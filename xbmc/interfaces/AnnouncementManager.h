@@ -8,15 +8,15 @@
 
 #pragma once
 
-#include <vector>
-#include <list>
-
-#include "IAnnouncer.h"
 #include "FileItem.h"
+#include "IAnnouncer.h"
 #include "threads/CriticalSection.h"
-#include "threads/Thread.h"
 #include "threads/Event.h"
+#include "threads/Thread.h"
 #include "utils/Variant.h"
+
+#include <list>
+#include <vector>
 
 class CVariant;
 
@@ -61,7 +61,8 @@ namespace ANNOUNCEMENT
     CAnnouncementManager(const CAnnouncementManager&) = delete;
     CAnnouncementManager const& operator=(CAnnouncementManager const&) = delete;
 
-    CCriticalSection m_critSection;
+    CCriticalSection m_announcersCritSection;
+    CCriticalSection m_queueCritSection;
     std::vector<IAnnouncer *> m_announcers;
   };
 }

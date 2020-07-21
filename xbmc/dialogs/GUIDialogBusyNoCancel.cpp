@@ -7,12 +7,12 @@
  */
 
 #include "GUIDialogBusyNoCancel.h"
+
 #include "ServiceBroker.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIProgressControl.h"
 #include "guilib/GUIWindowManager.h"
 #include "threads/Thread.h"
-#include "threads/IRunnable.h"
 
 #define PROGRESS_CONTROL 10
 
@@ -26,7 +26,8 @@ CGUIDialogBusyNoCancel::CGUIDialogBusyNoCancel(void)
 
 CGUIDialogBusyNoCancel::~CGUIDialogBusyNoCancel(void) = default;
 
-void CGUIDialogBusyNoCancel::Open_Internal(const std::string &param /* = "" */)
+void CGUIDialogBusyNoCancel::Open_Internal(bool bProcessRenderLoop,
+                                           const std::string& param /* = "" */)
 {
   m_bLastVisible = true;
   m_progress = -1;

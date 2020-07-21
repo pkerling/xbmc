@@ -6,14 +6,14 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "URL.h"
 #include "filesystem/NFSFile.h"
 #include "test/TestUtils.h"
 
 #include <errno.h>
 #include <string>
-#include "URL.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 using ::testing::Test;
 using ::testing::WithParamInterface;
@@ -53,9 +53,9 @@ class ExportList
 
     ExportList()
     {
-      data.push_back("/srv/test");
-      data.push_back("/srv/test/tv");
-      data.push_back("/");
+      data.emplace_back("/srv/test");
+      data.emplace_back("/srv/test/tv");
+      data.emplace_back("/");
       data.sort();
       data.reverse();
     }
@@ -81,4 +81,4 @@ TEST_P(TestNfs, splitUrlIntoExportAndPath)
     EXPECT_STRNE(GetParam().relativePath.c_str(), relativePath.c_str());
 }
 
-INSTANTIATE_TEST_CASE_P(NfsFile, TestNfs, ValuesIn(g_TestData));
+INSTANTIATE_TEST_SUITE_P(NfsFile, TestNfs, ValuesIn(g_TestData));

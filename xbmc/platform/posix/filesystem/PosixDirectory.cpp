@@ -6,16 +6,15 @@
  *  See LICENSES/README.md for more information.
  */
 
-#if defined(TARGET_POSIX)
-
 #include "PosixDirectory.h"
+
+#include "FileItem.h"
+#include "URL.h"
 #include "utils/AliasShortcutUtils.h"
 #include "utils/CharsetConverter.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "FileItem.h"
-#include "platform/linux/XTimeUtils.h"
-#include "URL.h"
+#include "utils/XTimeUtils.h"
 
 #include <dirent.h>
 #include <sys/stat.h>
@@ -80,9 +79,9 @@ bool CPosixDirectory::GetDirectory(const CURL& url, CFileItemList &items)
     {
       if (bStat || stat(pItem->GetPath().c_str(), &buffer) == 0)
       {
-        FILETIME fileTime, localTime;
-        TimeTToFileTime(buffer.st_mtime, &fileTime);
-        FileTimeToLocalFileTime(&fileTime, &localTime);
+        KODI::TIME::FileTime fileTime, localTime;
+        KODI::TIME::TimeTToFileTime(buffer.st_mtime, &fileTime);
+        KODI::TIME::FileTimeToLocalFileTime(&fileTime, &localTime);
         pItem->m_dateTime = localTime;
 
         if (!pItem->m_bIsFolder)
@@ -206,4 +205,3 @@ bool CPosixDirectory::Exists(const CURL& url)
     return false;
   return S_ISDIR(buffer.st_mode) ? true : false;
 }
-#endif

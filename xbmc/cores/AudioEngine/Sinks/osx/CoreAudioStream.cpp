@@ -7,13 +7,12 @@
  */
 
 #include "CoreAudioStream.h"
-#include "CoreAudioDevice.h"
 
-#include "CoreAudioHelpers.h"
+#include "CoreAudioDevice.h"
+#include "cores/AudioEngine/Sinks/darwin/CoreAudioHelpers.h"
 #include "utils/log.h"
 
-CCoreAudioStream::CCoreAudioStream() :
-  m_StreamId  (0    )
+CCoreAudioStream::CCoreAudioStream()
 {
   m_OriginalVirtualFormat.mFormatID = 0;
   m_OriginalPhysicalFormat.mFormatID = 0;
@@ -133,7 +132,7 @@ bool CCoreAudioStream::IsDigitalOutput(AudioStreamID id)
 bool CCoreAudioStream::GetStartingChannelInDevice(AudioStreamID id, UInt32 &startingChannel)
 {
   if (!id)
-    return 0;
+    return false;
 
   UInt32 i_param_size = sizeof(UInt32);
   UInt32 i_param;

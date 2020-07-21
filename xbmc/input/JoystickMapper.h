@@ -25,17 +25,22 @@ class CJoystickMapper : public IButtonMapper
 {
 public:
   CJoystickMapper() = default;
-  virtual ~CJoystickMapper();
+  ~CJoystickMapper() override = default;
 
   // implementation of IButtonMapper
-  virtual void MapActions(int windowID, const TiXmlNode *pDevice) override;
-  virtual void Clear() override;
+  void MapActions(int windowID, const TiXmlNode* pDevice) override;
+  void Clear() override;
 
   std::vector<std::shared_ptr<const IWindowKeymap>> GetJoystickKeymaps() const;
 
 private:
-  void DeserializeJoystickNode(const TiXmlNode* pDevice, std::string &controllerId);
-  bool DeserializeButton(const TiXmlElement *pButton, std::string &feature, KODI::JOYSTICK::ANALOG_STICK_DIRECTION &dir, unsigned int& holdtimeMs, std::set<std::string>& hotkeys, std::string &actionStr);
+  void DeserializeJoystickNode(const TiXmlNode* pDevice, std::string& controllerId);
+  bool DeserializeButton(const TiXmlElement* pButton,
+                         std::string& feature,
+                         KODI::JOYSTICK::ANALOG_STICK_DIRECTION& dir,
+                         unsigned int& holdtimeMs,
+                         std::set<std::string>& hotkeys,
+                         std::string& actionStr);
 
   using ControllerID = std::string;
   std::map<ControllerID, std::shared_ptr<IWindowKeymap>> m_joystickKeymaps;

@@ -8,12 +8,13 @@
 
 #pragma once
 
+#include "SettingConditions.h"
+#include "utils/BooleanLogic.h"
+#include "utils/StaticLoggerBase.h"
+
 #include <list>
 #include <set>
 #include <string>
-
-#include "SettingConditions.h"
-#include "utils/BooleanLogic.h"
 
 enum class SettingDependencyType {
   Unknown = 0,
@@ -36,7 +37,7 @@ enum class SettingDependencyTarget {
   Property
 };
 
-class CSettingDependencyCondition : public CSettingConditionItem
+class CSettingDependencyCondition : public CSettingConditionItem, protected CStaticLoggerBase
 {
 public:
   explicit CSettingDependencyCondition(CSettingsManager *settingsManager = nullptr);
@@ -96,7 +97,7 @@ private:
   std::set<std::string> m_settings;
 };
 
-class CSettingDependency : public CSettingCondition
+class CSettingDependency : public CSettingCondition, protected CStaticLoggerBase
 {
 public:
   explicit CSettingDependency(CSettingsManager *settingsManager = nullptr);

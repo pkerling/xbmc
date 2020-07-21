@@ -6,14 +6,15 @@
  *  See LICENSES/README.md for more information.
  */
 #include "VideoReferenceClock.h"
+
 #include "ServiceBroker.h"
-#include "utils/MathUtils.h"
-#include "utils/log.h"
-#include "utils/TimeUtils.h"
-#include "threads/SingleLock.h"
-#include "windowing/GraphicContext.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "threads/SingleLock.h"
+#include "utils/MathUtils.h"
+#include "utils/TimeUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
 #include "windowing/VideoSync.h"
 #include "windowing/WinSystem.h"
 
@@ -30,12 +31,14 @@ CVideoReferenceClock::CVideoReferenceClock() : CThread("RefClock")
   m_RefreshRate = 0.0;
   m_MissedVblanks = 0;
   m_VblankTime = 0;
+  m_vsyncStopEvent.Reset();
 
   Start();
 }
 
 CVideoReferenceClock::~CVideoReferenceClock()
 {
+  m_bStop = true;
   m_vsyncStopEvent.Set();
   StopThread();
 }
@@ -86,9 +89,13 @@ void CVideoReferenceClock::Process()
       m_VblankTime = Now;          //initialize the timestamp of the last vblank
       SingleLock.Leave();
 
-      m_vsyncStopEvent.Reset();
-      //run the clock
-      m_pVideoSync->Run(m_vsyncStopEvent);
+      // we might got signalled while we did not wait
+      if (!m_vsyncStopEvent.Signaled())
+      {
+        //run the clock
+        m_pVideoSync->Run(m_vsyncStopEvent);
+        m_vsyncStopEvent.Reset();
+      }
     }
     else
     {
@@ -204,7 +211,7 @@ void CVideoReferenceClock::SetSpeed(double Speed)
     if (Speed != m_ClockSpeed)
     {
       m_ClockSpeed = Speed;
-      CLog::Log(LOGDEBUG, "CVideoReferenceClock: Clock speed %f%%", m_ClockSpeed * 100.0);
+      CLog::Log(LOGDEBUG, "CVideoReferenceClock: Clock speed %0.2f %%", m_ClockSpeed * 100.0);
     }
   }
 }

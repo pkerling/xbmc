@@ -7,6 +7,8 @@
  */
 
 #include "HTTPJsonRpcHandler.h"
+
+#include "ServiceBroker.h"
 #include "URL.h"
 #include "filesystem/File.h"
 #include "interfaces/json-rpc/JSONRPC.h"
@@ -15,8 +17,8 @@
 #include "network/WebServer.h"
 #include "network/httprequesthandler/HTTPRequestHandlerUtils.h"
 #include "utils/JSONVariantWriter.h"
-#include "utils/log.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 
 #define MAX_HTTP_POST_SIZE 65536
 
@@ -25,7 +27,7 @@ bool CHTTPJsonRpcHandler::CanHandleRequest(const HTTPRequest &request) const
   return (request.pathUrl.compare("/jsonrpc") == 0);
 }
 
-int CHTTPJsonRpcHandler::HandleRequest()
+MHD_RESULT CHTTPJsonRpcHandler::HandleRequest()
 {
   CHTTPClient client(m_request.method);
   bool isRequest = false;
@@ -122,7 +124,10 @@ bool CHTTPJsonRpcHandler::appendPostData(const char *data, size_t size)
 {
   if (m_requestData.size() + size > MAX_HTTP_POST_SIZE)
   {
-    CLog::Log(LOGERROR, "WebServer: Stopped uploading POST data since it exceeded size limitations (%d)", MAX_HTTP_POST_SIZE);
+    CServiceBroker::GetLogging()
+        .GetLogger("CHTTPJsonRpcHandler")
+        ->error("Stopped uploading POST data since it exceeded size limitations ({})",
+                MAX_HTTP_POST_SIZE);
     return false;
   }
 

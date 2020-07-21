@@ -114,7 +114,7 @@
 					<height>50</height>
 					<align>right</align>
 					<aligny>center</aligny>
-					<font>font30</font>
+					<font>font13</font>
 					<label>$INFO[PVR.TimeshiftProgressEndTime]</label>
 				</control>
 				<control type="label">
@@ -124,7 +124,7 @@
 					<height>50</height>
 					<align>left</align>
 					<aligny>center</aligny>
-					<font>font30</font>
+					<font>font13</font>
 					<label>$INFO[PVR.TimeshiftProgressStartTime]</label>
 				</control>
 				<control type="label">
@@ -134,7 +134,7 @@
 					<height>50</height>
 					<align>center</align>
 					<aligny>center</aligny>
-					<font>font30</font>
+					<font>font13</font>
 					<label>[B]$LOCALIZE[31026][/B] $INFO[PVR.TimeshiftCur] (-$INFO[PVR.TimeshiftOffset])</label>
 					<visible>PVR.IsTimeShift</visible>
 				</control>
@@ -203,7 +203,7 @@
 			<control type="group">
 				<top>120</top>
 				<left>0</left>
-				<width>590</width>
+				<width>600</width>
 				<control type="label">
 					<height>262</height>
 					<font>font45</font>
@@ -213,7 +213,7 @@
 					<top>60</top>
 					<height>200</height>
 					<wrapmultiline>true</wrapmultiline>
-					<label>$INFO[ListItem.Date,[COLOR grey]$LOCALIZE[552]:[/COLOR] ,[CR]]$INFO[ListItem.Duration,[COLOR grey]$LOCALIZE[180]:[/COLOR] ,[CR]]$VAR[ExpirationDateTimeLabel]</label>
+					<label>$INFO[ListItem.TimerType,[COLOR grey]$LOCALIZE[803]:[/COLOR] ,[CR]]$VAR[DateDurationLabel]$VAR[ExpirationDateTimeLabel]$VAR[FlagLabel]</label>
 				</control>
 				<control type="group">
 					<visible>Integer.IsGreater(ListItem.Progress,0)</visible>
@@ -246,7 +246,7 @@
 				<width>830</width>
 				<height>262</height>
 				<font>font36_title</font>
-				<label>$INFO[ListItem.Title]</label>
+				<label>$INFO[ListItem.Title] $INFO[ListItem.Year,([COLOR grey],[/COLOR])]</label>
 				<visible>!PVR.HasEpg</visible>
 			</control>
 			<control type="label">
@@ -254,7 +254,7 @@
 				<width>830</width>
 				<height>262</height>
 				<font>font36_title</font>
-				<label>$INFO[ListItem.EpgEventTitle]</label>
+				<label>$INFO[ListItem.EpgEventTitle] $INFO[ListItem.Year,([COLOR grey],[/COLOR])]</label>
 				<visible>PVR.HasEpg</visible>
 			</control>
 			<control type="label">
@@ -288,7 +288,7 @@
 				<top>10</top>
 				<width>830</width>
 				<height>262</height>
-				<label>$LOCALIZE[19076] ($INFO[Container(5000).NumItems,[B],[/B] $LOCALIZE[31036]])</label>
+				<label>$LOCALIZE[19076] ($INFO[Container(5000).NumItems,[B],[/B] $LOCALIZE[31036]]) $INFO[ListItem.Property(recordingsize),- $LOCALIZE[20161]: [B],[/B]]</label>
 				<font>font37</font>
 				<visible>!ListItem.IsParentFolder</visible>
 			</control>
@@ -307,7 +307,7 @@
 							<height>90</height>
 							<width>830</width>
 							<aligny>center</aligny>
-							<label>$INFO[ListItem.Date,[COLOR grey],[/COLOR][CR]]$INFO[ListItem.Label]$INFO[ListItem.EpisodeName, (,)]</label>
+							<label>$VAR[RecordingDateSizeLabel]$INFO[ListItem.Label]$INFO[ListItem.EpisodeName, (,)]</label>
 							<shadowcolor>text_shadow</shadowcolor>
 						</control>
 					</focusedlayout>
@@ -317,12 +317,35 @@
 							<height>90</height>
 							<width>830</width>
 							<aligny>center</aligny>
-							<label>$INFO[ListItem.Date,[COLOR grey],[/COLOR][CR]]$INFO[ListItem.Label]$INFO[ListItem.EpisodeName, (,)]</label>
+							<label>$VAR[RecordingDateSizeLabel]$INFO[ListItem.Label]$INFO[ListItem.EpisodeName, (,)]</label>
 							<shadowcolor>text_shadow</shadowcolor>
 						</control>
 					</itemlayout>
 					<content sortby="date" sortorder="$PARAM[folder_sortorder]">$INFO[ListItem.FilenameAndPath]</content>
 				</control>
+			</control>
+		</control>
+	</include>
+	<include name="RDSInfoLine">
+		<control type="grouplist">
+			<visible>!String.IsEmpty($PARAM[value])</visible>
+			<height>45</height>
+			<orientation>horizontal</orientation>
+			<itemgap>10</itemgap>
+			<control type="label">
+				<width>auto</width>
+				<height>40</height>
+				<aligny>center</aligny>
+				<label>$PARAM[label]:</label>
+				<textcolor>button_focus</textcolor>
+			</control>
+			<control type="label">
+				<width>auto</width>
+				<height>40</height>
+				<align>right</align>
+				<aligny>center</aligny>
+				<label>$INFO[$PARAM[value]]</label>
+				<scroll>true</scroll>
 			</control>
 		</control>
 	</include>
@@ -346,7 +369,7 @@
 				<left>0</left>
 				<top>$PARAM[control_top]</top>
 				<right>20</right>
-				<bottom>340</bottom>
+				<bottom>333</bottom>
 				<orientation>$PARAM[control_orientation]</orientation>
 				<pagecontrol>60</pagecontrol>
 				<scrolltime tween="quadratic" easing="out">300</scrolltime>
@@ -362,7 +385,7 @@
 					<control type="label">
 						<width>1700</width>
 						<height>45</height>
-						<font>font24</font>
+						<font>font13</font>
 						<label>$INFO[ListItem.Label]</label>
 						<textcolor>button_focus</textcolor>
 						<align>center</align>
@@ -438,11 +461,21 @@
 						<label>$INFO[ListItem.Label]</label>
 					</control>
 					<control type="image">
+						<visible>ListItem.IsNew | ListItem.IsPremiere | ListItem.IsFinale | ListItem.IsLive</visible>
 						<left>6</left>
 						<top>35</top>
-						<width>20</width>
-						<height>20</height>
+						<width>16</width>
+						<height>16</height>
+						<aspectratio>keep</aspectratio>
+						<texture colordiffuse="button_focus">icons/pvr/premiere.png</texture>
+					</control>
+					<control type="image">
+						<left>6</left>
+						<top>35</top>
+						<width>16</width>
+						<height>16</height>
 						<texture>$VAR[PVRTimerIcon]</texture>
+						<animation effect="slide" start="0,0" end="19,0" condition="ListItem.IsNew | ListItem.IsPremiere | ListItem.IsFinale | ListItem.IsLive">Conditional</animation>
 					</control>
 				</itemlayout>
 				<focusedlayout height="62" width="60">
@@ -475,11 +508,21 @@
 						<label>$INFO[ListItem.Label]</label>
 					</control>
 					<control type="image">
+						<visible>ListItem.IsNew | ListItem.IsPremiere | ListItem.IsFinale | ListItem.IsLive</visible>
 						<left>6</left>
 						<top>35</top>
-						<width>20</width>
-						<height>20</height>
+						<width>16</width>
+						<height>16</height>
+						<aspectratio>keep</aspectratio>
+						<texture colordiffuse="button_focus">icons/pvr/premiere.png</texture>
+					</control>
+					<control type="image">
+						<left>6</left>
+						<top>35</top>
+						<width>16</width>
+						<height>16</height>
 						<texture>$VAR[PVRTimerIcon]</texture>
+						<animation effect="slide" start="0,0" end="19,0" condition="ListItem.IsNew | ListItem.IsPremiere | ListItem.IsFinale | ListItem.IsLive">Conditional</animation>
 					</control>
 				</focusedlayout>
 			</control>

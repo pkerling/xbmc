@@ -8,18 +8,26 @@
 
 #pragma once
 
-#include "utils/EGLUtils.h"
-#include "rendering/gl/RenderSystemGL.h"
 #include "WinSystemGbmEGLContext.h"
+#include "rendering/gl/RenderSystemGL.h"
+#include "utils/EGLUtils.h"
+
 #include <memory>
 
 class CVaapiProxy;
+
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
 
 class CWinSystemGbmGLContext : public CWinSystemGbmEGLContext, public CRenderSystemGL
 {
 public:
   CWinSystemGbmGLContext();
-  virtual ~CWinSystemGbmGLContext() = default;
+  ~CWinSystemGbmGLContext() override = default;
 
   // Implementation of CWinSystemBase via CWinSystemGbm
   CRenderSystemBase *GetRenderSystem() override { return this; }
@@ -27,7 +35,11 @@ public:
   bool SetFullScreen(bool fullScreen, RESOLUTION_INFO& res, bool blankOtherDisplays) override;
   void PresentRender(bool rendered, bool videoLayer) override;
 protected:
-  void SetVSyncImpl(bool enable) override { return; };
+  void SetVSyncImpl(bool enable) override {}
   void PresentRenderImpl(bool rendered) override {};
   bool CreateContext() override;
 };
+
+}
+}
+}

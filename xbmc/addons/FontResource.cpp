@@ -8,28 +8,21 @@
 #include "FontResource.h"
 
 #include "AddonManager.h"
-#include "dialogs/GUIDialogKaiToast.h"
+#include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "filesystem/SpecialProtocol.h"
 #include "guilib/GUIWindowManager.h"
 #include "messaging/ApplicationMessenger.h"
 #include "messaging/helpers/DialogHelper.h"
-#include "ServiceBroker.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 
 using namespace XFILE;
 using namespace KODI::MESSAGING;
 
-using KODI::MESSAGING::HELPERS::DialogResponse;
 
 namespace ADDON
 {
-
-std::unique_ptr<CFontResource> CFontResource::FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext)
-{
-  return std::unique_ptr<CFontResource>(new CFontResource(std::move(addonInfo)));
-}
 
 void CFontResource::OnPostInstall(bool update, bool modal)
 {

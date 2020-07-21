@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -46,7 +46,7 @@ msgstr "Bezig..."
 
 msgctxt "#31011"
 msgid "Recent"
-msgstr "Recent"
+msgstr "Recente"
 
 msgctxt "#31013"
 msgid "Movies"
@@ -55,6 +55,10 @@ msgstr "Speelfilms"
 msgctxt "#31014"
 msgid "Episodes"
 msgstr "Afleveringen"
+
+msgctxt "#31015"
+msgid "Player info"
+msgstr "Spelerinformatie"
 
 msgctxt "#31016"
 msgid "Albums"
@@ -96,6 +100,10 @@ msgctxt "#31039"
 msgid "Updated:"
 msgstr "Geüpdated:"
 
+msgctxt "#31043"
+msgid "PAUSED"
+msgstr "PAUZE"
+
 msgctxt "#31044"
 msgid "FAST FORWARD"
 msgstr "VOORUITSPOELEN"
@@ -134,7 +142,7 @@ msgstr "Sluit afspeellijst"
 
 msgctxt "#31058"
 msgid "System music files"
-msgstr "Systeem muziekbestanden"
+msgstr "Systeemmuziekbestanden"
 
 msgctxt "#31059"
 msgid "Current playlist"
@@ -250,7 +258,7 @@ msgstr "Achtergronden"
 
 msgctxt "#31551"
 msgid "Add-on Shortcut"
-msgstr "Add-on snelkoppelingen"
+msgstr "Add-on snelkoppeling"
 
 msgctxt "#31552"
 msgid "SYNC"

@@ -90,6 +90,7 @@ public:
 
   // CWinSystemWin10
   bool IsAlteringWindow() const { return m_IsAlteringWindow; }
+  void SetAlteringWindow(bool altering) { m_IsAlteringWindow = altering; }
   virtual bool DPIChanged(WORD dpi, RECT windowRect) const;
   bool IsMinimized() const { return m_bMinimized; }
   void SetMinimized(bool minimized) { m_bMinimized = minimized; }
@@ -143,6 +144,7 @@ protected:
   WINDOW_WINDOW_STATE m_windowState;          // the state of the window when in windowed
   bool m_inFocus;
   bool m_bMinimized;
+  bool m_bFirstResChange = true;
 
   winrt::Windows::UI::Core::CoreWindow m_coreWindow = nullptr;
 };

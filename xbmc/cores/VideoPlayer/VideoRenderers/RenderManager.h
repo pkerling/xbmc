@@ -8,22 +8,22 @@
 
 #pragma once
 
-#include <list>
-
+#include "DVDClock.h"
+#include "DebugRenderer.h"
 #include "cores/VideoPlayer/VideoRenderers/BaseRenderer.h"
 #include "cores/VideoPlayer/VideoRenderers/OverlayRenderer.h"
+#include "cores/VideoSettings.h"
+#include "threads/CriticalSection.h"
+#include "threads/Event.h"
 #include "utils/Geometry.h"
 #include "windowing/Resolution.h"
-#include "threads/CriticalSection.h"
-#include "cores/VideoSettings.h"
-#include "OverlayRenderer.h"
-#include "DebugRenderer.h"
-#include <deque>
-#include <map>
+
 #include <atomic>
+#include <deque>
+#include <list>
+#include <map>
+
 #include "PlatformDefs.h"
-#include "threads/Event.h"
-#include "DVDClock.h"
 
 class CRenderCapture;
 struct VideoPicture;
@@ -66,7 +66,7 @@ public:
   bool IsVideoLayer();
   RESOLUTION GetResolution();
   void UpdateResolution();
-  void TriggerUpdateResolution(float fps, int width, std::string &stereomode);
+  void TriggerUpdateResolution(float fps, int width, int height, std::string &stereomode);
   void SetViewMode(int iViewMode);
   void PreInit();
   void UnInit();

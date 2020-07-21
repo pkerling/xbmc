@@ -51,9 +51,6 @@
 #include "Autorun.h"
 #include "URL.h"
 #include "platform/Filesystem.h"
-#ifdef TARGET_POSIX
-#include "platform/linux/XFileUtils.h"
-#endif
 
 using namespace XFILE;
 using namespace PLAYLIST;
@@ -88,7 +85,7 @@ class CGetDirectoryItems : public IRunnable
 {
 public:
   CGetDirectoryItems(XFILE::CVirtualDirectory &dir, CURL &url, CFileItemList &items)
-  : m_dir(dir), m_url(url), m_items(items)
+  : m_result(false), m_dir(dir), m_url(url), m_items(items)
   {
   }
   void Run() override
@@ -362,7 +359,7 @@ void CGUIWindowFileManager::OnSort(int iList)
           pItem->SetFileSizeLabel();
         }
       }
-      else if (pItem->IsDVD() && g_mediaManager.IsDiscInDrive())
+      else if (pItem->IsDVD() && CServiceBroker::GetMediaManager().IsDiscInDrive())
       {
         std::error_code ec;
         auto freeSpace = space(pItem->GetPath(), ec);
@@ -444,6 +441,13 @@ void CGUIWindowFileManager::UpdateItemCounts()
 
 bool CGUIWindowFileManager::Update(int iList, const std::string &strDirectory)
 {
+  if (m_updating)
+  {
+    CLog::Log(LOGWARNING, "CGUIWindowFileManager::Update - updating in progress");
+    return true;
+  }
+  CUpdateGuard ug(m_updating);
+
   // get selected item
   int iItem = GetSelectedItem(iList);
   std::string strSelectedItem = "";
@@ -486,7 +490,7 @@ bool CGUIWindowFileManager::Update(int iList, const std::string &strDirectory)
     std::string strLabel = g_localizeStrings.Get(1026);
     CFileItemPtr pItem(new CFileItem(strLabel));
     pItem->SetPath("add");
-    pItem->SetIconImage("DefaultAddSource.png");
+    pItem->SetArt("icon", "DefaultAddSource.png");
     pItem->SetLabel(strLabel);
     pItem->SetLabelPreformatted(true);
     pItem->m_bIsFolder = true;
@@ -512,7 +516,7 @@ bool CGUIWindowFileManager::Update(int iList, const std::string &strDirectory)
     pItem->SetLabelPreformatted(true);
     m_vecItems[iList]->Add(pItem);
 
-    #ifdef TARGET_DARWIN_IOS
+    #ifdef TARGET_DARWIN_EMBEDDED
       CFileItemPtr iItem(new CFileItem("special://envhome/Documents/Inbox", true));
       iItem->SetLabel("Inbox");
       iItem->SetArt("thumb", "DefaultFolder.png");
@@ -628,7 +632,7 @@ void CGUIWindowFileManager::OnStart(CFileItem *pItem, const std::string &player)
   {
     std::string strPlayList = pItem->GetPath();
     std::unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(strPlayList));
-    if (NULL != pPlayList.get())
+    if (nullptr != pPlayList)
     {
       if (!pPlayList->Load(strPlayList))
       {
@@ -679,7 +683,7 @@ bool CGUIWindowFileManager::HaveDiscOrConnection( std::string& strPath, int iDri
 {
   if ( iDriveType == CMediaSource::SOURCE_TYPE_DVD )
   {
-    if ( !g_mediaManager.IsDiscInDrive(strPath) )
+    if (!CServiceBroker::GetMediaManager().IsDiscInDrive(strPath))
     {
       HELPERS::ShowOKDialogText(CVariant{218}, CVariant{219});
       int iList = GetFocusedList();
@@ -1241,11 +1245,13 @@ void CGUIWindowFileManager::OnInitWindow()
   else if (!bResult0)
   {
     ShowShareErrorMessage(m_Directory[0]); //show the error message after window is loaded!
+    Update(0, ""); // reset view to root
   }
 
   if (!bResult1)
   {
     ShowShareErrorMessage(m_Directory[1]); //show the error message after window is loaded!
+    Update(1, ""); // reset view to root
   }
 }
 
@@ -1283,7 +1289,7 @@ void CGUIWindowFileManager::SetInitialPath(const std::string &path)
       m_rootDir.GetSources(shares);
       int iIndex = CUtil::GetMatchingSource(strDestination, shares, bIsSourceName);
       if (iIndex > -1
-#if defined(TARGET_DARWIN_IOS)
+#if defined(TARGET_DARWIN_EMBEDDED)
           || URIUtils::PathHasParent(strDestination, "special://envhome/Documents/Inbox/")
 #endif
           || URIUtils::PathHasParent(strDestination, "special://profile/"))

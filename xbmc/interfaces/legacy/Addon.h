@@ -8,11 +8,10 @@
 
 #pragma once
 
-#include "addons/IAddon.h"
-
-#include "AddonString.h"
 #include "AddonClass.h"
+#include "AddonString.h"
 #include "Exception.h"
+#include "addons/IAddon.h"
 
 namespace XBMCAddon
 {
@@ -74,12 +73,11 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).getLocalizedString(id) }
-      ///-----------------------------------------------------------------------
-      /// Returns an addon's localized 'unicode string'.
+      /// Returns an addon's localized 'string'.
       ///
       /// @param id                      integer - id# for string you want to
       ///                                localize.
-      /// @return                        Localized 'unicode string'
+      /// @return                        Localized 'string'
       ///
       ///
       ///-----------------------------------------------------------------------
@@ -102,12 +100,11 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).getSetting(id) }
-      ///-----------------------------------------------------------------------
-      /// Returns the value of a setting as a unicode string.
+      /// Returns the value of a setting as string.
       ///
       /// @param id                      string - id of the setting that the module
       ///                                needs to access.
-      /// @return                        Setting as a unicode string
+      /// @return                        Setting as a string
       ///
       ///
       ///-----------------------------------------------------------------------
@@ -131,7 +128,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).getSettingBool(id) }
-      ///-----------------------------------------------------------------------
       /// Returns the value of a setting as a boolean.
       ///
       /// @param id                      string - id of the setting that the module
@@ -160,7 +156,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).getSettingInt(id) }
-      ///-----------------------------------------------------------------------
       /// Returns the value of a setting as an integer.
       ///
       /// @param id                      string - id of the setting that the module
@@ -189,7 +184,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).getSettingNumber(id) }
-      ///-----------------------------------------------------------------------
       /// Returns the value of a setting as a floating point number.
       ///
       /// @param id                      string - id of the setting that the module
@@ -218,12 +212,11 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).getSettingString(id) }
-      ///-----------------------------------------------------------------------
-      /// Returns the value of a setting as a unicode string.
+      /// Returns the value of a setting as a string.
       ///
       /// @param id                      string - id of the setting that the module
       ///                                needs to access.
-      /// @return                        Setting as a unicode string
+      /// @return                        Setting as a string
       ///
       ///
       ///-----------------------------------------------------------------------
@@ -247,11 +240,10 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).setSetting(id, value) }
-      ///-----------------------------------------------------------------------
       /// Sets a script setting.
       ///
       /// @param id                  string - id of the setting that the module needs to access.
-      /// @param value               string or unicode - value of the setting.
+      /// @param value               string - value of the setting.
       ///
       ///
       /// @note You can use the above as keywords for arguments.
@@ -278,7 +270,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).setSettingBool(id, value) }
-      ///-----------------------------------------------------------------------
       /// Sets a script setting.
       ///
       /// @param id                  string - id of the setting that the module needs to access.
@@ -310,7 +301,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).setSettingInt(id, value) }
-      ///-----------------------------------------------------------------------
       /// Sets a script setting.
       ///
       /// @param id                  string - id of the setting that the module needs to access.
@@ -342,7 +332,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).setSettingNumber(id, value) }
-      ///-----------------------------------------------------------------------
       /// Sets a script setting.
       ///
       /// @param id                  string - id of the setting that the module needs to access.
@@ -374,7 +363,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).setSettingString(id, value) }
-      ///-----------------------------------------------------------------------
       /// Sets a script setting.
       ///
       /// @param id                  string - id of the setting that the module needs to access.
@@ -406,7 +394,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_xbmcaddon
       /// @brief \python_func{ xbmcaddon.Addon([id]).openSettings() }
-      ///-----------------------------------------------------------------------
       /// Opens this scripts settings dialog.
       ///
       ///-----------------------------------------------------------------------
@@ -428,7 +415,6 @@ namespace XBMCAddon
       /// \ingroup python_xbmcaddon
       /// \anchor python_xbmcaddon_Addon
       /// @brief \python_func{ xbmcaddon.Addon([id]).getAddonInfo(id) }
-      ///-----------------------------------------------------------------------
       /// Returns the value of an addon property as a string.
       ///
       /// @param id                      string - id of the property that the

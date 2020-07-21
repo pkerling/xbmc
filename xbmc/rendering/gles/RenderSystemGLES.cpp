@@ -6,27 +6,26 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "guilib/DirtyRegion.h"
-#include "windowing/GraphicContext.h"
-#include "settings/AdvancedSettings.h"
 #include "RenderSystemGLES.h"
+
+#include "guilib/DirtyRegion.h"
 #include "rendering/MatrixGL.h"
-#include "utils/log.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
 #include "utils/GLUtils.h"
-#include "utils/TimeUtils.h"
-#include "utils/SystemInfo.h"
 #include "utils/MathUtils.h"
-#ifdef TARGET_POSIX
-#include "XTimeUtils.h"
+#include "utils/SystemInfo.h"
+#include "utils/TimeUtils.h"
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+
+#if defined(TARGET_LINUX)
+#include "utils/EGLUtils.h"
 #endif
 
 CRenderSystemGLES::CRenderSystemGLES()
  : CRenderSystemBase()
-{
-  m_pShader.reset(new CGLESShader*[SM_MAX]);
-}
-
-CRenderSystemGLES::~CRenderSystemGLES()
 {
 }
 
@@ -37,9 +36,7 @@ bool CRenderSystemGLES::InitRenderSystem()
   glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
 
   m_maxTextureSize = maxTextureSize;
-  m_bVSync = false;
-  m_iVSyncMode = 0;
-  m_bVsyncInit = false;
+
   // Get the GLES version number
   m_RenderVersionMajor = 0;
   m_RenderVersionMinor = 0;
@@ -73,6 +70,30 @@ bool CRenderSystemGLES::InitRenderSystem()
   }
 
   m_RenderExtensions += " ";
+
+//! @todo remove TARGET_RASPBERRY_PI when Raspberry Pi updates their GL headers
+#if defined(GL_KHR_debug) && defined(TARGET_LINUX) && !defined(TARGET_RASPBERRY_PI)
+  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_openGlDebugging)
+  {
+    if (IsExtSupported("GL_KHR_debug"))
+    {
+      auto glDebugMessageCallback = CEGLUtils::GetRequiredProcAddress<PFNGLDEBUGMESSAGECALLBACKKHRPROC>("glDebugMessageCallbackKHR");
+      auto glDebugMessageControl = CEGLUtils::GetRequiredProcAddress<PFNGLDEBUGMESSAGECONTROLKHRPROC>("glDebugMessageControlKHR");
+
+      glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_KHR);
+      glDebugMessageCallback(KODI::UTILS::GL::GlErrorCallback, nullptr);
+
+      // ignore shader compilation information
+      glDebugMessageControl(GL_DEBUG_SOURCE_SHADER_COMPILER_KHR, GL_DEBUG_TYPE_OTHER_KHR, GL_DONT_CARE, 0, nullptr, GL_FALSE);
+
+      CLog::Log(LOGDEBUG, "OpenGL(ES): debugging enabled");
+    }
+    else
+    {
+      CLog::Log(LOGDEBUG, "OpenGL(ES): debugging requested but the required extension isn't available (GL_KHR_debug)");
+    }
+  }
+#endif
 
   LogGraphicsInfo();
 
@@ -206,12 +227,12 @@ void CRenderSystemGLES::PresentRender(bool rendered, bool videoLayer)
 
   // if video is rendered to a separate layer, we should not block this thread
   if (!rendered && !videoLayer)
-    Sleep(40);
+    KODI::TIME::Sleep(40);
 }
 
 void CRenderSystemGLES::SetVSync(bool enable)
 {
-  if (m_bVSync==enable && m_bVsyncInit == true)
+  if (m_bVsyncInit)
     return;
 
   if (!m_bRenderCreated)
@@ -222,20 +243,9 @@ void CRenderSystemGLES::SetVSync(bool enable)
   else
     CLog::Log(LOGINFO, "GLES: Disabling VSYNC");
 
-  m_iVSyncMode   = 0;
-  m_iVSyncErrors = 0;
-  m_bVSync       = enable;
-  m_bVsyncInit   = true;
+  m_bVsyncInit = true;
 
   SetVSyncImpl(enable);
-
-  if (!enable)
-    return;
-
-  if (!m_iVSyncMode)
-    CLog::Log(LOGERROR, "GLES: Vertical Blank Syncing unsupported");
-  else
-    CLog::Log(LOGINFO, "GLES: Selected vsync mode %d", m_iVSyncMode);
 }
 
 void CRenderSystemGLES::CaptureStateBlock()
@@ -375,112 +385,104 @@ void CRenderSystemGLES::InitialiseShaders()
     defines += "#define KODI_LIMITED_RANGE 1\n";
   }
 
-  m_pShader[SM_DEFAULT] = new CGLESShader("gles_shader.vert", "gles_shader_default.frag", defines);
+  m_pShader[SM_DEFAULT].reset(new CGLESShader("gles_shader.vert", "gles_shader_default.frag", defines));
   if (!m_pShader[SM_DEFAULT]->CompileAndLink())
   {
     m_pShader[SM_DEFAULT]->Free();
-    delete m_pShader[SM_DEFAULT];
-    m_pShader[SM_DEFAULT] = nullptr;
+    m_pShader[SM_DEFAULT].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_default.frag - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE] = new CGLESShader("gles_shader_texture.frag", defines);
+  m_pShader[SM_TEXTURE].reset(new CGLESShader("gles_shader_texture.frag", defines));
   if (!m_pShader[SM_TEXTURE]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE]->Free();
-    delete m_pShader[SM_TEXTURE];
-    m_pShader[SM_TEXTURE] = nullptr;
+    m_pShader[SM_TEXTURE].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_texture.frag - compile and link failed");
   }
 
-  m_pShader[SM_MULTI] = new CGLESShader("gles_shader_multi.frag", defines);
+  m_pShader[SM_MULTI].reset(new CGLESShader("gles_shader_multi.frag", defines));
   if (!m_pShader[SM_MULTI]->CompileAndLink())
   {
     m_pShader[SM_MULTI]->Free();
-    delete m_pShader[SM_MULTI];
-    m_pShader[SM_MULTI] = nullptr;
+    m_pShader[SM_MULTI].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_multi.frag - compile and link failed");
   }
 
-  m_pShader[SM_FONTS] = new CGLESShader("gles_shader_fonts.frag", defines);
+  m_pShader[SM_FONTS].reset(new CGLESShader("gles_shader_fonts.frag", defines));
   if (!m_pShader[SM_FONTS]->CompileAndLink())
   {
     m_pShader[SM_FONTS]->Free();
-    delete m_pShader[SM_FONTS];
-    m_pShader[SM_FONTS] = nullptr;
+    m_pShader[SM_FONTS].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_fonts.frag - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE_NOBLEND] = new CGLESShader("gles_shader_texture_noblend.frag", defines);
+  m_pShader[SM_TEXTURE_NOBLEND].reset(new CGLESShader("gles_shader_texture_noblend.frag", defines));
   if (!m_pShader[SM_TEXTURE_NOBLEND]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE_NOBLEND]->Free();
-    delete m_pShader[SM_TEXTURE_NOBLEND];
-    m_pShader[SM_TEXTURE_NOBLEND] = nullptr;
+    m_pShader[SM_TEXTURE_NOBLEND].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_texture_noblend.frag - compile and link failed");
   }
 
-  m_pShader[SM_MULTI_BLENDCOLOR] = new CGLESShader("gles_shader_multi_blendcolor.frag", defines);
+  m_pShader[SM_MULTI_BLENDCOLOR].reset(new CGLESShader("gles_shader_multi_blendcolor.frag", defines));
   if (!m_pShader[SM_MULTI_BLENDCOLOR]->CompileAndLink())
   {
     m_pShader[SM_MULTI_BLENDCOLOR]->Free();
-    delete m_pShader[SM_MULTI_BLENDCOLOR];
-    m_pShader[SM_MULTI_BLENDCOLOR] = nullptr;
+    m_pShader[SM_MULTI_BLENDCOLOR].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_multi_blendcolor.frag - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE_RGBA] = new CGLESShader("gles_shader_rgba.frag", defines);
+  m_pShader[SM_TEXTURE_RGBA].reset(new CGLESShader("gles_shader_rgba.frag", defines));
   if (!m_pShader[SM_TEXTURE_RGBA]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE_RGBA]->Free();
-    delete m_pShader[SM_TEXTURE_RGBA];
-    m_pShader[SM_TEXTURE_RGBA] = nullptr;
+    m_pShader[SM_TEXTURE_RGBA].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_rgba.frag - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR] = new CGLESShader("gles_shader_rgba_blendcolor.frag", defines);
+  m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR].reset(new CGLESShader("gles_shader_rgba_blendcolor.frag", defines));
   if (!m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR]->Free();
-    delete m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR];
-    m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR] = nullptr;
+    m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_rgba_blendcolor.frag - compile and link failed");
   }
 
-  m_pShader[SM_TEXTURE_RGBA_BOB] = new CGLESShader("gles_shader_rgba_bob.frag", defines);
+  m_pShader[SM_TEXTURE_RGBA_BOB].reset(new CGLESShader("gles_shader_rgba_bob.frag", defines));
   if (!m_pShader[SM_TEXTURE_RGBA_BOB]->CompileAndLink())
   {
     m_pShader[SM_TEXTURE_RGBA_BOB]->Free();
-    delete m_pShader[SM_TEXTURE_RGBA_BOB];
-    m_pShader[SM_TEXTURE_RGBA_BOB] = nullptr;
+    m_pShader[SM_TEXTURE_RGBA_BOB].reset();
     CLog::Log(LOGERROR, "GUI Shader gles_shader_rgba_bob.frag - compile and link failed");
   }
 
   if (IsExtSupported("GL_OES_EGL_image_external"))
   {
-    m_pShader[SM_TEXTURE_RGBA_OES] = new CGLESShader("gles_shader_rgba_oes.frag", defines);
+    m_pShader[SM_TEXTURE_RGBA_OES].reset(new CGLESShader("gles_shader_rgba_oes.frag", defines));
     if (!m_pShader[SM_TEXTURE_RGBA_OES]->CompileAndLink())
     {
       m_pShader[SM_TEXTURE_RGBA_OES]->Free();
-      delete m_pShader[SM_TEXTURE_RGBA_OES];
-      m_pShader[SM_TEXTURE_RGBA_OES] = nullptr;
+      m_pShader[SM_TEXTURE_RGBA_OES].reset();
       CLog::Log(LOGERROR, "GUI Shader gles_shader_rgba_oes.frag - compile and link failed");
     }
 
 
-    m_pShader[SM_TEXTURE_RGBA_BOB_OES] = new CGLESShader("gles_shader_rgba_bob_oes.frag", defines);
+    m_pShader[SM_TEXTURE_RGBA_BOB_OES].reset(new CGLESShader("gles_shader_rgba_bob_oes.frag", defines));
     if (!m_pShader[SM_TEXTURE_RGBA_BOB_OES]->CompileAndLink())
     {
       m_pShader[SM_TEXTURE_RGBA_BOB_OES]->Free();
-      delete m_pShader[SM_TEXTURE_RGBA_BOB_OES];
-      m_pShader[SM_TEXTURE_RGBA_BOB_OES] = nullptr;
+      m_pShader[SM_TEXTURE_RGBA_BOB_OES].reset();
       CLog::Log(LOGERROR, "GUI Shader gles_shader_rgba_bob_oes.frag - compile and link failed");
     }
   }
-  else
+
+  m_pShader[SM_TEXTURE_NOALPHA].reset(new CGLESShader("gles_shader_texture_noalpha.frag", defines));
+  if (!m_pShader[SM_TEXTURE_NOALPHA]->CompileAndLink())
   {
-    m_pShader[SM_TEXTURE_RGBA_OES] = nullptr;
-    m_pShader[SM_TEXTURE_RGBA_BOB_OES] = nullptr;
+    m_pShader[SM_TEXTURE_NOALPHA]->Free();
+    m_pShader[SM_TEXTURE_NOALPHA].reset();
+    CLog::Log(LOGERROR, "GUI Shader gles_shader_texture_noalpha.frag - compile and link failed");
   }
 }
 
@@ -488,58 +490,51 @@ void CRenderSystemGLES::ReleaseShaders()
 {
   if (m_pShader[SM_DEFAULT])
     m_pShader[SM_DEFAULT]->Free();
-  delete m_pShader[SM_DEFAULT];
-  m_pShader[SM_DEFAULT] = nullptr;
+  m_pShader[SM_DEFAULT].reset();
 
   if (m_pShader[SM_TEXTURE])
     m_pShader[SM_TEXTURE]->Free();
-  delete m_pShader[SM_TEXTURE];
-  m_pShader[SM_TEXTURE] = nullptr;
+  m_pShader[SM_TEXTURE].reset();
 
   if (m_pShader[SM_MULTI])
     m_pShader[SM_MULTI]->Free();
-  delete m_pShader[SM_MULTI];
-  m_pShader[SM_MULTI] = nullptr;
+  m_pShader[SM_MULTI].reset();
 
   if (m_pShader[SM_FONTS])
     m_pShader[SM_FONTS]->Free();
-  delete m_pShader[SM_FONTS];
-  m_pShader[SM_FONTS] = nullptr;
+  m_pShader[SM_FONTS].reset();
 
   if (m_pShader[SM_TEXTURE_NOBLEND])
     m_pShader[SM_TEXTURE_NOBLEND]->Free();
-  delete m_pShader[SM_TEXTURE_NOBLEND];
-  m_pShader[SM_TEXTURE_NOBLEND] = nullptr;
+  m_pShader[SM_TEXTURE_NOBLEND].reset();
 
   if (m_pShader[SM_MULTI_BLENDCOLOR])
     m_pShader[SM_MULTI_BLENDCOLOR]->Free();
-  delete m_pShader[SM_MULTI_BLENDCOLOR];
-  m_pShader[SM_MULTI_BLENDCOLOR] = nullptr;
+  m_pShader[SM_MULTI_BLENDCOLOR].reset();
 
   if (m_pShader[SM_TEXTURE_RGBA])
     m_pShader[SM_TEXTURE_RGBA]->Free();
-  delete m_pShader[SM_TEXTURE_RGBA];
-  m_pShader[SM_TEXTURE_RGBA] = nullptr;
+  m_pShader[SM_TEXTURE_RGBA].reset();
 
   if (m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR])
     m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR]->Free();
-  delete m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR];
-  m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR] = nullptr;
+  m_pShader[SM_TEXTURE_RGBA_BLENDCOLOR].reset();
 
   if (m_pShader[SM_TEXTURE_RGBA_BOB])
     m_pShader[SM_TEXTURE_RGBA_BOB]->Free();
-  delete m_pShader[SM_TEXTURE_RGBA_BOB];
-  m_pShader[SM_TEXTURE_RGBA_BOB] = nullptr;
+  m_pShader[SM_TEXTURE_RGBA_BOB].reset();
 
   if (m_pShader[SM_TEXTURE_RGBA_OES])
     m_pShader[SM_TEXTURE_RGBA_OES]->Free();
-  delete m_pShader[SM_TEXTURE_RGBA_OES];
-  m_pShader[SM_TEXTURE_RGBA_OES] = nullptr;
+  m_pShader[SM_TEXTURE_RGBA_OES].reset();
 
   if (m_pShader[SM_TEXTURE_RGBA_BOB_OES])
     m_pShader[SM_TEXTURE_RGBA_BOB_OES]->Free();
-  delete m_pShader[SM_TEXTURE_RGBA_BOB_OES];
-  m_pShader[SM_TEXTURE_RGBA_BOB_OES] = nullptr;
+  m_pShader[SM_TEXTURE_RGBA_BOB_OES].reset();
+
+  if (m_pShader[SM_TEXTURE_NOALPHA])
+    m_pShader[SM_TEXTURE_NOALPHA]->Free();
+  m_pShader[SM_TEXTURE_NOALPHA].reset();
 }
 
 void CRenderSystemGLES::EnableGUIShader(ESHADERMETHOD method)

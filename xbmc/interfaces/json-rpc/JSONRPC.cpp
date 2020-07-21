@@ -6,24 +6,25 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <string.h>
-
 #include "JSONRPC.h"
+
+#include "ServiceBroker.h"
 #include "ServiceDescription.h"
+#include "TextureDatabase.h"
 #include "addons/Addon.h"
 #include "addons/IAddon.h"
 #include "dbwrappers/DatabaseQuery.h"
-#include "input/ActionTranslator.h"
 #include "input/WindowTranslator.h"
+#include "input/actions/ActionTranslator.h"
 #include "interfaces/AnnouncementManager.h"
 #include "playlists/SmartPlayList.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
-#include "ServiceBroker.h"
-#include "TextureDatabase.h"
+#include "utils/log.h"
+
+#include <string.h>
 
 using namespace JSONRPC;
 
@@ -99,6 +100,8 @@ void CJSONRPC::Initialize()
 
   for (unsigned int index = 0; index < size; index++)
     CJSONServiceDescription::AddNotification(JSONRPC_SERVICE_NOTIFICATIONS[index]);
+
+  CJSONServiceDescription::ResolveReferences();
 
   m_initialized = true;
   CLog::Log(LOGINFO, "JSONRPC v%s: Successfully initialized", CJSONServiceDescription::GetVersion());
@@ -236,7 +239,7 @@ std::string CJSONRPC::MethodCall(const std::string &inputString, ITransportLayer
     {
       if (inputroot.size() <= 0)
       {
-        CLog::Log(LOGERROR, "JSONRPC: Empty batch call\n");
+        CLog::Log(LOGERROR, "JSONRPC: Empty batch call");
         BuildResponse(inputroot, InvalidRequest, CVariant(), outputroot);
         hasResponse = true;
       }
@@ -258,7 +261,7 @@ std::string CJSONRPC::MethodCall(const std::string &inputString, ITransportLayer
   }
   else
   {
-    CLog::Log(LOGERROR, "JSONRPC: Failed to parse '%s'\n", inputString.c_str());
+    CLog::Log(LOGERROR, "JSONRPC: Failed to parse '%s'", inputString.c_str());
     BuildResponse(inputroot, ParseError, CVariant(), outputroot);
     hasResponse = true;
   }
@@ -296,7 +299,7 @@ bool CJSONRPC::HandleMethodCall(const CVariant& request, CVariant& response, ITr
     std::string str;
     CJSONVariantWriter::Write(request, str, true);
 
-    CLog::Log(LOGERROR, "JSONRPC: Failed to parse '%s'\n", str.c_str());
+    CLog::Log(LOGERROR, "JSONRPC: Failed to parse '%s'", str.c_str());
     errorCode = InvalidRequest;
   }
 

@@ -6,22 +6,23 @@
  *  See LICENSES/README.md for more information.
  */
 
-#if defined(TARGET_POSIX)
-
 #include "PosixFile.h"
-#include "utils/AliasShortcutUtils.h"
+
 #include "URL.h"
-#include "utils/log.h"
 #include "filesystem/File.h"
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <string>
-#include <assert.h>
-#include <limits.h>
+#include "utils/AliasShortcutUtils.h"
+#include "utils/log.h"
+
 #include <algorithm>
-#include <sys/ioctl.h>
+#include <assert.h>
 #include <errno.h>
+#include <limits.h>
+#include <string>
+
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 using namespace XFILE;
 
@@ -341,5 +342,3 @@ int CPosixFile::Stat(struct __stat64* buffer)
 
   return fstat64(m_fd, buffer);
 }
-
-#endif // TARGET_POSIX

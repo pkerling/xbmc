@@ -8,15 +8,17 @@
 
 #pragma once
 
-#include <map>
-#include <utility>
-#include <vector>
-
 #include "input/Key.h"
 #include "interfaces/IActionListener.h"
 #include "settings/lib/ISettingCallback.h"
 #include "threads/CriticalSection.h"
 #include "utils/Stopwatch.h"
+
+#include <map>
+#include <utility>
+#include <vector>
+
+struct IntegerSettingOption;
 
 enum SeekType
 {
@@ -30,7 +32,7 @@ public:
   CSeekHandler() = default;
   ~CSeekHandler() override;
 
-  static void SettingOptionsSeekStepsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsSeekStepsFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
 
   void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
   bool OnAction(const CAction &action) override;

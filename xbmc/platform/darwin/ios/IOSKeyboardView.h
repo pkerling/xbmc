@@ -1,39 +1,17 @@
 /*
- *  Copyright (C) 2012-2018 Team Kodi
+ *  Copyright (C) 2019- Team Kodi
  *  This file is part of Kodi - https://kodi.tv
  *
  *  SPDX-License-Identifier: GPL-2.0-or-later
  *  See LICENSES/README.md for more information.
  */
 
-#import <UIKit/UIKit.h>
-#include "IOSKeyboard.h"
+#import "platform/darwin/ios-common/DarwinEmbedKeyboardView.h"
 
-@interface KeyboardView : UIView <UITextFieldDelegate>
-{
-  NSMutableString *text;
-  BOOL _confirmed;
-  CIOSKeyboard *_iosKeyboard;
-  bool *_canceled;
-  BOOL _deactivated;
-  UITextField *_textField;
-  UITextField *_heading;
-  int _keyboardIsShowing; // 0: not, 1: will show, 2: showing
-  CGRect _kbRect;
-}
+@interface IOSKeyboardView : KeyboardView
 
-@property (nonatomic, retain) NSMutableString *text;
-@property (getter = isConfirmed) BOOL _confirmed;
-@property (assign, setter = registerKeyboard:) CIOSKeyboard *_iosKeyboard;
-@property CGRect _frame;
+// use -initWithFrame:
+- (instancetype)init NS_UNAVAILABLE;
++ (instancetype)new NS_UNAVAILABLE;
 
-- (void) setHeading:(NSString *)heading;
-- (void) setHidden:(BOOL)hidden;
-- (void) activate;
-- (void) deactivate;
-- (void) setKeyboardText:(NSString*)aText closeKeyboard:(BOOL)closeKeyboard;
-- (void) textChanged:(NSNotification*)aNotification;
-- (void) setCancelFlag:(bool *)cancelFlag;
-- (void) doDeactivate:(NSDictionary *)dict;
-- (id)initWithFrameInternal;
 @end

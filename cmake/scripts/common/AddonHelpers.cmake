@@ -21,7 +21,7 @@ macro(add_cpack_workaround target version ext)
 
   add_custom_command(TARGET addon-package POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E make_directory ${PACKAGE_DIR}
-                     COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_DIRECTORY}/addon-${target}-${version}.${ext} ${PACKAGE_DIR}/${target}-${version}.${ext})
+                     COMMAND ${CMAKE_COMMAND} -E copy ${CPACK_PACKAGE_DIRECTORY}/addon-${target}-${version}-${PLATFORM_TAG}.${ext} ${PACKAGE_DIR}/${target}+${PLATFORM_TAG}/${target}-${version}.${ext})
 endmacro()
 
 # Grab the version from a given add-on's addon.xml
@@ -92,6 +92,7 @@ macro (build_addon target prefix libs)
       endforeach()
     endif()
 
+    message(STATUS "Addon dependency check ...")
     # Set defines used in addon.xml.in and read from versions.h to set add-on
     # version parts automatically
     file(STRINGS ${KODI_INCLUDE_DIR}/versions.h BIN_ADDON_PARTS)
@@ -108,7 +109,8 @@ macro (build_addon target prefix libs)
         if("${include_name}" MATCHES "_DEPENDS")
           # Use start definition name as base for other value type
           list(GET loop_var 0 list_name)
-          string(REPLACE "_DEPENDS" "" depends_name ${list_name})
+          string(REPLACE "_DEPENDS" "_MIN" depends_minver ${list_name})
+          string(REPLACE "_DEPENDS" "" depends_ver ${list_name})
           string(REPLACE "_DEPENDS" "_XML_ID" xml_entry_name ${list_name})
           string(REPLACE "_DEPENDS" "_USED" used_type_name ${list_name})
 
@@ -120,16 +122,14 @@ macro (build_addon target prefix libs)
             foreach(src_file ${USED_SOURCES})
               file(STRINGS ${src_file} BIN_ADDON_SRC_PARTS)
               foreach(loop_var ${BIN_ADDON_SRC_PARTS})
-                string(FIND "${loop_var}" "#include" matchres)
-                if("${matchres}" EQUAL 0)
-                  string(REPLACE " " ";" loop_var "${loop_var}")
-                  list(GET loop_var 1 include_name)
-                  string(REGEX REPLACE "[<>\"]|kodi/" "" include_name "${include_name}")
-                  if(include_name MATCHES ${depend_header})
-                    set(ADDON_DEPENDS "${ADDON_DEPENDS}\n<import addon=\"${${xml_entry_name}}\" version=\"${${depends_name}}\"/>")
-                    # Inform with them the addon header about used type
+                string(REGEX MATCH "^[ \t]*#[ \t]*(include|import)[ \t]*[<\"](kodi\/)?(.+)[\">]" include_name "${loop_var}")
+                if(include_name AND CMAKE_MATCH_3 MATCHES ^${depend_header})
+                  get_directory_property(CURRENT_DEFS COMPILE_DEFINITIONS)
+                  if(NOT used_type_name IN_LIST CURRENT_DEFS)
+                    set(ADDON_DEPENDS "${ADDON_DEPENDS}\n<import addon=\"${${xml_entry_name}}\" minversion=\"${${depends_minver}}\" version=\"${${depends_ver}}\"/>")
+                    # Inform with them the addon header about used type, if not present before
                     add_definitions(-D${used_type_name})
-                    message(STATUS "Added usage definition: ${used_type_name}")
+                    message(STATUS " - Added API usage definition: ${used_type_name} (Version: \"${${depends_ver}}\", Min. Version: \"${${depends_minver}}\")")
                     set(FOUND_HEADER_USAGE 1)
                   endif()
                 endif()
@@ -153,7 +153,7 @@ macro (build_addon target prefix libs)
       endif()
     endforeach()
 
-    add_library(${target} ${${prefix}_SOURCES})
+    add_library(${target} ${${prefix}_SOURCES} ${${prefix}_HEADERS})
     target_link_libraries(${target} ${${libs}})
     set_target_properties(${target} PROPERTIES VERSION ${${prefix}_VERSION}
                                                SOVERSION ${APP_VERSION_MAJOR}.${APP_VERSION_MINOR}
@@ -187,7 +187,6 @@ macro (build_addon target prefix libs)
   # if there's an addon.xml.in we need to generate the addon.xml
   if(EXISTS ${PROJECT_SOURCE_DIR}/${target}/addon.xml.in)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/${target}/addon.xml.in)
-    set(PLATFORM ${CORE_SYSTEM_NAME})
 
     file(READ ${PROJECT_SOURCE_DIR}/${target}/addon.xml.in addon_file)
 
@@ -199,6 +198,9 @@ macro (build_addon target prefix libs)
       endif()
     endif()
 
+    # TODO: remove this hack after v18
+    string(REPLACE "<platform>\@PLATFORM\@</platform>" "<platform>\@PLATFORM_TAG\@</platform>" addon_file "${addon_file}")
+
     string(CONFIGURE "${addon_file}" addon_file_conf @ONLY)
     file(GENERATE OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${target}/addon.xml CONTENT "${addon_file_conf}")
     if(${APP_NAME_UC}_BUILD_DIR)
@@ -209,7 +211,6 @@ macro (build_addon target prefix libs)
   # if there's an settings.xml.in we need to generate the settings.xml
   if(EXISTS ${PROJECT_SOURCE_DIR}/${target}/resources/settings.xml.in)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/${target}/resources/settings.xml.in)
-    set(PLATFORM ${CORE_SYSTEM_NAME})
 
     file(READ ${PROJECT_SOURCE_DIR}/${target}/resources/settings.xml.in settings_file)
     string(CONFIGURE "${settings_file}" settings_file_conf @ONLY)
@@ -234,10 +235,10 @@ macro (build_addon target prefix libs)
     endif()
     set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
     set(CPACK_COMPONENTS_IGNORE_GROUPS 1)
-    list(APPEND CPACK_COMPONENTS_ALL ${target}-${${prefix}_VERSION})
+    list(APPEND CPACK_COMPONENTS_ALL ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
     # Pack files together to create an archive
     install(DIRECTORY ${target} ${CMAKE_CURRENT_BINARY_DIR}/${target} DESTINATION ./
-                                COMPONENT ${target}-${${prefix}_VERSION}
+                                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG}
                                 REGEX ".+\\.xml\\.in(clude)?$" EXCLUDE)
     if(WIN32)
       if(NOT CPACK_PACKAGE_DIRECTORY)
@@ -256,21 +257,36 @@ macro (build_addon target prefix libs)
       if(${prefix}_SOURCES)
         # install the generated DLL file
         install(PROGRAMS ${LIBRARY_LOCATION} DESTINATION ${target}
-                COMPONENT ${target}-${${prefix}_VERSION})
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
 
         # for debug builds also install the PDB file
         install(FILES $<TARGET_PDB_FILE:${target}> DESTINATION ${target}
                 CONFIGURATIONS Debug RelWithDebInfo
-                COMPONENT ${target}-${${prefix}_VERSION})
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
       if(${prefix}_CUSTOM_BINARY)
-        install(FILES ${LIBRARY_LOCATION} DESTINATION ${target} RENAME ${LIBRARY_FILENAME})
+        install(FILES ${LIBRARY_LOCATION} DESTINATION ${target} RENAME ${LIBRARY_FILENAME}
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
       if(${prefix}_CUSTOM_DATA)
-        install(DIRECTORY ${${prefix}_CUSTOM_DATA} DESTINATION ${target}/resources)
+        install(DIRECTORY ${${prefix}_CUSTOM_DATA} DESTINATION ${target}/resources
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
       if(${prefix}_ADDITIONAL_BINARY)
-        install(FILES ${${prefix}_ADDITIONAL_BINARY} DESTINATION ${target})
+        install(FILES ${${prefix}_ADDITIONAL_BINARY} DESTINATION ${target}
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
+      endif()
+      if(${prefix}_ADDITIONAL_BINARY_EXE)
+        install(PROGRAMS ${${prefix}_ADDITIONAL_BINARY_EXE} DESTINATION ${target}
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
+      endif()
+      if(${prefix}_ADDITIONAL_BINARY_PARTS)
+        install(FILES ${${prefix}_ADDITIONAL_BINARY_PARTS} DESTINATION ${target}
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
+      endif()
+      if(${prefix}_ADDITIONAL_BINARY_DIRS)
+        install(DIRECTORY ${${prefix}_ADDITIONAL_BINARY_DIRS} DESTINATION ${target} USE_SOURCE_PERMISSIONS
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
     else() # NOT WIN32
       if(NOT CPACK_PACKAGE_DIRECTORY)
@@ -278,17 +294,31 @@ macro (build_addon target prefix libs)
       endif()
       if(${prefix}_SOURCES)
         install(TARGETS ${target} DESTINATION ${target}
-                COMPONENT ${target}-${${prefix}_VERSION})
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
       if(${prefix}_CUSTOM_BINARY)
         install(FILES ${LIBRARY_LOCATION} DESTINATION ${target} RENAME ${LIBRARY_FILENAME}
-                COMPONENT ${target}-${${prefix}_VERSION})
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
       if(${prefix}_CUSTOM_DATA)
-        install(DIRECTORY ${${prefix}_CUSTOM_DATA} DESTINATION ${target}/resources)
+        install(DIRECTORY ${${prefix}_CUSTOM_DATA} DESTINATION ${target}/resources
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
       if(${prefix}_ADDITIONAL_BINARY)
-        install(FILES ${${prefix}_ADDITIONAL_BINARY} DESTINATION ${target})
+        install(FILES ${${prefix}_ADDITIONAL_BINARY} DESTINATION ${target}
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
+      endif()
+      if(${prefix}_ADDITIONAL_BINARY_EXE)
+        install(PROGRAMS ${${prefix}_ADDITIONAL_BINARY_EXE} DESTINATION ${target}
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
+      endif()
+      if(${prefix}_ADDITIONAL_BINARY_PARTS)
+        install(FILES ${${prefix}_ADDITIONAL_BINARY_PARTS} DESTINATION ${target}
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
+      endif()
+      if(${prefix}_ADDITIONAL_BINARY_DIRS)
+        install(DIRECTORY ${${prefix}_ADDITIONAL_BINARY_DIRS} DESTINATION ${target} USE_SOURCE_PERMISSIONS
+                COMPONENT ${target}-${${prefix}_VERSION}-${PLATFORM_TAG})
       endif()
     endif()
     add_cpack_workaround(${target} ${${prefix}_VERSION} ${ext})
@@ -333,14 +363,24 @@ macro (build_addon target prefix libs)
     if(${prefix}_ADDITIONAL_BINARY)
       install(FILES ${${prefix}_ADDITIONAL_BINARY} DESTINATION ${CMAKE_INSTALL_LIBDIR}/addons/${target})
     endif()
+    if(${prefix}_ADDITIONAL_BINARY_EXE)
+      install(PROGRAMS ${${prefix}_ADDITIONAL_BINARY_EXE} DESTINATION ${CMAKE_INSTALL_LIBDIR}/addons/${target})
+    endif()
+    if(${prefix}_ADDITIONAL_BINARY_PARTS)
+      install(FILES ${${prefix}_ADDITIONAL_BINARY_PARTS} DESTINATION ${CMAKE_INSTALL_LIBDIR}/addons/${target})
+    endif()
+    if(${prefix}_ADDITIONAL_BINARY_DIRS)
+      install(DIRECTORY ${${prefix}_ADDITIONAL_BINARY_DIRS} DESTINATION ${CMAKE_INSTALL_LIBDIR}/addons/${target} USE_SOURCE_PERMISSIONS)
+    endif()
   endif()
   if(${APP_NAME_UC}_BUILD_DIR)
     file(GLOB_RECURSE files ${CMAKE_CURRENT_SOURCE_DIR}/${target}/*)
     if(${prefix}_CUSTOM_DATA)
+      get_filename_component(dname ${${prefix}_CUSTOM_DATA} NAME)
       add_custom_command(TARGET ${target} POST_BUILD
                          COMMAND ${CMAKE_COMMAND} -E copy_directory
                                  ${${prefix}_CUSTOM_DATA}
-                                 ${${APP_NAME_UC}_BUILD_DIR}/addons/${target}/resources)
+                                 ${${APP_NAME_UC}_BUILD_DIR}/addons/${target}/resources/${dname})
     endif()
     foreach(file ${files})
       string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}/${target}/" "" name "${file}")

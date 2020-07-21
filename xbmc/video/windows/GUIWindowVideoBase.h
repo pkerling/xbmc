@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include "windows/GUIMediaWindow.h"
-#include "video/VideoDatabase.h"
 #include "PlayListPlayer.h"
+#include "video/VideoDatabase.h"
 #include "video/VideoThumbLoader.h"
+#include "windows/GUIMediaWindow.h"
 
 enum VideoSelectAction
 {
@@ -21,7 +21,8 @@ enum VideoSelectAction
   SELECT_ACTION_INFO,
   SELECT_ACTION_MORE,
   SELECT_ACTION_PLAY,
-  SELECT_ACTION_PLAYPART
+  SELECT_ACTION_PLAYPART,
+  SELECT_ACTION_QUEUE
 };
 
 class CGUIWindowVideoBase : public CGUIMediaWindow, public IBackgroundLoaderObserver
@@ -85,7 +86,7 @@ protected:
 
   void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
   bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
-  virtual void OnQueueItem(int iItem);
+  virtual void OnQueueItem(int iItem, bool first = false);
   virtual void OnDeleteItem(CFileItemPtr pItem);
   void OnDeleteItem(int iItem) override;
   virtual void DoSearch(const std::string& strSearch, CFileItemList& items) {};

@@ -8,50 +8,56 @@
 
 #pragma once
 
-#include <memory>
-#include <vector>
-
 #include "DVDInputStream.h"
 #include "IVideoPlayer.h"
 #include "addons/AddonProvider.h"
 #include "addons/binary-addons/AddonInstanceHandler.h"
 #include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/Inputstream.h"
 
+#include <memory>
+#include <vector>
+
 class CInputStreamProvider
   : public ADDON::IAddonProvider
 {
 public:
-  CInputStreamProvider(ADDON::BinaryAddonBasePtr addonBase, kodi::addon::IAddonInstance* parentInstance);
+  CInputStreamProvider(const ADDON::AddonInfoPtr& addonInfo, KODI_HANDLE parentInstance);
 
-  void getAddonInstance(INSTANCE_TYPE instance_type, ADDON::BinaryAddonBasePtr& addonBase, kodi::addon::IAddonInstance*& parentInstance) override;
+  void GetAddonInstance(INSTANCE_TYPE instance_type,
+                        ADDON::AddonInfoPtr& addonInfo,
+                        KODI_HANDLE& parentInstance) override;
 
 private:
-  ADDON::BinaryAddonBasePtr m_addonBase;
-  kodi::addon::IAddonInstance* m_parentInstance;
+  ADDON::AddonInfoPtr m_addonInfo;
+  KODI_HANDLE m_parentInstance;
 };
 
 //! \brief Input stream class
 class CInputStreamAddon
-  : public ADDON::IAddonInstanceHandler,
-    public CDVDInputStream,
-    public CDVDInputStream::IDisplayTime,
-    public CDVDInputStream::ITimes,
-    public CDVDInputStream::IPosTime,
-    public CDVDInputStream::IDemux
+  : public ADDON::IAddonInstanceHandler
+  , public CDVDInputStream
+  , public CDVDInputStream::IDisplayTime
+  , public CDVDInputStream::ITimes
+  , public CDVDInputStream::IPosTime
+  , public CDVDInputStream::IDemux
+  , public CDVDInputStream::IChapter
 {
 public:
-  CInputStreamAddon(ADDON::BinaryAddonBasePtr& addonBase, IVideoPlayer* player, const CFileItem& fileitem);
+  CInputStreamAddon(const ADDON::AddonInfoPtr& addonInfo,
+                    IVideoPlayer* player,
+                    const CFileItem& fileitem,
+                    const std::string& instanceId);
   ~CInputStreamAddon() override;
 
-  static bool Supports(ADDON::BinaryAddonBasePtr& addonBase, const CFileItem& fileitem);
+  static bool Supports(const ADDON::AddonInfoPtr& addonInfo, const CFileItem& fileitem);
 
   // CDVDInputStream
   bool Open() override;
   void Close() override;
   int Read(uint8_t* buf, int buf_size) override;
   int64_t Seek(int64_t offset, int whence) override;
-  bool Pause(double dTime) override;
   int64_t GetLength() override;
+  int GetBlockSize() override;
   bool IsEOF() override;
   bool CanSeek() override; //! @todo drop this
   bool CanPause() override;
@@ -85,6 +91,14 @@ public:
   void FlushDemux() override;
   void SetVideoResolution(int width, int height) override;
   bool IsRealtime() override;
+
+  // IChapter
+  CDVDInputStream::IChapter* GetIChapter() override;
+  int GetChapter() override;
+  int GetChapterCount() override;
+  void GetChapterName(std::string& name, int ch = -1) override;
+  int64_t GetChapterPos(int ch = -1) override;
+  bool SeekChapter(int ch) override;
 
 protected:
   static int ConvertVideoCodecProfile(STREAMCODEC_PROFILE profile);

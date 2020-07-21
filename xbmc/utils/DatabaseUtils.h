@@ -8,13 +8,13 @@
 
 #pragma once
 
+#include "media/MediaType.h"
+
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
-
-#include "media/MediaType.h"
 
 class CVariant;
 
@@ -59,6 +59,11 @@ typedef enum {
   FieldId,
   FieldGenre,
   FieldAlbum,
+  FieldDiscTitle,
+  FieldIsBoxset,
+  FieldTotalDiscs,
+  FieldOrigYear,
+  FieldOrigDate,
   FieldArtist,
   FieldArtistSort,
   FieldAlbumArtist,
@@ -77,6 +82,8 @@ typedef enum {
   FieldComment,
   FieldRole,
   FieldDateAdded,
+  FieldDateModified,
+  FieldDateNew,
   FieldTvShowTitle,
   FieldPlot,
   FieldPlotOutline,
@@ -131,6 +138,12 @@ typedef enum {
   FieldStereoMode,
   FieldUserRating,
   FieldRelevance, // Used for actors' appearances
+  FieldClientChannelOrder,
+  FieldBPM,
+  FieldMusicBitRate,
+  FieldSampleRate,
+  FieldNoOfChannels,
+  FieldAlbumStatus,
   FieldMax
 } Field;
 
@@ -160,6 +173,8 @@ public:
   static bool GetDatabaseResults(const MediaType &mediaType, const FieldList &fields, const std::unique_ptr<dbiplus::Dataset> &dataset, DatabaseResults &results);
 
   static std::string BuildLimitClause(int end, int start = 0);
+  static std::string BuildLimitClauseOnly(int end, int start = 0);
+  static size_t GetLimitCount(int end, int start);
 
 private:
   static int GetField(Field field, const MediaType &mediaType, bool asIndex);

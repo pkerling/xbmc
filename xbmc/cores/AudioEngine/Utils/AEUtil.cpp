@@ -16,7 +16,7 @@
 #include <cassert>
 
 extern "C" {
-#include "libavutil/channel_layout.h"
+#include <libavutil/channel_layout.h>
 }
 
 /* declare the rng seed and initialize it */
@@ -33,7 +33,7 @@ void AEDelayStatus::SetDelay(double d)
   tick = CurrentHostCounter();
 }
 
-double AEDelayStatus::GetDelay()
+double AEDelayStatus::GetDelay() const
 {
   double d = 0;
   if (tick)

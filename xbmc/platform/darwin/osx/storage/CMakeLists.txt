@@ -1,5 +1,5 @@
-set(SOURCES DarwinStorageProvider.cpp)
+set(SOURCES OSXStorageProvider.cpp)
 
-set(HEADERS DarwinStorageProvider.h)
+set(HEADERS OSXStorageProvider.h)
 
 core_add_library(platform_osx_storage)

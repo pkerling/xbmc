@@ -167,6 +167,7 @@
       <k mod="ctrl,shift">ReloadKeymaps</k>
       <d mod="ctrl,shift">ToggleDebug</d>
       <r mod="ctrl,shift">ToggleDirtyRegionVisualization</r>
+      <f11>HDRToggle</f11>
     </keyboard>
   </global>
   <LoginScreen>
@@ -249,6 +250,9 @@
       <t>ShowTimerRule</t>
       <epg>PreviousMenu</epg>
       <g>NextChannelGroup</g>
+      <n>ActivateWindow(PVRGuideControls)</n>
+      <enter mod="longpress">ActivateWindow(PVRGuideControls)</enter>
+      <return mod="longpress">ActivateWindow(PVRGuideControls)</return>
       <backspace mod="longpress">Number0</backspace> <!-- 0 key goes to "now" on EPG timeline -->
       <browser_back mod="longpress">Number0</browser_back> <!-- 0 key goes to "now" on EPG timeline -->
       <period mod="longpress">ChannelNumberSeparator</period>
@@ -298,6 +302,11 @@
     <keyboard>
       <e>PreviousMenu</e>
       <t>ShowTimerRule</t>
+      <epg>PreviousMenu</epg>
+      <g>NextChannelGroup</g>
+      <n>ActivateWindow(PVRGuideControls)</n>
+      <enter mod="longpress">ActivateWindow(PVRGuideControls)</enter>
+      <return mod="longpress">ActivateWindow(PVRGuideControls)</return>
       <backspace mod="longpress">Number0</backspace> <!-- 0 key goes to "now" on EPG timeline -->
       <browser_back mod="longpress">Number0</browser_back> <!-- 0 key goes to "now" on EPG timeline -->
       <period mod="longpress">ChannelNumberSeparator</period>

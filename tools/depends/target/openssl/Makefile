@@ -12,15 +12,16 @@ CONFIGURE=MACHINE=$(PLATFORM) ./config no-shared zlib no-asm --prefix=$(PREFIX) 
 ifeq ($(OS), android)
   CONFIGURE=./Configure no-shared zlib --prefix=$(PREFIX) --with-zlib-include=$(PREFIX)/include --with-zlib-lib=$(PREFIX)/lib linux-generic32 -D__ANDROID_API__=$(NDK_LEVEL)
 endif
-ifeq ($(OS), ios)
-  CONFIGURE=./Configure iphoneos-cross no-shared zlib no-asm --prefix=$(PREFIX)
+ifeq ($(OS), darwin_embedded)
+  ifeq ($(TARGET_PLATFORM),appletvos)
+    # Need to add "no-async" to avoid "'setcontext' is unavailable: not available on tvOS" error
+    CONFIGURE=./Configure iphoneos-cross no-shared zlib no-asm no-async --prefix=$(PREFIX)
+  else
+    CONFIGURE=./Configure iphoneos-cross no-shared zlib no-asm --prefix=$(PREFIX)
+  endif
 endif
 ifeq ($(OS), osx)
-  ifeq ($(CPU),x86_64)
-    CONFIGURE=./Configure darwin64-$(CPU)-cc zlib no-asm no-shared --prefix=$(PREFIX)
-  else
-    CONFIGURE=./Configure darwin-$(CPU)-cc zlib no-asm no-shared --prefix=$(PREFIX)
-  endif
+  CONFIGURE=./Configure darwin64-$(CPU)-cc zlib no-asm no-shared --prefix=$(PREFIX)
 endif
 LIBDYLIB=$(PLATFORM)/libssl.a
 
@@ -39,12 +40,12 @@ $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	fi
 	# for iphoneos-cross config a sysroot argument is added
 	# however sysroot already set in Makefile.include, so remove this
-	if test "$(OS)" = "ios"; then \
+	if test "$(OS)" = "darwin_embedded"; then \
 		sed -E -ie "s|^CFLAGS=-|CFLAGS=$(CFLAGS) -|" "$(PLATFORM)/Makefile"; \
 		sed -ie "s|-isysroot \$$(CROSS_TOP)/SDKs/\$$(CROSS_SDK) ||" "$(PLATFORM)/Makefile"; \
 		sed -ie "s|static volatile sig_atomic_t intr_signal;|static volatile intr_signal;|" "$(PLATFORM)/crypto/ui/ui_openssl.c"; \
 	fi
-	sed -ie "s|apps test||" "$(PLATFORM)/Makefile"; \
+	sed -ie "s|PROGRAMS=|PROGRAMS=#|" "$(PLATFORM)/Makefile";
 
 $(LIBDYLIB): $(PLATFORM)
 	$(MAKE) -C $(PLATFORM)

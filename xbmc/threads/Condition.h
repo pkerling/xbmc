@@ -9,19 +9,17 @@
 #pragma once
 
 #include "threads/SingleLock.h"
-#include "threads/Helpers.h"
 #include "threads/SystemClock.h"
 
-#include <condition_variable>
 #include <chrono>
+#include <condition_variable>
 
 namespace XbmcThreads
 {
 
   /**
    * This is a thin wrapper around std::condition_variable_any. It is subject
-   *  to "spurious returns" as it is built on boost which is built on posix
-   *  on many of our platforms.
+   *  to "spurious returns"
    */
   class ConditionVariable
   {

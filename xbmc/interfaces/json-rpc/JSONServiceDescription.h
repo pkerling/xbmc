@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-#include <limits>
-#include <memory>
-
 #include "JSONUtils.h"
 #include "utils/Variant.h"
+
+#include <limits>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace JSONRPC
 {
@@ -37,9 +37,9 @@ namespace JSONRPC
     JSONSchemaTypeDefinition();
 
     bool Parse(const CVariant &value, bool isParameter = false);
-    JSONRPC_STATUS Check(const CVariant &value, CVariant &outputValue, CVariant &errorData);
+    JSONRPC_STATUS Check(const CVariant& value, CVariant& outputValue, CVariant& errorData) const;
     void Print(bool isParameter, bool isGlobal, bool printDefault, bool printDescriptions, CVariant &output) const;
-    void Set(const JSONSchemaTypeDefinitionPtr typeDefinition);
+    void ResolveReference();
 
     std::string missingReference;
 
@@ -382,6 +382,7 @@ namespace JSONRPC
 
     static JSONSchemaTypeDefinitionPtr GetType(const std::string &identification);
 
+    static void ResolveReferences();
     static void Cleanup();
 
   private:

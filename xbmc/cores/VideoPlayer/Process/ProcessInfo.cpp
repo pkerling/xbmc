@@ -7,6 +7,7 @@
  */
 
 #include "ProcessInfo.h"
+
 #include "ServiceBroker.h"
 #include "cores/DataCacheCore.h"
 #include "settings/AdvancedSettings.h"
@@ -667,7 +668,7 @@ CVideoSettings CProcessInfo::GetVideoSettings()
 CVideoSettingsLocked& CProcessInfo::UpdateVideoSettings()
 {
   CSingleLock lock(m_settingsSection);
-  return *m_videoSettingsLocked.get();
+  return *m_videoSettingsLocked;
 }
 
 void CProcessInfo::SetVideoSettings(CVideoSettings &settings)

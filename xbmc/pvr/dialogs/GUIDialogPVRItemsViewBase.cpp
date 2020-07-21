@@ -12,18 +12,19 @@
 #include "FileItem.h"
 #include "ServiceBroker.h"
 #include "dialogs/GUIDialogContextMenu.h"
-#include "input/Action.h"
-#include "input/ActionIDs.h"
+#include "input/actions/Action.h"
+#include "input/actions/ActionIDs.h"
+#include "pvr/PVRManager.h"
+#include "pvr/guilib/PVRGUIActions.h"
 #include "view/ViewState.h"
 
-#include "pvr/PVRGUIActions.h"
-#include "pvr/PVRManager.h"
+#include <utility>
 
 #define CONTROL_LIST 11
 
 using namespace PVR;
 
-CGUIDialogPVRItemsViewBase::CGUIDialogPVRItemsViewBase(int id, const std::string &xmlFile)
+CGUIDialogPVRItemsViewBase::CGUIDialogPVRItemsViewBase(int id, const std::string& xmlFile)
 : CGUIDialog(id, xmlFile),
   m_vecItems(new CFileItemList)
 {
@@ -54,7 +55,7 @@ void CGUIDialogPVRItemsViewBase::OnDeinitWindow(int nextWindowID)
   Clear();
 }
 
-bool CGUIDialogPVRItemsViewBase::OnAction(const CAction &action)
+bool CGUIDialogPVRItemsViewBase::OnAction(const CAction& action)
 {
   if (m_viewControl.HasControl(GetFocusedControlID()))
   {
@@ -77,7 +78,7 @@ bool CGUIDialogPVRItemsViewBase::OnAction(const CAction &action)
   return CGUIDialog::OnAction(action);
 }
 
-CGUIControl *CGUIDialogPVRItemsViewBase::GetFirstFocusableControl(int id)
+CGUIControl* CGUIDialogPVRItemsViewBase::GetFirstFocusableControl(int id)
 {
   if (m_viewControl.HasControl(id))
     id = m_viewControl.GetCurrentControl();
@@ -90,10 +91,11 @@ void CGUIDialogPVRItemsViewBase::ShowInfo(int itemIdx)
   if (itemIdx < 0 || itemIdx >= m_vecItems->Size())
     return;
 
-  // Preserve the item before closing self, because this will clear m_vecItems
-  const CFileItemPtr itemptr = m_vecItems->Get(itemIdx);
-  Close();
-  CServiceBroker::GetPVRManager().GUIActions()->ShowEPGInfo(itemptr);
+  const std::shared_ptr<CFileItem> item = m_vecItems->Get(itemIdx);
+  if (!item)
+    return;
+
+  CServiceBroker::GetPVRManager().GUIActions()->ShowEPGInfo(item);
 }
 
 bool CGUIDialogPVRItemsViewBase::ContextMenu(int itemIdx)

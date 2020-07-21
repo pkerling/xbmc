@@ -8,15 +8,15 @@
 
 #include "GroupUtils.h"
 
-#include <map>
-#include <set>
-
 #include "FileItem.h"
 #include "filesystem/MultiPathDirectory.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "video/VideoDbUrl.h"
 #include "video/VideoInfoTag.h"
+
+#include <map>
+#include <set>
 
 using SetMap = std::map<int, std::set<CFileItemPtr> >;
 
@@ -78,7 +78,7 @@ bool GroupUtils::Group(GroupBy groupBy, const std::string &baseDir, const CFileI
         pItem->SetPath(basePath);
       else
       {
-        videoUrl.AddOptions(itemsUrl.GetOptionsString());
+        videoUrl.AddOptions((*set->second.begin())->GetURL().GetOptions());
         pItem->SetPath(videoUrl.ToString());
       }
       pItem->m_bIsFolder = true;

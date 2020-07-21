@@ -22,8 +22,8 @@
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/log.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
 
 using namespace ADDON;
 
@@ -183,17 +183,11 @@ void CGUIVisualisationControl::Process(unsigned int currentTime, CDirtyRegionLis
       m_updateTrack = false;
     }
 
-    MarkDirtyRegion();
+    if (m_instance && m_instance->IsDirty())
+      MarkDirtyRegion();
   }
 
   CGUIControl::Process(currentTime, dirtyregions);
-}
-
-bool CGUIVisualisationControl::IsDirty()
-{
-  if (m_instance)
-    return m_instance->IsDirty();
-  return false;
 }
 
 void CGUIVisualisationControl::Render()
@@ -248,7 +242,7 @@ void CGUIVisualisationControl::OnInitialize(int channels, int samplesPerSec, int
 
 void CGUIVisualisationControl::OnAudioData(const float* audioData, unsigned int audioDataLength)
 {
-  if (!m_instance || !m_alreadyStarted)
+  if (!m_instance || !m_alreadyStarted || !audioData || audioDataLength == 0)
     return;
 
   // Save our audio data in the buffers
@@ -280,7 +274,6 @@ void CGUIVisualisationControl::OnAudioData(const float* audioData, unsigned int 
   { // Transfer data to our visualisation
     m_instance->AudioData(ptrAudioBuffer->Get(), ptrAudioBuffer->Size(), nullptr, 0);
   }
-  return;
 }
 
 void CGUIVisualisationControl::UpdateTrack()
@@ -370,7 +363,10 @@ bool CGUIVisualisationControl::GetPresetList(std::vector<std::string> &vecpreset
 
 bool CGUIVisualisationControl::InitVisualization()
 {
-  const ADDON::BinaryAddonBasePtr addonBase = CServiceBroker::GetBinaryAddonManager().GetInstalledAddonInfo(CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(CSettings::SETTING_MUSICPLAYER_VISUALISATION), ADDON::ADDON_VIZ);
+  const std::string addon = CServiceBroker::GetSettingsComponent()->GetSettings()->GetString(
+      CSettings::SETTING_MUSICPLAYER_VISUALISATION);
+  const ADDON::AddonInfoPtr addonBase =
+      CServiceBroker::GetAddonMgr().GetAddonInfo(addon, ADDON::ADDON_VIZ);
   if (!addonBase)
     return false;
 

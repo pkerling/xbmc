@@ -6,12 +6,14 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "Color.h"
 #include "ColorUtils.h"
-#include "math.h"
+
+#include "Color.h"
+
+#include <math.h>
 
 UTILS::Color ColorUtils::ChangeOpacity(const UTILS::Color color, const float opacity)
 {
   int newAlpha = ceil( ((color >> 24) & 0xff) * opacity);
-  return color + (newAlpha << 24);
+  return (color & 0x00FFFFFF) | (newAlpha << 24);
 };

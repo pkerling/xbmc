@@ -8,21 +8,22 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-#include <utility>
-#include <vector>
-
 #include "dbwrappers/Database.h"
 #include "dbwrappers/DatabaseQuery.h"
 #include "settings/dialogs/GUIDialogSettingsManualBase.h"
 #include "settings/lib/SettingType.h"
 #include "utils/DatabaseUtils.h"
 
+#include <map>
+#include <string>
+#include <utility>
+#include <vector>
+
 class CDbUrl;
 class CSetting;
 class CSmartPlaylist;
 class CSmartPlaylistRule;
+struct StringSettingOption;
 
 class CGUIDialogMediaFilter : public CGUIDialogSettingsManualBase
 {
@@ -78,7 +79,7 @@ protected:
   CSmartPlaylistRule* AddRule(Field field, CDatabaseQueryRule::SEARCH_OPERATOR ruleOperator = CDatabaseQueryRule::OPERATOR_CONTAINS);
   void DeleteRule(Field field);
 
-  static void GetStringListOptions(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+  static void GetStringListOptions(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
 
   CDbUrl* m_dbUrl;
   std::string m_mediaType;

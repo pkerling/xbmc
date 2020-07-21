@@ -9,7 +9,6 @@
 #pragma once
 
 #include <androidjni/JNIBase.h>
-
 #include <androidjni/SurfaceTexture.h>
 
 class CJNIXBMCSurfaceTextureOnFrameAvailableListener : public CJNISurfaceTextureOnFrameAvailableListener, public CJNIInterfaceImplem<CJNIXBMCSurfaceTextureOnFrameAvailableListener>
@@ -18,11 +17,11 @@ public:
   CJNIXBMCSurfaceTextureOnFrameAvailableListener();
   CJNIXBMCSurfaceTextureOnFrameAvailableListener(const CJNIXBMCSurfaceTextureOnFrameAvailableListener& other);
   CJNIXBMCSurfaceTextureOnFrameAvailableListener(const jni::jhobject &object) : CJNIBase(object) {}
-  virtual ~CJNIXBMCSurfaceTextureOnFrameAvailableListener();
+  ~CJNIXBMCSurfaceTextureOnFrameAvailableListener() override;
 
   static void RegisterNatives(JNIEnv* env);
 
-  void onFrameAvailable(CJNISurfaceTexture) {}
+  void onFrameAvailable(CJNISurfaceTexture) override {}
 
 protected:
   static void _onFrameAvailable(JNIEnv* env, jobject thiz, jobject surface);

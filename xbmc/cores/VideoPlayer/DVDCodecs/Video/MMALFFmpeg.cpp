@@ -18,7 +18,7 @@
 #include "settings/AdvancedSettings.h"
 
 extern "C" {
-#include "libavutil/imgutils.h"
+#include <libavutil/imgutils.h>
 }
 
 using namespace MMAL;
@@ -245,7 +245,7 @@ bool CDecoder::Open(AVCodecContext *avctx, AVCodecContext* mainctx, enum AVPixel
 {
   CSingleLock lock(m_section);
 
-  CLog::Log(LOGNOTICE, "%s::%s - fmt:%d", CLASSNAME, __FUNCTION__, fmt);
+  CLog::Log(LOGINFO, "%s::%s - fmt:%d", CLASSNAME, __FUNCTION__, fmt);
 
   CLog::Log(LOGDEBUG, "%s::%s MMAL - source requires %d references", CLASSNAME, __FUNCTION__, avctx->refs);
 

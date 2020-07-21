@@ -7,10 +7,11 @@
  */
 
 #include "PlaylistFileDirectory.h"
-#include "playlists/PlayListFactory.h"
+
 #include "File.h"
 #include "URL.h"
 #include "playlists/PlayList.h"
+#include "playlists/PlayListFactory.h"
 
 using namespace PLAYLIST;
 
@@ -24,7 +25,7 @@ namespace XFILE
   {
     const std::string pathToUrl = url.Get();
     std::unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
-    if ( NULL != pPlayList.get())
+    if (nullptr != pPlayList)
     {
       // load it
       if (!pPlayList->Load(pathToUrl))
@@ -46,7 +47,7 @@ namespace XFILE
   {
     const std::string pathToUrl = url.Get();
     std::unique_ptr<CPlayList> pPlayList (CPlayListFactory::Create(pathToUrl));
-    if ( NULL != pPlayList.get())
+    if (nullptr != pPlayList)
     {
       // load it
       if (!pPlayList->Load(pathToUrl))

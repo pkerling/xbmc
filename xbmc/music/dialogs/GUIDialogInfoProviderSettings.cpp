@@ -8,38 +8,33 @@
 
 #include "GUIDialogInfoProviderSettings.h"
 
+#include "ServiceBroker.h"
+#include "Util.h"
+#include "addons/AddonSystemSettings.h"
+#include "addons/GUIWindowAddonBrowser.h"
+#include "addons/settings/GUIDialogAddonSettings.h"
+#include "dialogs/GUIDialogFileBrowser.h"
+#include "dialogs/GUIDialogKaiToast.h"
+#include "filesystem/AddonsDirectory.h"
+#include "filesystem/Directory.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
+#include "interfaces/builtins/Builtins.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
+#include "settings/windows/GUIControlSettings.h"
+#include "storage/MediaManager.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+
+#include <limits.h>
 #include <map>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
-
-#include <limits.h>
-
-#include "addons/AddonSystemSettings.h"
-#include "addons/settings/GUIDialogAddonSettings.h"
-#include "addons/GUIWindowAddonBrowser.h"
-#include "filesystem/AddonsDirectory.h"
-#include "filesystem/Directory.h"
-#include "dialogs/GUIDialogFileBrowser.h"
-#include "dialogs/GUIDialogKaiToast.h"
-#include "dialogs/GUIDialogSelect.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
-#include "guilib/LocalizeStrings.h"
-#include "interfaces/builtins/Builtins.h"
-#include "ServiceBroker.h"
-#include "settings/lib/Setting.h"
-#include "settings/lib/SettingsManager.h"
-#include "settings/SettingUtils.h"
-#include "settings/Settings.h"
-#include "settings/SettingsComponent.h"
-#include "settings/windows/GUIControlSettings.h"
-#include "storage/MediaManager.h"
-#include "Util.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
 
 using namespace ADDON;
 
@@ -213,9 +208,9 @@ void CGUIDialogInfoProviderSettings::OnSettingAction(std::shared_ptr<const CSett
   else if (settingId == CSettings::SETTING_MUSICLIBRARY_ARTISTSFOLDER)
   {
     VECSOURCES shares;
-    g_mediaManager.GetLocalDrives(shares);
-    g_mediaManager.GetNetworkLocations(shares);
-    g_mediaManager.GetRemovableDrives(shares);
+    CServiceBroker::GetMediaManager().GetLocalDrives(shares);
+    CServiceBroker::GetMediaManager().GetNetworkLocations(shares);
+    CServiceBroker::GetMediaManager().GetRemovableDrives(shares);
     std::string strDirectory = m_strArtistInfoPath;
     if (!strDirectory.empty())
     {
@@ -389,15 +384,15 @@ void CGUIDialogInfoProviderSettings::InitializeSettings()
     entries.clear();
     if (m_singleScraperType == CONTENT_ALBUMS)
     {
-      entries.push_back(std::make_pair(38066, INFOPROVIDER_THISITEM));
-      entries.push_back(std::make_pair(38067, INFOPROVIDER_ALLVIEW));
+      entries.push_back(TranslatableIntegerSettingOption(38066, INFOPROVIDER_THISITEM));
+      entries.push_back(TranslatableIntegerSettingOption(38067, INFOPROVIDER_ALLVIEW));
     }
     else
     {
-      entries.push_back(std::make_pair(38064, INFOPROVIDER_THISITEM));
-      entries.push_back(std::make_pair(38065, INFOPROVIDER_ALLVIEW));
+      entries.push_back(TranslatableIntegerSettingOption(38064, INFOPROVIDER_THISITEM));
+      entries.push_back(TranslatableIntegerSettingOption(38065, INFOPROVIDER_ALLVIEW));
     }
-    entries.push_back(std::make_pair(38063, INFOPROVIDER_DEFAULT));
+    entries.push_back(TranslatableIntegerSettingOption(38063, INFOPROVIDER_DEFAULT));
     AddList(group1, SETTING_APPLYTOITEMS, 38338, SettingLevel::Basic, m_applyToItems, entries, 38339); // "Apply settings to"
   }
 

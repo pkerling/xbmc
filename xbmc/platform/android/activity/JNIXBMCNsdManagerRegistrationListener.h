@@ -9,7 +9,6 @@
 #pragma once
 
 #include <androidjni/JNIBase.h>
-
 #include <androidjni/NsdManager.h>
 
 namespace jni
@@ -21,7 +20,7 @@ public:
   CJNIXBMCNsdManagerRegistrationListener();
   CJNIXBMCNsdManagerRegistrationListener(const CJNIXBMCNsdManagerRegistrationListener& other);
   explicit CJNIXBMCNsdManagerRegistrationListener(const jni::jhobject &object) : CJNIBase(object) {}
-  virtual ~CJNIXBMCNsdManagerRegistrationListener();
+  ~CJNIXBMCNsdManagerRegistrationListener() override;
 
   static void RegisterNatives(JNIEnv* env);
 

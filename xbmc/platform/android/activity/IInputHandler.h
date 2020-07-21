@@ -8,10 +8,10 @@
 
 #pragma once
 
-#include "AndroidTouch.h"
+#include "AndroidJoyStick.h"
 #include "AndroidKey.h"
 #include "AndroidMouse.h"
-#include "AndroidJoyStick.h"
+#include "AndroidTouch.h"
 
 class IInputHandler
 : public CAndroidKey
@@ -27,5 +27,5 @@ public:
   , CAndroidJoyStick()
   {}
 
-  virtual void setDPI(uint32_t dpi) { CAndroidTouch::setDPI(dpi); }
+  void setDPI(uint32_t dpi) override { CAndroidTouch::setDPI(dpi); }
 };

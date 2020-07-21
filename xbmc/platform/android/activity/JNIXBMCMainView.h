@@ -8,27 +8,26 @@
 
 #pragma once
 
-#include <androidjni/JNIBase.h>
-
-#include <androidjni/Context.h>
-#include <androidjni/Surface.h>
-#include <androidjni/SurfaceHolder.h>
-
 #include "threads/Event.h"
 #include "utils/Geometry.h"
+
+#include <androidjni/Context.h>
+#include <androidjni/JNIBase.h>
+#include <androidjni/Surface.h>
+#include <androidjni/SurfaceHolder.h>
 
 class CJNIXBMCMainView : virtual public CJNIBase, public CJNISurfaceHolderCallback, public CJNIInterfaceImplem<CJNIXBMCMainView>
 {
 public:
   CJNIXBMCMainView(CJNISurfaceHolderCallback* callback);
-  ~CJNIXBMCMainView();
+  ~CJNIXBMCMainView() override = default;
 
   static void RegisterNatives(JNIEnv* env);
 
   // CJNISurfaceHolderCallback interface
-  void surfaceChanged(CJNISurfaceHolder holder, int format, int width, int height);
-  void surfaceCreated(CJNISurfaceHolder holder);
-  void surfaceDestroyed(CJNISurfaceHolder holder);
+  void surfaceChanged(CJNISurfaceHolder holder, int format, int width, int height) override;
+  void surfaceCreated(CJNISurfaceHolder holder) override;
+  void surfaceDestroyed(CJNISurfaceHolder holder) override;
 
   void attach(const jobject& thiz);
   bool waitForSurface(unsigned int millis);

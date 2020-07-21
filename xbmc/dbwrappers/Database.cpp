@@ -9,7 +9,6 @@
 #include "Database.h"
 #include "settings/AdvancedSettings.h"
 #include "filesystem/SpecialProtocol.h"
-#include "filesystem/File.h"
 #include "profiles/ProfileManager.h"
 #include "settings/SettingsComponent.h"
 #include "utils/log.h"
@@ -25,7 +24,7 @@
 #endif
 
 #ifdef TARGET_POSIX
-#include "platform/linux/ConvUtils.h"
+#include "platform/posix/ConvUtils.h"
 #endif
 
 using namespace dbiplus;
@@ -174,6 +173,12 @@ bool CDatabase::DatasetLayout::GetFetch(int fieldno)
   return false;
 }
 
+void CDatabase::DatasetLayout::SetFetch(int fieldno, bool bFetch /*= true*/)
+{
+  if (fieldno >= 0 && fieldno < static_cast<int>(m_fields.size()))
+    m_fields[fieldno].fetch = bFetch;
+}
+
 bool CDatabase::DatasetLayout::GetOutput(int fieldno)
 {
   if (fieldno >= 0 && fieldno < static_cast<int>(m_fields.size()))
@@ -248,7 +253,7 @@ std::string CDatabase::PrepareSQL(std::string strStmt, ...) const
 {
   std::string strResult = "";
 
-  if (NULL != m_pDB.get())
+  if (nullptr != m_pDB)
   {
     va_list args;
     va_start(args, strStmt);
@@ -264,7 +269,7 @@ std::string CDatabase::GetSingleValue(const std::string &query, std::unique_ptr<
   std::string ret;
   try
   {
-    if (!m_pDB.get() || !ds.get())
+    if (!m_pDB || !ds)
       return ret;
 
     if (ds->query(query) && ds->num_rows() > 0)
@@ -313,9 +318,9 @@ bool CDatabase::CommitMultipleExecute()
 {
   m_multipleExecute = false;
   BeginTransaction();
-  for (std::vector<std::string>::const_iterator i = m_multipleQueries.begin(); i != m_multipleQueries.end(); ++i)
+  for (const auto& i : m_multipleQueries)
   {
-    if (!ExecuteQuery(*i))
+    if (!ExecuteQuery(i))
     {
       RollbackTransaction();
       return false;
@@ -337,8 +342,10 @@ bool CDatabase::ExecuteQuery(const std::string &strQuery)
 
   try
   {
-    if (NULL == m_pDB.get()) return bReturn;
-    if (NULL == m_pDS.get()) return bReturn;
+    if (nullptr == m_pDB)
+      return bReturn;
+    if (nullptr == m_pDS)
+      return bReturn;
     m_pDS->exec(strQuery);
     bReturn = true;
   }
@@ -357,8 +364,10 @@ bool CDatabase::ResultQuery(const std::string &strQuery)
 
   try
   {
-    if (NULL == m_pDB.get()) return bReturn;
-    if (NULL == m_pDS.get()) return bReturn;
+    if (nullptr == m_pDB)
+      return bReturn;
+    if (nullptr == m_pDS)
+      return bReturn;
 
     std::string strPreparedQuery = PrepareSQL(strQuery.c_str());
 
@@ -380,8 +389,10 @@ bool CDatabase::QueueInsertQuery(const std::string &strQuery)
 
   if (!m_bMultiWrite)
   {
-    if (NULL == m_pDB.get()) return false;
-    if (NULL == m_pDS2.get()) return false;
+    if (nullptr == m_pDB)
+      return false;
+    if (nullptr == m_pDS2)
+      return false;
 
     m_bMultiWrite = true;
     m_pDS2->insert();
@@ -597,8 +608,10 @@ void CDatabase::Close()
   m_openCount = 0;
   m_multipleExecute = false;
 
-  if (NULL == m_pDB.get() ) return ;
-  if (NULL != m_pDS.get()) m_pDS->close();
+  if (nullptr == m_pDB)
+    return;
+  if (nullptr != m_pDS)
+    m_pDS->close();
   m_pDB->disconnect();
   m_pDB.reset();
   m_pDS.reset();
@@ -612,8 +625,10 @@ bool CDatabase::Compress(bool bForce /* =true */)
 
   try
   {
-    if (NULL == m_pDB.get()) return false;
-    if (NULL == m_pDS.get()) return false;
+    if (nullptr == m_pDB)
+      return false;
+    if (nullptr == m_pDS)
+      return false;
     if (!bForce)
     {
       m_pDS->query("select iCompressCount from version");
@@ -650,7 +665,7 @@ void CDatabase::BeginTransaction()
 {
   try
   {
-    if (NULL != m_pDB.get())
+    if (nullptr != m_pDB)
       m_pDB->start_transaction();
   }
   catch (...)
@@ -663,7 +678,7 @@ bool CDatabase::CommitTransaction()
 {
   try
   {
-    if (NULL != m_pDB.get())
+    if (nullptr != m_pDB)
       m_pDB->commit_transaction();
   }
   catch (...)
@@ -678,19 +693,13 @@ void CDatabase::RollbackTransaction()
 {
   try
   {
-    if (NULL != m_pDB.get())
+    if (nullptr != m_pDB)
       m_pDB->rollback_transaction();
   }
   catch (...)
   {
     CLog::Log(LOGERROR, "database:rollbacktransaction failed");
   }
-}
-
-bool CDatabase::InTransaction()
-{
-  if (NULL != m_pDB.get()) return false;
-  return m_pDB->in_transaction();
 }
 
 bool CDatabase::CreateDatabase()

@@ -24,12 +24,60 @@ if(NOT EXISTS "${APP_INCLUDE_DIR}/")
   file(MAKE_DIRECTORY ${APP_INCLUDE_DIR})
 endif()
 
-# make sure C++11 is always set
-if(NOT WIN32)
-  string(REGEX MATCH "-std=(gnu|c)\\+\\+11" cxx11flag "${CMAKE_CXX_FLAGS}")
-  if(NOT cxx11flag)
-    set(CXX11_SWITCH "-std=c++11")
+if(NOT CORE_SYSTEM_NAME)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    set(CORE_SYSTEM_NAME "osx")
+  else()
+    string(TOLOWER ${CMAKE_SYSTEM_NAME} CORE_SYSTEM_NAME)
   endif()
+endif()
+
+set(PLATFORM_TAG ${CORE_SYSTEM_NAME})
+
+# The CPU variable is given either by ./tools/depends or by the
+# ./cmake/scripts/common/ArchSetup.cmake (which refers to the Kodi building
+# itself). However, this file is only used by addons, so CPU can not always
+# be defined, so in this case, if empty, the base CPU will be used.
+if(NOT CPU)
+  set(CPU ${CMAKE_SYSTEM_PROCESSOR})
+endif()
+
+if(CORE_SYSTEM_NAME STREQUAL android)
+  if (CPU MATCHES "v7a")
+    set(PLATFORM_TAG ${PLATFORM_TAG}-armv7)
+  elseif (CPU MATCHES "arm64")
+    set(PLATFORM_TAG ${PLATFORM_TAG}-aarch64)
+  elseif (CPU MATCHES "i686")
+    set(PLATFORM_TAG ${PLATFORM_TAG}-i686)
+  elseif (CPU MATCHES "x86_64")
+    set(PLATFORM_TAG ${PLATFORM_TAG}-x86_64)
+  else()
+    message(FATAL_ERROR "Unsupported architecture")
+  endif()
+elseif(CORE_SYSTEM_NAME STREQUAL darwin_embedded)
+  set(PLATFORM_TAG ${CORE_PLATFORM_NAME})
+  if (CPU MATCHES arm64)
+    set(PLATFORM_TAG ${PLATFORM_TAG}-aarch64)
+  else()
+    message(FATAL_ERROR "Unsupported architecture")
+  endif()
+elseif(CORE_SYSTEM_NAME STREQUAL osx)
+  set(PLATFORM_TAG ${PLATFORM_TAG}-${CPU})
+elseif(CORE_SYSTEM_NAME STREQUAL windows)
+  include(CheckSymbolExists)
+  check_symbol_exists(_X86_ "Windows.h" _X86_)
+  check_symbol_exists(_AMD64_ "Windows.h" _AMD64_)
+
+  if(_X86_)
+    set(PLATFORM_TAG ${PLATFORM_TAG}-i686)
+  elseif(_AMD64_)
+    set(PLATFORM_TAG ${PLATFORM_TAG}-x86_64)
+  else()
+    message(FATAL_ERROR "Unsupported architecture")
+  endif()
+
+  unset(_X86_)
+  unset(_AMD64_)
 endif()
 
 # generate the proper KodiConfig.cmake file

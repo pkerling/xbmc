@@ -8,7 +8,6 @@
 
 #include "threads/SystemClock.h"
 #include "CompileInfo.h"
-#include "threads/SingleLock.h"
 #include "ExternalPlayer.h"
 #include "windowing/WinSystem.h"
 #include "dialogs/GUIDialogOK.h"
@@ -24,13 +23,13 @@
 #include "utils/XMLUtils.h"
 #include "utils/log.h"
 #include "utils/Variant.h"
+#include "video/Bookmark.h"
 #include "ServiceBroker.h"
 #include "cores/AudioEngine/Interfaces/AE.h"
 #include "cores/DataCacheCore.h"
-#include "input/InputManager.h"
 #if defined(TARGET_WINDOWS)
   #include "utils/CharsetConverter.h"
-  #include "Windows.h"
+  #include <Windows.h>
 #endif
 #if defined(TARGET_ANDROID)
   #include "platform/android/activity/XBMCApp.h"
@@ -90,7 +89,7 @@ bool CExternalPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &opti
     m_time = 0;
     m_playbackStartTime = XbmcThreads::SystemClockMillis();
     m_launchFilename = file.GetDynPath();
-    CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, m_launchFilename.c_str());
+    CLog::Log(LOGINFO, "%s: %s", __FUNCTION__, m_launchFilename.c_str());
     Create();
 
     return true;
@@ -203,11 +202,11 @@ void CExternalPlayer::Process()
     }
   }
 
-  CLog::Log(LOGNOTICE, "%s: Player : %s", __FUNCTION__, m_filename.c_str());
-  CLog::Log(LOGNOTICE, "%s: File   : %s", __FUNCTION__, mainFile.c_str());
-  CLog::Log(LOGNOTICE, "%s: Content: %s", __FUNCTION__, archiveContent.c_str());
-  CLog::Log(LOGNOTICE, "%s: Args   : %s", __FUNCTION__, m_args.c_str());
-  CLog::Log(LOGNOTICE, "%s: Start", __FUNCTION__);
+  CLog::Log(LOGINFO, "%s: Player : %s", __FUNCTION__, m_filename.c_str());
+  CLog::Log(LOGINFO, "%s: File   : %s", __FUNCTION__, mainFile.c_str());
+  CLog::Log(LOGINFO, "%s: Content: %s", __FUNCTION__, archiveContent.c_str());
+  CLog::Log(LOGINFO, "%s: Args   : %s", __FUNCTION__, m_args.c_str());
+  CLog::Log(LOGINFO, "%s: Start", __FUNCTION__);
 
   // make sure we surround the arguments with quotes where necessary
   std::string strFName;
@@ -264,7 +263,7 @@ void CExternalPlayer::Process()
         y = GetSystemMetrics(SM_CYSCREEN) / 2;
         break;
     }
-    CLog::Log(LOGNOTICE, "%s: Warping cursor to (%d,%d)", __FUNCTION__, x, y);
+    CLog::Log(LOGINFO, "%s: Warping cursor to (%d,%d)", __FUNCTION__, x, y);
     SetCursorPos(x,y);
   }
 
@@ -273,13 +272,13 @@ void CExternalPlayer::Process()
 
   if (m_hidexbmc && !m_islauncher)
   {
-    CLog::Log(LOGNOTICE, "%s: Hiding %s window", __FUNCTION__, CCompileInfo::GetAppName());
+    CLog::Log(LOGINFO, "%s: Hiding %s window", __FUNCTION__, CCompileInfo::GetAppName());
     CServiceBroker::GetWinSystem()->Hide();
   }
 #if defined(TARGET_WINDOWS_DESKTOP)
   else if (currentStyle & WS_EX_TOPMOST)
   {
-    CLog::Log(LOGNOTICE, "%s: Lowering %s window", __FUNCTION__, CCompileInfo::GetAppName());
+    CLog::Log(LOGINFO, "%s: Lowering %s window", __FUNCTION__, CCompileInfo::GetAppName());
     SetWindowPos(g_hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOREDRAW | SWP_ASYNCWINDOWPOS);
   }
 
@@ -296,7 +295,7 @@ void CExternalPlayer::Process()
   XbmcThreads::EndTime timer(2000);
   while (!timer.IsTimePast() && !CServiceBroker::GetActiveAE()->IsSuspended())
   {
-    Sleep(50);
+    CThread::Sleep(50);
   }
   if (timer.IsTimePast())
   {
@@ -311,7 +310,7 @@ void CExternalPlayer::Process()
   ret = ExecuteAppW32(strFName.c_str(),strFArgs.c_str());
 #elif defined(TARGET_ANDROID)
   ret = ExecuteAppAndroid(m_filename.c_str(), mainFile.c_str());
-#elif (defined(TARGET_POSIX) && !defined(TARGET_DARWIN_IOS)) || defined(TARGET_DARWIN_OSX)
+#elif defined(TARGET_POSIX) && !defined(TARGET_DARWIN_EMBEDDED)
   ret = ExecuteAppLinux(strFArgs.c_str());
 #endif
   int64_t elapsedMillis = XbmcThreads::SystemClockMillis() - m_playbackStartTime;
@@ -320,7 +319,8 @@ void CExternalPlayer::Process()
   {
     if (m_hidexbmc)
     {
-      CLog::Log(LOGNOTICE, "%s: %s cannot stay hidden for a launcher process", __FUNCTION__, CCompileInfo::GetAppName());
+      CLog::Log(LOGINFO, "%s: %s cannot stay hidden for a launcher process", __FUNCTION__,
+                CCompileInfo::GetAppName());
       CServiceBroker::GetWinSystem()->Show(false);
     }
 
@@ -337,21 +337,21 @@ void CExternalPlayer::Process()
   }
 
   m_bIsPlaying = false;
-  CLog::Log(LOGNOTICE, "%s: Stop", __FUNCTION__);
+  CLog::Log(LOGINFO, "%s: Stop", __FUNCTION__);
 
 #if defined(TARGET_WINDOWS_DESKTOP)
   CServiceBroker::GetWinSystem()->Restore();
 
   if (currentStyle & WS_EX_TOPMOST)
   {
-    CLog::Log(LOGNOTICE, "%s: Showing %s window TOPMOST", __FUNCTION__, CCompileInfo::GetAppName());
+    CLog::Log(LOGINFO, "%s: Showing %s window TOPMOST", __FUNCTION__, CCompileInfo::GetAppName());
     SetWindowPos(g_hWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_ASYNCWINDOWPOS);
     SetForegroundWindow(g_hWnd);
   }
   else
 #endif
   {
-    CLog::Log(LOGNOTICE, "%s: Showing %s window", __FUNCTION__, CCompileInfo::GetAppName());
+    CLog::Log(LOGINFO, "%s: Showing %s window", __FUNCTION__, CCompileInfo::GetAppName());
     CServiceBroker::GetWinSystem()->Show();
   }
 
@@ -365,10 +365,16 @@ void CExternalPlayer::Process()
       m_xPos = (m_ptCursorpos.x);
       m_yPos = (m_ptCursorpos.y);
     }
-    CLog::Log(LOGNOTICE, "%s: Restoring cursor to (%d,%d)", __FUNCTION__, m_xPos, m_yPos);
+    CLog::Log(LOGINFO, "%s: Restoring cursor to (%d,%d)", __FUNCTION__, m_xPos, m_yPos);
     SetCursorPos(m_xPos,m_yPos);
   }
 #endif
+
+  CBookmark bookmark;
+  bookmark.totalTimeInSeconds = 1;
+  bookmark.timeInSeconds = (elapsedMillis / 1000 >= m_playCountMinTime) ? 1 : 0;
+  bookmark.player = m_name;
+  m_callback.OnPlayerCloseFile(m_file, bookmark);
 
   /* Resume AE processing of XBMC native audio */
   if (!CServiceBroker::GetActiveAE()->Resume())
@@ -389,7 +395,7 @@ void CExternalPlayer::Process()
 #if defined(TARGET_WINDOWS_DESKTOP)
 bool CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches)
 {
-  CLog::Log(LOGNOTICE, "%s: %s %s", __FUNCTION__, strPath, strSwitches);
+  CLog::Log(LOGINFO, "%s: %s %s", __FUNCTION__, strPath, strSwitches);
 
   STARTUPINFOW si;
   memset(&si, 0, sizeof(si));
@@ -410,7 +416,7 @@ bool CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches
   if (ret == FALSE)
   {
     DWORD lastError = GetLastError();
-    CLog::Log(LOGNOTICE, "%s - Failure: %d", __FUNCTION__, lastError);
+    CLog::Log(LOGINFO, "%s - Failure: %d", __FUNCTION__, lastError);
   }
   else
   {
@@ -419,16 +425,16 @@ bool CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches
     switch (res)
     {
       case WAIT_OBJECT_0:
-        CLog::Log(LOGNOTICE, "%s: WAIT_OBJECT_0", __FUNCTION__);
+        CLog::Log(LOGINFO, "%s: WAIT_OBJECT_0", __FUNCTION__);
         break;
       case WAIT_ABANDONED:
-        CLog::Log(LOGNOTICE, "%s: WAIT_ABANDONED", __FUNCTION__);
+        CLog::Log(LOGINFO, "%s: WAIT_ABANDONED", __FUNCTION__);
         break;
       case WAIT_TIMEOUT:
-        CLog::Log(LOGNOTICE, "%s: WAIT_TIMEOUT", __FUNCTION__);
+        CLog::Log(LOGINFO, "%s: WAIT_TIMEOUT", __FUNCTION__);
         break;
       case WAIT_FAILED:
-        CLog::Log(LOGNOTICE, "%s: WAIT_FAILED (%d)", __FUNCTION__, GetLastError());
+        CLog::Log(LOGINFO, "%s: WAIT_FAILED (%d)", __FUNCTION__, GetLastError());
         ret = FALSE;
         break;
     }
@@ -442,15 +448,15 @@ bool CExternalPlayer::ExecuteAppW32(const char* strPath, const char* strSwitches
 }
 #endif
 
-#if !defined(TARGET_ANDROID) && !defined(TARGET_DARWIN_IOS) && (defined(TARGET_POSIX) || defined(TARGET_DARWIN_OSX))
+#if !defined(TARGET_ANDROID) && !defined(TARGET_DARWIN_EMBEDDED) && defined(TARGET_POSIX)
 bool CExternalPlayer::ExecuteAppLinux(const char* strSwitches)
 {
-  CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);
+  CLog::Log(LOGINFO, "%s: %s", __FUNCTION__, strSwitches);
 
   int ret = system(strSwitches);
   if (ret != 0)
   {
-    CLog::Log(LOGNOTICE, "%s: Failure: %d", __FUNCTION__, ret);
+    CLog::Log(LOGINFO, "%s: Failure: %d", __FUNCTION__, ret);
   }
 
   return (ret == 0);
@@ -460,13 +466,13 @@ bool CExternalPlayer::ExecuteAppLinux(const char* strSwitches)
 #if defined(TARGET_ANDROID)
 bool CExternalPlayer::ExecuteAppAndroid(const char* strSwitches,const char* strPath)
 {
-  CLog::Log(LOGNOTICE, "%s: %s", __FUNCTION__, strSwitches);
+  CLog::Log(LOGINFO, "%s: %s", __FUNCTION__, strSwitches);
 
   bool ret = CXBMCApp::StartActivity(strSwitches, "android.intent.action.VIEW", "video/*", strPath);
 
   if (!ret)
   {
-    CLog::Log(LOGNOTICE, "%s: Failure", __FUNCTION__);
+    CLog::Log(LOGINFO, "%s: Failure", __FUNCTION__);
   }
 
   return (ret == 0);
@@ -543,7 +549,7 @@ bool CExternalPlayer::Initialize(TiXmlElement* pConfig)
   XMLUtils::GetString(pConfig, "filename", m_filename);
   if (m_filename.length() > 0)
   {
-    CLog::Log(LOGNOTICE, "ExternalPlayer Filename: %s", m_filename.c_str());
+    CLog::Log(LOGINFO, "ExternalPlayer Filename: %s", m_filename.c_str());
   }
   else
   {
@@ -586,11 +592,11 @@ bool CExternalPlayer::Initialize(TiXmlElement* pConfig)
 
   XMLUtils::GetInt(pConfig, "playcountminimumtime", m_playCountMinTime, 1, INT_MAX);
 
-  CLog::Log(LOGNOTICE, "ExternalPlayer Tweaks: hideconsole (%s), hidexbmc (%s), islauncher (%s), warpcursor (%s)",
-          m_hideconsole ? "true" : "false",
-          m_hidexbmc ? "true" : "false",
-          m_islauncher ? "true" : "false",
-          warpCursor.c_str());
+  CLog::Log(
+      LOGINFO,
+      "ExternalPlayer Tweaks: hideconsole (%s), hidexbmc (%s), islauncher (%s), warpcursor (%s)",
+      m_hideconsole ? "true" : "false", m_hidexbmc ? "true" : "false",
+      m_islauncher ? "true" : "false", warpCursor.c_str());
 
 #ifdef TARGET_WINDOWS_DESKTOP
   m_filenameReplacers.push_back("^smb:// , / , \\\\ , g");
@@ -613,16 +619,16 @@ void CExternalPlayer::GetCustomRegexpReplacers(TiXmlElement *pRootElement,
   int iAction = 0; // overwrite
   // for backward compatibility
   const char* szAppend = pRootElement->Attribute("append");
-  if ((szAppend && stricmp(szAppend, "yes") == 0))
+  if ((szAppend && StringUtils::CompareNoCase(szAppend, "yes") == 0))
     iAction = 1;
   // action takes precedence if both attributes exist
   const char* szAction = pRootElement->Attribute("action");
   if (szAction)
   {
     iAction = 0; // overwrite
-    if (stricmp(szAction, "append") == 0)
+    if (StringUtils::CompareNoCase(szAction, "append") == 0)
       iAction = 1; // append
-    else if (stricmp(szAction, "prepend") == 0)
+    else if (StringUtils::CompareNoCase(szAction, "prepend") == 0)
       iAction = 2; // prepend
   }
   if (iAction == 0)
@@ -636,8 +642,8 @@ void CExternalPlayer::GetCustomRegexpReplacers(TiXmlElement *pRootElement,
     {
       const char* szGlobal = pReplacer->Attribute("global");
       const char* szStop = pReplacer->Attribute("stop");
-      bool bGlobal = szGlobal && stricmp(szGlobal, "true") == 0;
-      bool bStop = szStop && stricmp(szStop, "true") == 0;
+      bool bGlobal = szGlobal && StringUtils::CompareNoCase(szGlobal, "true") == 0;
+      bool bStop = szStop && StringUtils::CompareNoCase(szStop, "true") == 0;
 
       std::string strMatch;
       std::string strPat;

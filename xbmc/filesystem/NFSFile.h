@@ -13,6 +13,7 @@
 #include "IFile.h"
 #include "URL.h"
 #include "threads/CriticalSection.h"
+
 #include <list>
 #include <map>
 
@@ -94,6 +95,7 @@ private:
   void destroyContext(const std::string &exportName);
   void resolveHost(const CURL &url);//resolve hostname by dnslookup
   void keepAlive(std::string _exportPath, struct nfsfh  *_pFileHandle);
+  static void setTimeout(struct nfs_context* context);
 };
 
 extern CNfsConnection gNfsConnection;

@@ -9,6 +9,7 @@
 #pragma once
 
 #include "../AddonBase.h"
+#include "../gui/renderHelper.h"
 
 namespace kodi { namespace addon { class CInstanceScreensaver; }}
 
@@ -218,7 +219,7 @@ namespace addon
   /// Kodi's header. Manually deleting the add-on instance is not required.
   ///
   //----------------------------------------------------------------------------
-  class CInstanceScreensaver : public IAddonInstance
+  class ATTRIBUTE_HIDDEN CInstanceScreensaver : public IAddonInstance
   {
   public:
     //==========================================================================
@@ -229,7 +230,7 @@ namespace addon
     /// Used by an add-on that only supports screensavers.
     ///
     CInstanceScreensaver()
-      : IAddonInstance(ADDON_INSTANCE_SCREENSAVER)
+      : IAddonInstance(ADDON_INSTANCE_SCREENSAVER, GetKodiTypeVersion(ADDON_INSTANCE_SCREENSAVER))
     {
       if (CAddonBase::m_interface->globalSingleInstance != nullptr)
         throw std::logic_error("kodi::addon::CInstanceScreensaver: Creation of more as one in single instance way is not allowed!");
@@ -247,11 +248,16 @@ namespace addon
     ///
     /// @param[in] instance               The instance value given to
     ///                                   <b>`kodi::addon::CAddonBase::CreateInstance(...)`</b>.
+    /// @param[in] kodiVersion [opt] Version used in Kodi for this instance, to
+    ///                        allow compatibility to older Kodi versions.
+    ///                        @note Recommended to set.
     ///
     /// @warning Only use `instance` from the CreateInstance call
     ///
-    explicit CInstanceScreensaver(KODI_HANDLE instance)
-      : IAddonInstance(ADDON_INSTANCE_SCREENSAVER)
+    explicit CInstanceScreensaver(KODI_HANDLE instance, const std::string& kodiVersion = "")
+      : IAddonInstance(ADDON_INSTANCE_SCREENSAVER,
+                       !kodiVersion.empty() ? kodiVersion
+                                            : GetKodiTypeVersion(ADDON_INSTANCE_SCREENSAVER))
     {
       if (CAddonBase::m_interface->globalSingleInstance != nullptr)
         throw std::logic_error("kodi::addon::CInstanceScreensaver: Creation of multiple together with single instance way is not allowed!");
@@ -418,19 +424,35 @@ namespace addon
 
     inline static bool ADDON_Start(AddonInstance_Screensaver* instance)
     {
+      instance->toAddon.addonInstance->m_renderHelper = kodi::gui::GetRenderHelper();
       return instance->toAddon.addonInstance->Start();
     }
 
     inline static void ADDON_Stop(AddonInstance_Screensaver* instance)
     {
       instance->toAddon.addonInstance->Stop();
+      instance->toAddon.addonInstance->m_renderHelper = nullptr;
     }
 
     inline static void ADDON_Render(AddonInstance_Screensaver* instance)
     {
+      if (!instance->toAddon.addonInstance->m_renderHelper)
+        return;
+      instance->toAddon.addonInstance->m_renderHelper->Begin();
       instance->toAddon.addonInstance->Render();
+      instance->toAddon.addonInstance->m_renderHelper->End();
     }
 
+    /*
+     * Background render helper holds here and in addon base.
+     * In addon base also to have for the others, and stored here for the worst
+     * case where this class is independent from base and base becomes closed
+     * before.
+     *
+     * This is on Kodi with GL unused and the calls to there are empty (no work)
+     * On Kodi with Direct X where angle is present becomes this used.
+     */
+    std::shared_ptr<kodi::gui::IRenderHelper> m_renderHelper;
     AddonInstance_Screensaver* m_instanceData;
   };
 

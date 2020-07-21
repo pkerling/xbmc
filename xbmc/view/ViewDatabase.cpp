@@ -20,7 +20,7 @@
 #include "view/ViewState.h"
 
 #ifdef TARGET_POSIX
-#include "platform/linux/ConvUtils.h"
+#include "platform/posix/ConvUtils.h"
 #endif
 CViewDatabase::CViewDatabase(void) = default;
 
@@ -72,7 +72,7 @@ void CViewDatabase::UpdateTables(int version)
           path = CLegacyPathTranslation::TranslateVideoDbPath(path);
 
         if (!StringUtils::EqualsNoCase(path, originalPath))
-          paths.push_back(std::make_pair(m_pDS->fv(0).get_asInt(), path));
+          paths.emplace_back(m_pDS->fv(0).get_asInt(), path);
         m_pDS->next();
       }
       m_pDS->close();
@@ -84,8 +84,7 @@ void CViewDatabase::UpdateTables(int version)
   if (version < 6)
   {
     // convert the "path" table
-    m_pDS->exec("CREATE TABLE tmp_view AS SELECT * FROM view");
-    m_pDS->exec("DROP TABLE view");
+    m_pDS->exec("ALTER TABLE view RENAME TO tmp_view");
 
     m_pDS->exec("CREATE TABLE view ("
                 "idView integer primary key,"
@@ -117,8 +116,10 @@ bool CViewDatabase::GetViewState(const std::string &path, int window, CViewState
 {
   try
   {
-    if (NULL == m_pDB.get()) return false;
-    if (NULL == m_pDS.get()) return false;
+    if (nullptr == m_pDB)
+      return false;
+    if (nullptr == m_pDS)
+      return false;
 
     std::string path1(path);
     URIUtils::AddSlashAtEnd(path1);
@@ -153,8 +154,10 @@ bool CViewDatabase::SetViewState(const std::string &path, int window, const CVie
 {
   try
   {
-    if (NULL == m_pDB.get()) return false;
-    if (NULL == m_pDS.get()) return false;
+    if (nullptr == m_pDB)
+      return false;
+    if (nullptr == m_pDS)
+      return false;
 
     std::string path1(path);
     URIUtils::AddSlashAtEnd(path1);
@@ -189,8 +192,10 @@ bool CViewDatabase::ClearViewStates(int windowID)
 {
   try
   {
-    if (NULL == m_pDB.get()) return false;
-    if (NULL == m_pDS.get()) return false;
+    if (nullptr == m_pDB)
+      return false;
+    if (nullptr == m_pDS)
+      return false;
 
     std::string sql = PrepareSQL("delete from view where window = %i", windowID);
     m_pDS->exec(sql);

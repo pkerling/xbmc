@@ -10,16 +10,23 @@
 
 #include "DRMUtils.h"
 
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
+
 class COffScreenModeSetting : public CDRMUtils
 {
 public:
   COffScreenModeSetting() = default;
-  ~COffScreenModeSetting() { DestroyDrm(); };
+  ~COffScreenModeSetting() override { DestroyDrm(); };
   void FlipPage(struct gbm_bo *bo, bool rendered, bool videoLayer) override {}
   bool SetVideoMode(const RESOLUTION_INFO& res, struct gbm_bo *bo) override { return false; }
   bool SetActive(bool active) override { return false; }
   bool InitDrm() override;
-  void DestroyDrm() override;
+  void DestroyDrm() override {}
 
   RESOLUTION_INFO GetCurrentMode() override;
   std::vector<RESOLUTION_INFO> GetModes() override;
@@ -30,3 +37,7 @@ private:
   const int  DISPLAY_HEIGHT= 720;
   const float DISPLAY_REFRESH = 50.0f;
 };
+
+}
+}
+}

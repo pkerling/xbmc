@@ -19,8 +19,10 @@
  */
 
 #include "JPGDecoder.h"
-#include "jpeglib.h"
+
 #include "SimpleFS.h"
+
+#include <jpeglib.h>
 
 bool JPGDecoder::CanDecode(const std::string &filename)
 {
@@ -133,6 +135,6 @@ void JPGDecoder::FreeDecodedFrames(DecodedFrames &frames)
 
 void JPGDecoder::FillSupportedExtensions()
 {
-  m_supportedExtensions.push_back(".jpg");
-  m_supportedExtensions.push_back(".jpeg");
+  m_supportedExtensions.emplace_back(".jpg");
+  m_supportedExtensions.emplace_back(".jpeg");
 }

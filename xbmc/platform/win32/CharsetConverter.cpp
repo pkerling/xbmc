@@ -6,10 +6,9 @@
  *  See LICENSES/README.md for more information.
  */
 
-#if defined(TARGET_WINDOWS)
-#include <memory>
-
 #include "CharsetConverter.h"
+
+#include <memory>
 namespace KODI
 {
 namespace PLATFORM
@@ -58,4 +57,3 @@ std::wstring ToW(const std::string& str)
 }
 }
 }
-#endif

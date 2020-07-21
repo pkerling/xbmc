@@ -9,7 +9,7 @@
 #pragma once
 
 #include "IGameClientStream.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/kodi_game_types.h"
+#include "addons/kodi-addon-dev-kit/include/kodi/addon-instance/Game.h"
 
 #include <vector>
 
@@ -17,9 +17,9 @@ namespace KODI
 {
 namespace RETRO
 {
-  class IRetroPlayerStream;
-  struct AudioStreamProperties;
-}
+class IRetroPlayerStream;
+struct AudioStreamProperties;
+} // namespace RETRO
 
 namespace GAME
 {
@@ -34,11 +34,12 @@ public:
   bool OpenStream(RETRO::IRetroPlayerStream* stream,
                   const game_stream_properties& properties) override;
   void CloseStream() override;
-  void AddData(const game_stream_packet &packet) override;
+  void AddData(const game_stream_packet& packet) override;
 
 private:
   // Utility functions
-  static RETRO::AudioStreamProperties* TranslateProperties(const game_stream_audio_properties &properties, double sampleRate);
+  static RETRO::AudioStreamProperties* TranslateProperties(
+      const game_stream_audio_properties& properties, double sampleRate);
 
   // Construction parameters
   const double m_sampleRate;

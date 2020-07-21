@@ -6,6 +6,7 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "FileItem.h"
 #include "MediaManager.h"
 #include "ServiceBroker.h"
 #include "guilib/GUIComponent.h"
@@ -23,25 +24,25 @@
 #include <map>
 #include <utility>
 #include "DetectDVDType.h"
-#include "filesystem/iso9660.h"
 #endif
 #endif
 #include "Autorun.h"
-#include "addons/VFSEntry.h"
+#include "AutorunMediaJob.h"
 #include "GUIUserMessages.h"
+#include "addons/VFSEntry.h"
+#include "cores/VideoPlayer/DVDInputStreams/DVDInputStreamNavigator.h"
+#include "dialogs/GUIDialogKaiToast.h"
+#include "dialogs/GUIDialogPlayEject.h"
+#include "filesystem/File.h"
+#include "messaging/helpers/DialogOKHelper.h"
 #include "settings/MediaSourceSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/XBMCTinyXML.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
-#include "dialogs/GUIDialogKaiToast.h"
 #include "utils/JobManager.h"
 #include "utils/StringUtils.h"
-#include "AutorunMediaJob.h"
-
-#include "filesystem/File.h"
-#include "cores/VideoPlayer/DVDInputStreams/DVDInputStreamNavigator.h"
+#include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
 
 #if defined(TARGET_POSIX) && !defined(TARGET_DARWIN) && !defined(TARGET_FREEBSD)
 #include <sys/ioctl.h>
@@ -61,8 +62,6 @@ using namespace MEDIA_DETECT;
 #endif
 
 const char MEDIA_SOURCES_XML[] = { "special://profile/mediasources.xml" };
-
-class CMediaManager g_mediaManager;
 
 CMediaManager::CMediaManager()
 {
@@ -102,7 +101,7 @@ bool CMediaManager::LoadSources()
     return false;
 
   TiXmlElement* pRootElement = xmlDoc.RootElement();
-  if ( !pRootElement || strcmpi(pRootElement->Value(), "mediasources") != 0)
+  if (!pRootElement || StringUtils::CompareNoCase(pRootElement->Value(), "mediasources") != 0)
   {
     CLog::Log(LOGERROR, "Error loading %s, Line %d (%s)", MEDIA_SOURCES_XML, xmlDoc.ErrorRow(), xmlDoc.ErrorDesc());
     return false;
@@ -216,7 +215,9 @@ void CMediaManager::GetNetworkLocations(VECSOURCES &locations, bool autolocation
         if (!info.type.empty() && info.supportBrowsing)
         {
           share.strPath = info.type + "://";
-          share.strName = g_localizeStrings.Get(info.label);
+          share.strName = g_localizeStrings.GetAddonString(addon->ID(), info.label);
+          if (share.strName.empty())
+            share.strName = g_localizeStrings.Get(info.label);
           locations.push_back(share);
         }
       }
@@ -489,15 +490,15 @@ std::string CMediaManager::GetDiskLabel(const std::string& devicePath)
   if(!m_bhasoptical)
     return "";
 
-  std::string mediaPath = g_mediaManager.TranslateDevicePath(devicePath);
+  std::string mediaPath = CServiceBroker::GetMediaManager().TranslateDevicePath(devicePath);
 
   auto cached = m_mapDiscInfo.find(mediaPath);
   if (cached != m_mapDiscInfo.end())
     return cached->second.name;
 
   // try to minimize the chance of a "device not ready" dialog
-  std::string drivePath = g_mediaManager.TranslateDevicePath(devicePath, true);
-  if (g_mediaManager.GetDriveStatus(drivePath) != DRIVE_CLOSED_MEDIA_PRESENT)
+  std::string drivePath = CServiceBroker::GetMediaManager().TranslateDevicePath(devicePath, true);
+  if (CServiceBroker::GetMediaManager().GetDriveStatus(drivePath) != DRIVE_CLOSED_MEDIA_PRESENT)
     return "";
 
   DiscInfo info;
@@ -531,7 +532,7 @@ std::string CMediaManager::GetDiskUniqueId(const std::string& devicePath)
 {
   std::string mediaPath;
 
-  CCdInfo* pInfo = g_mediaManager.GetCdInfo(devicePath);
+  CCdInfo* pInfo = CServiceBroker::GetMediaManager().GetCdInfo(devicePath);
   if (pInfo == NULL)
     return "";
 
@@ -547,7 +548,7 @@ std::string CMediaManager::GetDiskUniqueId(const std::string& devicePath)
 #ifdef TARGET_WINDOWS
   if (mediaPath.empty() || mediaPath == "iso9660://")
   {
-    mediaPath = g_mediaManager.TranslateDevicePath(devicePath);
+    mediaPath = CServiceBroker::GetMediaManager().TranslateDevicePath(devicePath);
   }
 #endif
 
@@ -567,7 +568,7 @@ std::string CMediaManager::GetDiskUniqueId(const std::string& devicePath)
 std::string CMediaManager::GetDiscPath()
 {
 #ifdef TARGET_WINDOWS
-  return g_mediaManager.TranslateDevicePath("");
+  return CServiceBroker::GetMediaManager().TranslateDevicePath("");
 #else
 
   CSingleLock lock(m_CritSecStorageProvider);
@@ -605,7 +606,6 @@ void CMediaManager::EjectTray( const bool bEject, const char cDriveLetter )
 #else
   std::shared_ptr<CLibcdio> c_cdio = CLibcdio::GetInstance();
   char* dvdDevice = c_cdio->GetDeviceFileName();
-  m_isoReader.Reset();
   int nRetries=3;
   while (nRetries-- > 0)
   {
@@ -724,7 +724,7 @@ CMediaManager::DiscInfo CMediaManager::GetDiscInfo(const std::string& mediaPath)
     // correct the filename if needed
     if (StringUtils::StartsWith(pathVideoTS, "dvd://") ||
       StringUtils::StartsWith(pathVideoTS, "iso9660://"))
-      pathVideoTS = g_mediaManager.TranslateDevicePath("");
+      pathVideoTS = CServiceBroker::GetMediaManager().TranslateDevicePath("");
 
 
     CFileItem item(pathVideoTS, false);
@@ -761,4 +761,39 @@ void CMediaManager::RemoveDiscInfo(const std::string& devicePath)
   auto it = m_mapDiscInfo.find(strDevice);
   if (it != m_mapDiscInfo.end())
     m_mapDiscInfo.erase(it);
+}
+
+bool CMediaManager::playStubFile(const CFileItem& item)
+{
+  // Figure out Lines 1 and 2 of the dialog
+  std::string strLine1, strLine2;
+  CXBMCTinyXML discStubXML;
+  if (discStubXML.LoadFile(item.GetPath()))
+  {
+    TiXmlElement* pRootElement = discStubXML.RootElement();
+    if (!pRootElement || StringUtils::CompareNoCase(pRootElement->Value(), "discstub") != 0)
+      CLog::Log(LOGERROR, "Error loading %s, no <discstub> node", item.GetPath().c_str());
+    else
+    {
+      XMLUtils::GetString(pRootElement, "title", strLine1);
+      XMLUtils::GetString(pRootElement, "message", strLine2);
+    }
+  }
+
+  // Use the label for Line 1 if not defined
+  if (strLine1.empty())
+    strLine1 = item.GetLabel();
+
+  if (HasOpticalDrive())
+  {
+#ifdef HAS_DVD_DRIVE
+    if (CGUIDialogPlayEject::ShowAndGetInput(strLine1, strLine2))
+      return MEDIA_DETECT::CAutorun::PlayDiscAskResume();
+#endif
+  }
+  else
+  {
+    KODI::MESSAGING::HELPERS::ShowOKDialogText(strLine1, strLine2);
+  }
+  return true;
 }

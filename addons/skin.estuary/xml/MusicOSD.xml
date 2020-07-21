@@ -14,11 +14,13 @@
 			<texturenofocus />
 			<onclick>Action(close)</onclick>
 		</control>
+		<include condition="Skin.HasSetting(touchmode)">TouchBackOSDButton</include>
 		<control type="group" id="200">
+			<include>Animation_BottomSlide</include>
 			<bottom>0</bottom>
 			<height>120</height>
-			<visible>!Window.IsActive(osdaudiosettings) + !Window.IsActive(osdvideosettings) + !Window.IsActive(playerprocessinfo)</visible>
 			<include>Animation_BottomSlide</include>
+			<visible>!Window.IsActive(osdaudiosettings) + !Window.IsActive(osdvideosettings) + !Window.IsActive(playerprocessinfo)</visible>
 			<animation type="Visible" reversible="false">
 				<effect type="fade" start="0" end="100" time="300"/>
 				<effect type="slide" start="0,200" end="0,0" time="300" tween="cubic" easing="out" />
@@ -38,7 +40,7 @@
 				<onup>87</onup>
 				<ondown>noop</ondown>
 				<onleft>5000</onleft>
-				<onright>620</onright>
+				<onright>62040</onright>
 				<control type="radiobutton" id="600">
 					<include content="OSDButton">
 						<param name="texture" value="osd/fullscreen/buttons/previous.png"/>
@@ -112,6 +114,37 @@
 				<ondown>noop</ondown>
 				<onleft>606</onleft>
 				<onright>600</onright>
+				<control type="radiobutton" id="62040">
+					<include content="OSDButton">
+						<param name="texture" value="osd/fullscreen/buttons/information.png"/>
+					</include>
+					<onclick>Info</onclick>
+					<visible>MusicPlayer.Content(LiveTV)</visible>
+				</control>
+				<control type="radiobutton" id="62041">
+					<include content="OSDButton">
+						<param name="texture" value="osd/fullscreen/buttons/channels.png"/>
+					</include>
+					<onclick>Dialog.Close(MusicOSD)</onclick>
+					<onclick>ActivateWindow(PVROSDChannels)</onclick>
+					<visible>MusicPlayer.Content(LiveTV)</visible>
+				</control>
+				<control type="radiobutton" id="62042">
+					<include content="OSDButton">
+						<param name="texture" value="osd/fullscreen/buttons/guide.png"/>
+					</include>
+					<onclick>Dialog.Close(MusicOSD)</onclick>
+					<onclick>ActivateWindow(PVRChannelGuide)</onclick>
+					<visible>MusicPlayer.Content(LiveTV) + VideoPlayer.HasEPG</visible>
+				</control>
+				<control type="radiobutton" id="62043">
+					<include content="OSDButton">
+						<param name="texture" value="osd/fullscreen/buttons/rds.png"/>
+					</include>
+					<onclick>Dialog.Close(MusicOSD)</onclick>
+					<onclick>ActivateWindow(PVRRadioRDSInfo)</onclick>
+					<visible>MusicPlayer.Content(LiveTV) + RDS.HasRadiotext</visible>
+				</control>
 				<control type="radiobutton" id="620">
 					<include content="OSDButton">
 						<param name="texture" value="osd/fullscreen/buttons/rating.png"/>
@@ -193,13 +226,26 @@
 				<width>1000</width>
 				<height>50</height>
 				<label>$VAR[MusicOSDHelpTextVar]</label>
+				<visible>!Player.ShowInfo</visible>
 			</control>
 		</control>
 		<control type="group">
 			<bottom>0</bottom>
 			<height>120</height>
-			<animation effect="fade" start="0" end="100" time="250">WindowOpen</animation>
-			<animation effect="fade" start="100" end="0" time="250">WindowClose</animation>
+			<animation type="WindowOpen" condition="!Player.ShowInfo" reversible="False">
+				<effect type="fade" start="0" end="100" time="300"/>
+				<effect type="slide" start="0,200" end="0,0" time="300" tween="cubic" easing="out" />
+			</animation>
+			<animation type="WindowClose" condition="!Player.ShowInfo" reversible="False">
+				<effect type="fade" start="100" end="0" time="300"/>
+				<effect type="slide" start="0,0" end="0,200" time="300" tween="cubic" easing="out" />
+			</animation>
+			<animation type="WindowOpen" condition="Player.ShowInfo" reversible="False">
+				<effect type="fade" start="0" end="100" time="300"/>
+			</animation>
+			<animation type="WindowClose" condition="Player.ShowInfo" reversible="False">
+				<effect type="fade" start="100" end="0" time="300"/>
+			</animation>
 			<control type="button" id="87">
 				<include>HiddenObject</include>
 				<onup condition="Player.Forwarding | Player.Rewinding">PlayerControl(Play)</onup>
@@ -222,6 +268,8 @@
 				<textureslidernib>osd/progress/nub_leftright.png</textureslidernib>
 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
 				<info>Player.Progress</info>
+				<onup>201</onup>
+				<ondown>200</ondown>
 				<visible>Player.SeekEnabled + !Control.HasFocus(87) + !MusicPlayer.Content(LiveTV)</visible>
 				<action>seek</action>
 			</control>
@@ -236,6 +284,8 @@
 				<textureslidernib colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernib>
 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
 				<info>Player.Progress</info>
+				<onup>201</onup>
+				<ondown>200</ondown>
 				<visible>Player.SeekEnabled + Control.HasFocus(87) + !MusicPlayer.Content(LiveTV)</visible>
 				<action>seek</action>
 			</control>
@@ -250,6 +300,8 @@
 				<textureslidernib>osd/progress/nub_leftright.png</textureslidernib>
 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
 				<info>PVR.TimeshiftProgressPlayPos</info>
+				<onup>201</onup>
+				<ondown>200</ondown>
 				<action>pvr.seek</action>
 				<visible>Player.SeekEnabled + !Control.HasFocus(87) + MusicPlayer.Content(LiveTV)</visible>
 			</control>
@@ -264,6 +316,8 @@
 				<textureslidernib colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernib>
 				<textureslidernibfocus colordiffuse="button_focus">osd/progress/nub_leftright.png</textureslidernibfocus>
 				<info>PVR.TimeshiftProgressPlayPos</info>
+				<onup>201</onup>
+				<ondown>200</ondown>
 				<action>pvr.seek</action>
 				<visible>Player.SeekEnabled + Control.HasFocus(87) + MusicPlayer.Content(LiveTV)</visible>
 			</control>

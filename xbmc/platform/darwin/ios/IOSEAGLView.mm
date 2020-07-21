@@ -6,32 +6,32 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <sys/resource.h>
+#import "IOSEAGLView.h"
+
+#include "AppInboundProtocol.h"
+#include "AppParamParser.h"
+#include "Application.h"
+#import "IOSScreenManager.h"
+#include "ServiceBroker.h"
+#include "Util.h"
+#import "XBMCController.h"
+#include "messaging/ApplicationMessenger.h"
+#include "settings/AdvancedSettings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/TimeUtils.h"
+#include "utils/log.h"
+
+#import "platform/darwin/DarwinUtils.h"
+#import "platform/darwin/NSLogDebugHelpers.h"
+#import "platform/darwin/ios-common/AnnounceReceiver.h"
+
 #include <signal.h>
 #include <stdio.h>
 
-#include "settings/AdvancedSettings.h"
-#include "settings/SettingsComponent.h"
-#include "Application.h"
-#include "AppInboundProtocol.h"
-#include "ServiceBroker.h"
-#include "messaging/ApplicationMessenger.h"
-#include "utils/log.h"
-#include "utils/TimeUtils.h"
-#include "Util.h"
-#include "AppParamParser.h"
-
-#import <QuartzCore/QuartzCore.h>
-
 #import <OpenGLES/ES2/gl.h>
 #import <OpenGLES/ES2/glext.h>
-#import "IOSEAGLView.h"
-#import "XBMCController.h"
-#import "IOSScreenManager.h"
-#import "platform/darwin/AutoPool.h"
-#import "platform/darwin/DarwinUtils.h"
-#import "platform/darwin/ios-common/AnnounceReceiver.h"
-#import "XBMCDebugHelpers.h"
+#import <QuartzCore/QuartzCore.h>
+#include <sys/resource.h>
 
 using namespace KODI::MESSAGING;
 
@@ -60,7 +60,7 @@ using namespace KODI::MESSAGING;
 //--------------------------------------------------------------
 - (void) resizeFrameBuffer
 {
-  CGRect frame = [currentScreen bounds];
+  auto frame = currentScreen.bounds;
   CAEAGLLayer *eaglLayer = (CAEAGLLayer *)[self layer];
   //allow a maximum framebuffer size of 1080p
   //needed for tvout on iPad3/4 and iphone4/5 and maybe AppleTV3
@@ -88,35 +88,11 @@ using namespace KODI::MESSAGING;
   }
 }
 
-- (CGFloat) getScreenScale:(UIScreen *)screen
+- (CGFloat)getScreenScale:(UIScreen *)screen
 {
-  CGFloat ret = 1.0;
-  if ([screen respondsToSelector:@selector(scale)])
-  {
-    // normal other iDevices report 1.0 here
-    // retina devices report 2.0 here
-    // this info is true as of 19.3.2012.
-    if([screen scale] > 1.0)
-    {
-      ret = [screen scale];
-    }
-
-    //if no retina display scale detected yet -
-    //ensure retina resolution on supported devices mainScreen
-    //even on older iOS SDKs
-    double screenScale = 1.0;
-    if (ret == 1.0 && screen == [UIScreen mainScreen] && CDarwinUtils::DeviceHasRetina(screenScale))
-    {
-      ret = screenScale;//set scale factor from our static list in case older SDKs report 1.0
-    }
-
-    // fix for ip6 plus which seems to report 2.0 when not compiled with ios8 sdk
-    if (CDarwinUtils::DeviceHasRetina(screenScale) && screenScale == 3.0)
-    {
-      ret = screenScale;
-    }
-  }
-  return ret;
+  LOG(@"nativeScale %lf, scale %lf, traitScale %lf", screen.nativeScale, screen.scale,
+            screen.traitCollection.displayScale);
+  return std::max({screen.nativeScale, screen.scale, screen.traitCollection.displayScale});
 }
 
 - (void) setScreen:(UIScreen *)screen withFrameBufferResize:(BOOL)resize
@@ -164,7 +140,6 @@ using namespace KODI::MESSAGING;
       ELOG(@"Failed to set ES context current");
 
     self.context = aContext;
-    [aContext release];
 
     animating = FALSE;
     xbmcAlive = FALSE;
@@ -182,9 +157,6 @@ using namespace KODI::MESSAGING;
 {
   //PRINT_SIGNATURE();
   [self deleteFramebuffer];
-  [context release];
-
-  [super dealloc];
 }
 
 //--------------------------------------------------------------
@@ -200,8 +172,7 @@ using namespace KODI::MESSAGING;
   {
     [self deleteFramebuffer];
 
-    [context release];
-    context = [newContext retain];
+    context = newContext;
 
     [EAGLContext setCurrentContext:nil];
   }
@@ -357,80 +328,83 @@ using namespace KODI::MESSAGING;
 //--------------------------------------------------------------
 - (void) runAnimation:(id) arg
 {
-  CCocoaAutoPool outerpool;
+  @autoreleasepool
+  {
+    [[NSThread currentThread] setName:@"XBMC_Run"];
 
-  [[NSThread currentThread] setName:@"XBMC_Run"];
+    // set up some xbmc specific relationships
+    readyToRun = true;
 
-  // set up some xbmc specific relationships
-  readyToRun = true;
+    // signal we are alive
+    NSConditionLock* myLock = arg;
+    [myLock lock];
 
-  // signal we are alive
-  NSConditionLock* myLock = arg;
-  [myLock lock];
-
-  CAppParamParser appParamParser;
-  #ifdef _DEBUG
+    CAppParamParser appParamParser;
+#ifdef _DEBUG
     appParamParser.m_logLevel = LOG_LEVEL_DEBUG;
-  #else
+#else
     appParamParser.m_logLevel = LOG_LEVEL_NORMAL;
-  #endif
+#endif
 
-  // Prevent child processes from becoming zombies on exit if not waited upon. See also Util::Command
-  struct sigaction sa;
-  memset(&sa, 0, sizeof(sa));
-  sa.sa_flags = SA_NOCLDWAIT;
-  sa.sa_handler = SIG_IGN;
-  sigaction(SIGCHLD, &sa, NULL);
+    // Prevent child processes from becoming zombies on exit if not waited upon. See also Util::Command
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_flags = SA_NOCLDWAIT;
+    sa.sa_handler = SIG_IGN;
+    sigaction(SIGCHLD, &sa, NULL);
 
-  setlocale(LC_NUMERIC, "C");
+    setlocale(LC_NUMERIC, "C");
 
-  g_application.Preflight();
-  if (!g_application.Create(appParamParser))
-  {
-    readyToRun = false;
-    ELOG(@"%sUnable to create application", __PRETTY_FUNCTION__);
-  }
-
-  CAnnounceReceiver::GetInstance()->Initialize();
-
-  if (!g_application.CreateGUI())
-  {
-    readyToRun = false;
-    ELOG(@"%sUnable to create GUI", __PRETTY_FUNCTION__);
-  }
-
-  if (!g_application.Initialize())
-  {
-    readyToRun = false;
-    ELOG(@"%sUnable to initialize application", __PRETTY_FUNCTION__);
-  }
-
-  if (readyToRun)
-  {
-    CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_startFullScreen = true;
-    CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_canWindowed = false;
-    xbmcAlive = TRUE;
-    try
+    g_application.Preflight();
+    if (!g_application.Create(appParamParser))
     {
-      CCocoaAutoPool innerpool;
-      g_application.Run(CAppParamParser());
+      readyToRun = false;
+      ELOG(@"%sUnable to create application", __PRETTY_FUNCTION__);
     }
-    catch(...)
+
+    CAnnounceReceiver::GetInstance()->Initialize();
+
+    if (!g_application.CreateGUI())
     {
-      ELOG(@"%sException caught on main loop. Exiting", __PRETTY_FUNCTION__);
+      readyToRun = false;
+      ELOG(@"%sUnable to create GUI", __PRETTY_FUNCTION__);
     }
+
+    if (!g_application.Initialize())
+    {
+      readyToRun = false;
+      ELOG(@"%sUnable to initialize application", __PRETTY_FUNCTION__);
+    }
+
+    if (readyToRun)
+    {
+      CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_startFullScreen = true;
+      CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_canWindowed = false;
+      xbmcAlive = TRUE;
+      [g_xbmcController onXbmcAlive];
+      try
+      {
+        @autoreleasepool
+        {
+          g_application.Run(CAppParamParser());
+        }
+      }
+      catch (...)
+      {
+        ELOG(@"%sException caught on main loop. Exiting", __PRETTY_FUNCTION__);
+      }
+    }
+
+    // signal we are dead
+    [myLock unlockWithCondition:TRUE];
+
+    // grrr, xbmc does not shutdown properly and leaves
+    // several classes in an indeterminate state, we must exit and
+    // reload Lowtide/AppleTV, boo.
+    [g_xbmcController enableScreenSaver];
+    [g_xbmcController enableSystemSleep];
+    exit(0);
   }
-
-  // signal we are dead
-  [myLock unlockWithCondition:TRUE];
-
-  // grrr, xbmc does not shutdown properly and leaves
-  // several classes in an indeterminate state, we must exit and
-  // reload Lowtide/AppleTV, boo.
-  [g_xbmcController enableScreenSaver];
-  [g_xbmcController enableSystemSleep];
-  //[g_xbmcController applicationDidExit];
-  exit(0);
 }
 //--------------------------------------------------------------
 @end

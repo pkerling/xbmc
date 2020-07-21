@@ -8,19 +8,20 @@
 
 #pragma once
 
-#include "xbmc/windowing/WinEvents.h"
-#include "xbmc/windowing/X11/WinSystemX11.h"
-#include <X11/Xlib.h>
 #include "threads/SystemClock.h"
+#include "windowing/WinEvents.h"
+#include "windowing/X11/WinSystemX11.h"
 
 #include <clocale>
 #include <map>
+
+#include <X11/Xlib.h>
 
 class CWinEventsX11 : public IWinEvents
 {
 public:
   CWinEventsX11(CWinSystemX11& winSystem);
-  virtual ~CWinEventsX11();
+  ~CWinEventsX11() override;
   bool MessagePump() override;
   bool Init(Display *dpy, Window win);
   void Quit();

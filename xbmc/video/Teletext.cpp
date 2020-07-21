@@ -13,13 +13,14 @@
  * Many thanks to the TuxBox Teletext Team for this great work.
  */
 
-#include "threads/SystemClock.h"
 #include "Teletext.h"
+
 #include "Application.h"
-#include "utils/log.h"
 #include "filesystem/SpecialProtocol.h"
-#include "windowing/GraphicContext.h"
 #include "input/Key.h"
+#include "threads/SystemClock.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
 
 static inline void SDL_memset4(uint32_t* dst, uint32_t val, size_t len)
 {
@@ -105,8 +106,8 @@ TextPageAttr_t Text_AtrTable[] =
   { TXT_ColorWhite  , TXT_ColorBlack , C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_WB */
   { TXT_ColorWhite  , TXT_ColorBlack , C_G0P, 0, 0, 1 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_PassiveDefault */
   { TXT_ColorWhite  , TXT_ColorRed   , C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_L250 */
-  { TXT_ColorBlack  , TXT_ColorYellow, C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_L252 */
   { TXT_ColorBlack  , TXT_ColorGreen , C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_L251 */
+  { TXT_ColorBlack  , TXT_ColorYellow, C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_L252 */
   { TXT_ColorWhite  , TXT_ColorBlue  , C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_L253 */
   { TXT_ColorMagenta, TXT_ColorBlack , C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_TOPMENU0 */
   { TXT_ColorGreen  , TXT_ColorBlack , C_G0P, 0, 0, 0 ,0, 0, 0, 0, 0, 0, 0, 0x3f}, /* ATR_TOPMENU1 */
@@ -518,7 +519,7 @@ bool CTeletextDecoder::HandleAction(const CAction &action)
     PageInput(action.GetID() - REMOTE_0);
     return true;
   }
-  else if (action.GetID() >= KEY_ASCII) // FIXME make it KEY_UNICODE
+  else if (action.GetID() == KEY_UNICODE)
   { // input from the keyboard
     if (action.GetUnicode() >= 48 && action.GetUnicode() < 58)
     {
@@ -553,7 +554,7 @@ bool CTeletextDecoder::HandleAction(const CAction &action)
   if (m_RenderInfo.PageCatching)
   {
     m_txtCache->PageUpdate    = true;
-    m_RenderInfo.PageCatching = 0;
+    m_RenderInfo.PageCatching = false;
     return true;
   }
 
@@ -642,7 +643,8 @@ bool CTeletextDecoder::InitDecoder()
     m_TypeTTF.face_id = (FTC_FaceID) const_cast<char*>(m_teletextFont.c_str());
     if ((error = FTC_Manager_LookupFace(m_Manager, m_TypeTTF.face_id, &m_Face)))
     {
-      CLog::Log(LOGERROR, "%s: <FTC_Manager_Lookup_Face failed with Errorcode 0x%.2X>\n", __FUNCTION__, error);
+      CLog::Log(LOGERROR, "%s: <FTC_Manager_Lookup_Face failed with Errorcode 0x%.2X>",
+                __FUNCTION__, error);
       FTC_Manager_Done(m_Manager);
       FT_Done_FreeType(m_Library);
       m_Manager = NULL;
@@ -711,14 +713,13 @@ void CTeletextDecoder::EndDecoder()
 
   if (!m_txtCache)
   {
-    CLog::Log(LOGNOTICE, "%s: called without cache", __FUNCTION__);
+    CLog::Log(LOGINFO, "%s: called without cache", __FUNCTION__);
   }
   else
   {
     m_txtCache->PageUpdate = true;
     CLog::Log(LOGDEBUG, "Teletext: Rendering ended");
   }
-  return;
 }
 
 void CTeletextDecoder::PageInput(int Number)
@@ -1871,7 +1872,7 @@ FT_Error CTeletextDecoder::MyFaceRequester(FTC_FaceID face_id, FT_Library librar
   FT_Error result = FT_New_Face(library, (const char*)face_id, 0, aface);
 
   if (!result)
-    CLog::Log(LOGNOTICE, "Teletext font %s loaded", (char*)face_id);
+    CLog::Log(LOGINFO, "Teletext font %s loaded", (char*)face_id);
   else
     CLog::Log(LOGERROR, "Opening of Teletext font %s failed", (char*)face_id);
 

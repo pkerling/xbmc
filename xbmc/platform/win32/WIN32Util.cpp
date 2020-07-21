@@ -7,21 +7,25 @@
  */
 
 #include "WIN32Util.h"
-#include "Util.h"
-#include "utils/URIUtils.h"
-#include "storage/cdioSupport.h"
-#include "PowrProf.h"
-#include "WindowHelper.h"
+
 #include "Application.h"
+#include "CompileInfo.h"
+#include "ServiceBroker.h"
+#include "Util.h"
+#include "WindowHelper.h"
+#include "guilib/LocalizeStrings.h"
 #include "my_ntddscsi.h"
 #include "storage/MediaManager.h"
-#include "guilib/LocalizeStrings.h"
+#include "storage/cdioSupport.h"
 #include "utils/CharsetConverter.h"
-#include "utils/log.h"
-#include "utils/SystemInfo.h"
 #include "utils/StringUtils.h"
-#include "CompileInfo.h"
+#include "utils/SystemInfo.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+
 #include "platform/win32/CharsetConverter.h"
+
+#include <PowrProf.h>
 
 #ifdef TARGET_WINDOWS_DESKTOP
 #include <cassert>
@@ -40,13 +44,18 @@ using namespace MEDIA_DETECT;
 
 #ifdef TARGET_WINDOWS_STORE
 #include "platform/win10/AsyncHelpers.h"
+
 #include <ppltasks.h>
+#include <winrt/Windows.Devices.Display.Core.h>
 #include <winrt/Windows.Devices.Power.h>
 #include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/Windows.Graphics.Display.Core.h>
 #include <winrt/Windows.Storage.h>
 
 using namespace winrt::Windows::Devices::Power;
+using namespace winrt::Windows::Devices::Display::Core;
 using namespace winrt::Windows::Graphics::Display;
+using namespace winrt::Windows::Graphics::Display::Core;
 using namespace winrt::Windows::Storage;
 #endif
 
@@ -502,7 +511,7 @@ HRESULT CWIN32Util::ToggleTray(const char cDriveLetter)
   char cDL = cDriveLetter;
   if( !cDL )
   {
-    std::string dvdDevice = g_mediaManager.TranslateDevicePath("");
+    std::string dvdDevice = CServiceBroker::GetMediaManager().TranslateDevicePath("");
     if(dvdDevice == "")
       return S_FALSE;
     cDL = dvdDevice[0];
@@ -526,7 +535,7 @@ HRESULT CWIN32Util::ToggleTray(const char cDriveLetter)
     CMediaSource share;
     share.strPath = StringUtils::Format("%c:", cDL);
     share.strName = share.strPath;
-    g_mediaManager.RemoveAutoSource(share);
+    CServiceBroker::GetMediaManager().RemoveAutoSource(share);
   }
   CloseHandle(hDrive);
   return bRet? S_OK : S_FALSE;
@@ -538,7 +547,7 @@ HRESULT CWIN32Util::EjectTray(const char cDriveLetter)
   char cDL = cDriveLetter;
   if( !cDL )
   {
-    std::string dvdDevice = g_mediaManager.TranslateDevicePath("");
+    std::string dvdDevice = CServiceBroker::GetMediaManager().TranslateDevicePath("");
     if(dvdDevice.empty())
       return S_FALSE;
     cDL = dvdDevice[0];
@@ -557,7 +566,7 @@ HRESULT CWIN32Util::CloseTray(const char cDriveLetter)
   char cDL = cDriveLetter;
   if( !cDL )
   {
-    std::string dvdDevice = g_mediaManager.TranslateDevicePath("");
+    std::string dvdDevice = CServiceBroker::GetMediaManager().TranslateDevicePath("");
     if(dvdDevice.empty())
       return S_FALSE;
     cDL = dvdDevice[0];
@@ -626,36 +635,21 @@ extern "C" {
  *  Heavily optimised by David Laight
  */
 
-  #if !defined(TARGET_WINDOWS)
-  #include <sys/cdefs.h>
-  #endif
-
   #if defined(LIBC_SCCS) && !defined(lint)
   __RCSID("$NetBSD: strptime.c,v 1.25 2005/11/29 03:12:00 christos Exp $");
   #endif
 
-  #if !defined(TARGET_WINDOWS)
-  #include "namespace.h"
-  #include <sys/localedef.h>
-  #else
   typedef unsigned char u_char;
   typedef unsigned int uint;
-  #endif
   #include <ctype.h>
   #include <locale.h>
   #include <string.h>
   #include <time.h>
-  #if !defined(TARGET_WINDOWS)
-  #include <tzfile.h>
-  #endif
 
   #ifdef __weak_alias
   __weak_alias(strptime,_strptime)
   #endif
 
-  #if !defined(TARGET_WINDOWS)
-  #define  _ctloc(x)    (_CurrentTimeLocale->x)
-  #else
   #define _ctloc(x)   (x)
   const char *abday[] = {
     "Sun", "Mon", "Tue", "Wed",
@@ -683,7 +677,6 @@ extern "C" {
   #define TM_YEAR_BASE 1900
   #define __UNCONST(x) ((char *)(((const char *)(x) - (const char *)0) + (char *)0))
 
-  #endif
   /*
    * We do not implement alternate representations. However, we always
    * check whether a given modifier is allowed for a certain conversion.
@@ -970,7 +963,8 @@ extern "C" {
     for (; n1 != NULL; n1 = n2, n2 = NULL) {
       for (i = 0; i < c; i++, n1++) {
         len = strlen(*n1);
-        if (strnicmp(*n1, (const char *)bp, len) == 0) {
+        if (StringUtils::CompareNoCase(*n1, (const char*)bp, len) == 0)
+        {
           *tgt = i;
           return bp + len;
         }
@@ -1240,3 +1234,281 @@ bool CWIN32Util::SetThreadLocalLocale(bool enable /* = true */)
   return _configthreadlocale(param) != -1;
 }
 
+HDR_STATUS CWIN32Util::ToggleWindowsHDR(DXGI_MODE_DESC& modeDesc)
+{
+  HDR_STATUS status = HDR_STATUS::HDR_TOGGLE_FAILED;
+
+#ifdef TARGET_WINDOWS_STORE
+  auto hdmiDisplayInfo = HdmiDisplayInformation::GetForCurrentView();
+
+  if (hdmiDisplayInfo == nullptr)
+    return status;
+
+  auto current = hdmiDisplayInfo.GetCurrentDisplayMode();
+
+  auto newColorSp = (current.ColorSpace() == HdmiDisplayColorSpace::BT2020)
+                        ? HdmiDisplayColorSpace::BT709
+                        : HdmiDisplayColorSpace::BT2020;
+
+  auto modes = hdmiDisplayInfo.GetSupportedDisplayModes();
+
+  // Browse over all modes available like the current (resolution and refresh)
+  // but reciprocals HDR (color space and transfer).
+  // NOTE: transfer for HDR is here "fake HDR" (EotfSdr) to be
+  // able render SRD content with HDR ON, same as Windows HDR switch does.
+  // GUI-skin is SDR. The real HDR mode is activated later when playback begins.
+  for (const auto& mode : modes)
+  {
+    if (mode.ColorSpace() == newColorSp &&
+        mode.ResolutionHeightInRawPixels() == current.ResolutionHeightInRawPixels() &&
+        mode.ResolutionWidthInRawPixels() == current.ResolutionWidthInRawPixels() &&
+        mode.StereoEnabled() == false && fabs(mode.RefreshRate() - current.RefreshRate()) < 0.0001)
+    {
+      if (current.ColorSpace() == HdmiDisplayColorSpace::BT2020) // HDR is ON
+      {
+        CLog::LogF(LOGINFO, "Toggle Windows HDR Off (ON => OFF).");
+        if (Wait(hdmiDisplayInfo.RequestSetCurrentDisplayModeAsync(mode,
+                                                                   HdmiDisplayHdrOption::None)))
+          status = HDR_STATUS::HDR_OFF;
+      }
+      else // HDR is OFF
+      {
+        CLog::LogF(LOGINFO, "Toggle Windows HDR On (OFF => ON).");
+        if (Wait(hdmiDisplayInfo.RequestSetCurrentDisplayModeAsync(mode,
+                                                                   HdmiDisplayHdrOption::EotfSdr)))
+          status = HDR_STATUS::HDR_ON;
+      }
+      break;
+    }
+  }
+#else
+  uint32_t pathCount = 0;
+  uint32_t modeCount = 0;
+
+  MONITORINFOEXW mi = {};
+  mi.cbSize = sizeof(mi);
+  GetMonitorInfoW(MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
+  const std::wstring deviceNameW = mi.szDevice;
+
+  if (ERROR_SUCCESS == GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount))
+  {
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
+
+    if (ERROR_SUCCESS == QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(),
+                                            &modeCount, modes.data(), nullptr))
+    {
+      DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO getColorInfo = {};
+      getColorInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
+      getColorInfo.header.size = sizeof(getColorInfo);
+
+      DISPLAYCONFIG_SET_ADVANCED_COLOR_STATE setColorState = {};
+      setColorState.header.type = DISPLAYCONFIG_DEVICE_INFO_SET_ADVANCED_COLOR_STATE;
+      setColorState.header.size = sizeof(setColorState);
+
+      DISPLAYCONFIG_SOURCE_DEVICE_NAME getSourceName = {};
+      getSourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+      getSourceName.header.size = sizeof(getSourceName);
+
+      // Only try to toggle display currently used by Kodi
+      for (const auto& path : paths)
+      {
+        getSourceName.header.adapterId.HighPart = path.sourceInfo.adapterId.HighPart;
+        getSourceName.header.adapterId.LowPart = path.sourceInfo.adapterId.LowPart;
+        getSourceName.header.id = path.sourceInfo.id;
+
+        if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getSourceName.header))
+        {
+          const std::wstring sourceNameW = getSourceName.viewGdiDeviceName;
+          if (deviceNameW == sourceNameW)
+          {
+            const auto& mode = modes.at(path.targetInfo.modeInfoIdx);
+
+            getColorInfo.header.adapterId.HighPart = mode.adapterId.HighPart;
+            getColorInfo.header.adapterId.LowPart = mode.adapterId.LowPart;
+            getColorInfo.header.id = mode.id;
+
+            setColorState.header.adapterId.HighPart = mode.adapterId.HighPart;
+            setColorState.header.adapterId.LowPart = mode.adapterId.LowPart;
+            setColorState.header.id = mode.id;
+
+            if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getColorInfo.header))
+            {
+              if (getColorInfo.advancedColorSupported)
+              {
+                if (getColorInfo.advancedColorEnabled) // HDR is ON
+                {
+                  setColorState.enableAdvancedColor = FALSE;
+                  status = HDR_STATUS::HDR_OFF;
+                  CLog::LogF(LOGINFO, "Toggle Windows HDR Off (ON => OFF).");
+                }
+                else // HDR is OFF
+                {
+                  setColorState.enableAdvancedColor = TRUE;
+                  status = HDR_STATUS::HDR_ON;
+                  CLog::LogF(LOGINFO, "Toggle Windows HDR On (OFF => ON).");
+                }
+                if (ERROR_SUCCESS != DisplayConfigSetDeviceInfo(&setColorState.header))
+                  status = HDR_STATUS::HDR_TOGGLE_FAILED;
+              }
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Restores previous graphics mode before toggle HDR
+  if (status != HDR_STATUS::HDR_TOGGLE_FAILED && modeDesc.RefreshRate.Denominator != 0)
+  {
+    float fps = static_cast<float>(modeDesc.RefreshRate.Numerator) /
+                static_cast<float>(modeDesc.RefreshRate.Denominator);
+    int32_t est;
+    DEVMODEW devmode = {};
+    devmode.dmSize = sizeof(devmode);
+    devmode.dmPelsWidth = modeDesc.Width;
+    devmode.dmPelsHeight = modeDesc.Height;
+    devmode.dmDisplayFrequency = static_cast<uint32_t>(fps);
+    if (modeDesc.ScanlineOrdering &&
+        modeDesc.ScanlineOrdering != DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE)
+      devmode.dmDisplayFlags = DM_INTERLACED;
+    devmode.dmFields = DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY | DM_DISPLAYFLAGS;
+    est = ChangeDisplaySettingsExW(deviceNameW.c_str(), &devmode, nullptr, CDS_FULLSCREEN, nullptr);
+    if (est == DISP_CHANGE_SUCCESSFUL)
+      CLog::LogF(LOGDEBUG, "Previous graphics mode restored OK");
+    else
+      CLog::LogF(LOGERROR, "Previous graphics mode cannot be restored (error# {})", est);
+  }
+#endif
+
+  return status;
+}
+
+HDR_STATUS CWIN32Util::GetWindowsHDRStatus()
+{
+  bool advancedColorSupported = false;
+  bool advancedColorEnabled = false;
+  HDR_STATUS status = HDR_STATUS::HDR_UNSUPPORTED;
+
+#ifdef TARGET_WINDOWS_STORE
+  auto displayInformation = DisplayInformation::GetForCurrentView();
+
+  if (displayInformation)
+  {
+    auto advancedColorInfo = displayInformation.GetAdvancedColorInfo();
+
+    if (advancedColorInfo)
+    {
+      if (advancedColorInfo.CurrentAdvancedColorKind() == AdvancedColorKind::HighDynamicRange)
+      {
+        advancedColorSupported = true;
+        advancedColorEnabled = true;
+      }
+    }
+  }
+  // Try to find out if the display supports HDR even if Windows HDR switch is OFF
+  if (!advancedColorEnabled)
+  {
+    auto displayManager = DisplayManager::Create(DisplayManagerOptions::None);
+
+    if (displayManager)
+    {
+      auto targets = displayManager.GetCurrentTargets();
+
+      for (const auto& target : targets)
+      {
+        if (target.IsConnected())
+        {
+          auto displayMonitor = target.TryGetMonitor();
+          if (displayMonitor.MaxLuminanceInNits() >= 400.0f)
+          {
+            advancedColorSupported = true;
+            break;
+          }
+        }
+      }
+      displayManager.Close();
+    }
+  }
+#else
+  uint32_t pathCount = 0;
+  uint32_t modeCount = 0;
+
+  MONITORINFOEXW mi = {};
+  mi.cbSize = sizeof(mi);
+  GetMonitorInfoW(MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
+  const std::wstring deviceNameW = mi.szDevice;
+
+  if (ERROR_SUCCESS == GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount))
+  {
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
+
+    if (ERROR_SUCCESS == QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(),
+                                            &modeCount, modes.data(), 0))
+    {
+      DISPLAYCONFIG_GET_ADVANCED_COLOR_INFO getColorInfo = {};
+      getColorInfo.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_ADVANCED_COLOR_INFO;
+      getColorInfo.header.size = sizeof(getColorInfo);
+
+      DISPLAYCONFIG_SOURCE_DEVICE_NAME getSourceName = {};
+      getSourceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+      getSourceName.header.size = sizeof(getSourceName);
+
+      for (const auto& path : paths)
+      {
+        getSourceName.header.adapterId.HighPart = path.sourceInfo.adapterId.HighPart;
+        getSourceName.header.adapterId.LowPart = path.sourceInfo.adapterId.LowPart;
+        getSourceName.header.id = path.sourceInfo.id;
+
+        if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getSourceName.header))
+        {
+          const std::wstring sourceNameW = getSourceName.viewGdiDeviceName;
+          if (g_hWnd == nullptr || deviceNameW == sourceNameW)
+          {
+            const auto& mode = modes.at(path.targetInfo.modeInfoIdx);
+
+            getColorInfo.header.adapterId.HighPart = mode.adapterId.HighPart;
+            getColorInfo.header.adapterId.LowPart = mode.adapterId.LowPart;
+            getColorInfo.header.id = mode.id;
+
+            if (ERROR_SUCCESS == DisplayConfigGetDeviceInfo(&getColorInfo.header))
+            {
+              if (getColorInfo.advancedColorEnabled)
+                advancedColorEnabled = true;
+
+              if (getColorInfo.advancedColorSupported)
+                advancedColorSupported = true;
+            }
+
+            if (g_hWnd != nullptr)
+              break;
+          }
+        }
+      }
+    }
+  }
+#endif
+
+  if (!advancedColorSupported)
+  {
+    status = HDR_STATUS::HDR_UNSUPPORTED;
+    if (CServiceBroker::IsServiceManagerUp())
+      CLog::LogF(LOGDEBUG, "Display is not HDR capable or cannot be detected");
+  }
+  else if (advancedColorSupported && !advancedColorEnabled)
+  {
+    status = HDR_STATUS::HDR_OFF;
+    if (CServiceBroker::IsServiceManagerUp())
+      CLog::LogF(LOGDEBUG, "Display HDR capable and current HDR status is OFF");
+  }
+  else if (advancedColorSupported && advancedColorEnabled)
+  {
+    status = HDR_STATUS::HDR_ON;
+    if (CServiceBroker::IsServiceManagerUp())
+      CLog::LogF(LOGDEBUG, "Display HDR capable and current HDR status is ON");
+  }
+
+  return status;
+}

@@ -12,13 +12,10 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_NfoFile_H__641CCF68_6D2A_426E_9204_C0E4BEF12D00__INCLUDED_)
-#define AFX_NfoFile_H__641CCF68_6D2A_426E_9204_C0E4BEF12D00__INCLUDED_
+#include "InfoScanner.h"
+#include "addons/Scraper.h"
 
 #include <string>
-
-#include "addons/Scraper.h"
-#include "InfoScanner.h"
 
 class CNfoFile
 {
@@ -62,5 +59,3 @@ private:
 
   int Load(const std::string&);
 };
-
-#endif // !defined(AFX_NfoFile_H__641CCF68_6D2A_426E_9204_C0E4BEF12D00__INCLUDED_)

@@ -6,29 +6,19 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <algorithm>
-#include <string.h>
-
-#ifdef TARGET_WINDOWS_DESKTOP
-#ifdef NDEBUG
-#pragma comment(lib,"lzo2.lib")
-#elif defined _WIN64
-#pragma comment(lib, "lzo2d.lib")
-#else
-#pragma comment(lib, "lzo2-no_idb.lib")
-#endif
-#endif
-
-#include <lzo/lzo1x.h>
-
 #include "XbtFile.h"
+
 #include "URL.h"
 #include "filesystem/File.h"
 #include "filesystem/XbtManager.h"
 #include "guilib/TextureBundleXBT.h"
 #include "guilib/XBTFReader.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
+
+#include <algorithm>
+#include <string.h>
+
+#include <lzo/lzo1x.h>
 
 namespace XFILE
 {

@@ -7,23 +7,24 @@
  */
 
 #include "GUIBaseContainer.h"
+
+#include "FileItem.h"
+#include "GUIInfoManager.h"
 #include "GUIListItemLayout.h"
 #include "GUIMessage.h"
 #include "ServiceBroker.h"
-#include "utils/CharsetConverter.h"
-#include "GUIInfoManager.h"
-#include "utils/TimeUtils.h"
-#include "utils/log.h"
-#include "utils/SortUtils.h"
-#include "utils/StringUtils.h"
-#include "FileItem.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "input/Key.h"
-#include "utils/MathUtils.h"
-#include "utils/XBMCTinyXML.h"
 #include "listproviders/IListProvider.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "guilib/guiinfo/GUIInfoLabels.h"
+#include "utils/CharsetConverter.h"
+#include "utils/MathUtils.h"
+#include "utils/SortUtils.h"
+#include "utils/StringUtils.h"
+#include "utils/TimeUtils.h"
+#include "utils/XBMCTinyXML.h"
+#include "utils/log.h"
 
 #define HOLD_TIME_START 100
 #define HOLD_TIME_END   3000
@@ -58,6 +59,10 @@ CGUIBaseContainer::CGUIBaseContainer(const CGUIBaseContainer &) = default;
 
 CGUIBaseContainer::~CGUIBaseContainer(void)
 {
+  // release the container from items
+  for (auto item : m_items)
+    item->FreeMemory();
+
   delete m_listProvider;
 }
 
@@ -81,14 +86,15 @@ void CGUIBaseContainer::Process(unsigned int currentTime, CDirtyRegionList &dirt
   // update our auto-scrolling as necessary
   UpdateAutoScrolling(currentTime);
 
-  ValidateOffset();
-
   if (m_bInvalidated)
     UpdateLayout();
 
   if (!m_layout || !m_focusedLayout) return;
 
   UpdateScrollOffset(currentTime);
+
+  if (m_scroller.IsScrolling())
+    MarkDirtyRegion();
 
   int offset = (int)floorf(m_scroller.GetValue() / m_layout->Size(m_orientation));
 
@@ -121,6 +127,8 @@ void CGUIBaseContainer::Process(unsigned int currentTime, CDirtyRegionList &dirt
     if (itemNo >= 0)
     {
       CGUIListItemPtr item = m_items[itemNo];
+      item->SetCurrentItem(itemNo + 1);
+
       // render our item
       if (m_orientation == VERTICAL)
         ProcessItem(origin.x, pos, item, focused, currentTime, dirtyregions);
@@ -286,9 +294,11 @@ void CGUIBaseContainer::RenderItem(float posX, float posY, CGUIListItem *item, b
 
 bool CGUIBaseContainer::OnAction(const CAction &action)
 {
-  if (action.GetID() >= KEY_ASCII)
+  if (action.GetID() == KEY_UNICODE)
   {
-    OnJumpLetter((char)(action.GetID() & 0xff));
+    std::string letter;
+    g_charsetConverter.wToUTF8({action.GetUnicode()}, letter);
+    OnJumpLetter(std::move(letter));
     return true;
   }
   // stop the timer on any other action
@@ -552,12 +562,12 @@ void CGUIBaseContainer::OnPrevLetter()
   }
 }
 
-void CGUIBaseContainer::OnJumpLetter(char letter, bool skip /*=false*/)
+void CGUIBaseContainer::OnJumpLetter(std::string letter, bool skip /*=false*/)
 {
   if (m_matchTimer.GetElapsedMilliseconds() < letter_match_timeout)
-    m_match.push_back(letter);
+    m_match += letter;
   else
-    m_match = StringUtils::Format("%c", letter);
+    m_match = letter;
 
   m_matchTimer.StartZero();
 
@@ -574,15 +584,18 @@ void CGUIBaseContainer::OnJumpLetter(char letter, bool skip /*=false*/)
     std::string label = item->GetLabel();
     if (CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_FILELISTS_IGNORETHEWHENSORTING))
       label = SortUtils::RemoveArticles(label);
-    if (0 == strnicmp(label.c_str(), m_match.c_str(), m_match.size()))
+    if (0 == StringUtils::CompareNoCase(label, m_match, m_match.size()))
     {
       SelectItem(i);
       return;
     }
     i = (i+1) % m_items.size();
   } while (i != offset);
+
   // no match found - repeat with a single letter
-  if (m_match.size() > 1)
+  std::wstring wmatch;
+  g_charsetConverter.utf8ToW(m_match, wmatch);
+  if (wmatch.length() > 1)
   {
     m_match.clear();
     OnJumpLetter(letter, true);
@@ -683,7 +696,8 @@ CGUIListItemLayout *CGUIBaseContainer::GetFocusedLayout() const
 bool CGUIBaseContainer::OnMouseOver(const CPoint &point)
 {
   // select the item under the pointer
-  SelectItemFromPoint(point - CPoint(m_posX, m_posY));
+  if (!m_waitForScrollEnd)
+    SelectItemFromPoint(point - CPoint(m_posX, m_posY));
   return CGUIControl::OnMouseOver(point);
 }
 
@@ -693,9 +707,13 @@ EVENT_RESULT CGUIBaseContainer::OnMouseEvent(const CPoint &point, const CMouseEv
       event.m_id == ACTION_MOUSE_DOUBLE_CLICK ||
       event.m_id == ACTION_MOUSE_RIGHT_CLICK)
   {
+    // Cancel touch
+    m_waitForScrollEnd = false;
+    int select = GetSelectedItem();
     if (SelectItemFromPoint(point - CPoint(m_posX, m_posY)))
     {
-      OnClick(event.m_id);
+      if (event.m_id != ACTION_MOUSE_RIGHT_CLICK || select == GetSelectedItem())
+        OnClick(event.m_id);
       return EVENT_RESULT_HANDLED;
     }
   }
@@ -711,6 +729,8 @@ EVENT_RESULT CGUIBaseContainer::OnMouseEvent(const CPoint &point, const CMouseEv
   }
   else if (event.m_id == ACTION_GESTURE_NOTIFY)
   {
+    m_waitForScrollEnd = true;
+    m_lastScrollValue = m_scroller.GetValue();
     return (m_orientation == HORIZONTAL) ? EVENT_RESULT_PAN_HORIZONTAL : EVENT_RESULT_PAN_VERTICAL;
   }
   else if (event.m_id == ACTION_GESTURE_BEGIN)
@@ -726,8 +746,21 @@ EVENT_RESULT CGUIBaseContainer::OnMouseEvent(const CPoint &point, const CMouseEv
     int offset = MathUtils::round_int(m_scroller.GetValue() / size);
     m_lastScrollStartTimer.Stop();
     m_scrollTimer.Start();
+    const int absCursor = CorrectOffset(GetOffset(), GetCursor());
     SetOffset(offset);
     ValidateOffset();
+    CGUIBaseContainer::SetCursor(absCursor - CorrectOffset(GetOffset(), 0));
+    // Notify Application if Inertial scrolling reaches lists end
+    if (m_waitForScrollEnd)
+    {
+      if (fabs(m_scroller.GetValue() - m_lastScrollValue) < 0.001f)
+      {
+        m_waitForScrollEnd = false;
+        return EVENT_RESULT_UNHANDLED;
+      }
+      else
+        m_lastScrollValue = m_scroller.GetValue();
+    }
     return EVENT_RESULT_HANDLED;
   }
   else if (event.m_id == ACTION_GESTURE_END || event.m_id == ACTION_GESTURE_ABORT)
@@ -744,6 +777,10 @@ EVENT_RESULT CGUIBaseContainer::OnMouseEvent(const CPoint &point, const CMouseEv
     else
       SetOffset(toOffset-1);
     ScrollToOffset(toOffset);
+    ValidateOffset();
+    SetCursor(GetCursor());
+    SetFocus(true);
+    m_waitForScrollEnd = false;
     return EVENT_RESULT_HANDLED;
   }
   return EVENT_RESULT_UNHANDLED;
@@ -752,7 +789,7 @@ EVENT_RESULT CGUIBaseContainer::OnMouseEvent(const CPoint &point, const CMouseEv
 bool CGUIBaseContainer::OnClick(int actionID)
 {
   int subItem = 0;
-  if (actionID == ACTION_SELECT_ITEM || actionID == ACTION_MOUSE_LEFT_CLICK || actionID == ACTION_PLAYER_PLAY)
+  if (actionID == ACTION_SELECT_ITEM || actionID == ACTION_MOUSE_LEFT_CLICK)
   {
     if (m_listProvider)
     { // "select" action
@@ -823,7 +860,7 @@ void CGUIBaseContainer::SetFocus(bool bOnOff)
 void CGUIBaseContainer::SaveStates(std::vector<CControlState> &states)
 {
   if (!m_listProvider || !m_listProvider->AlwaysFocusDefaultItem())
-    states.push_back(CControlState(GetID(), GetSelectedItem()));
+    states.emplace_back(GetID(), GetSelectedItem());
 }
 
 void CGUIBaseContainer::SetPageControl(int id)
@@ -1019,7 +1056,7 @@ void CGUIBaseContainer::UpdateScrollByLetter()
     if (currentMatch != nextLetter)
     {
       currentMatch = nextLetter;
-      m_letterOffsets.push_back(make_pair((int)i, currentMatch));
+      m_letterOffsets.emplace_back(static_cast<int>(i), currentMatch);
     }
   }
 }
@@ -1124,6 +1161,7 @@ void CGUIBaseContainer::UpdateScrollOffset(unsigned int currentTime)
   {
     m_scrollTimer.Stop();
     m_lastScrollStartTimer.Stop();
+    SetCursor(GetCursor());
   }
 }
 

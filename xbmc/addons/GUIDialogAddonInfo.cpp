@@ -8,23 +8,25 @@
 
 #include "GUIDialogAddonInfo.h"
 
+#include "AddonDatabase.h"
+#include "FileItem.h"
+#include "GUIPassword.h"
+#include "ServiceBroker.h"
+#include "Util.h"
 #include "addons/AddonInstaller.h"
 #include "addons/AddonManager.h"
 #include "addons/AddonSystemSettings.h"
-#include "AddonDatabase.h"
-#include "FileItem.h"
-#include "ServiceBroker.h"
-#include "filesystem/Directory.h"
 #include "addons/settings/GUIDialogAddonSettings.h"
 #include "dialogs/GUIDialogContextMenu.h"
 #include "dialogs/GUIDialogSelect.h"
 #include "dialogs/GUIDialogYesNo.h"
+#include "filesystem/Directory.h"
 #include "games/GameUtils.h"
-#include "guilib/LocalizeStrings.h"
-#include "GUIUserMessages.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
 #include "input/Key.h"
+#include "interfaces/builtins/Builtins.h"
 #include "messaging/helpers/DialogHelper.h"
 #include "messaging/helpers/DialogOKHelper.h"
 #include "pictures/GUIWindowSlideShow.h"
@@ -32,14 +34,9 @@
 #include "settings/SettingsComponent.h"
 #include "utils/Digest.h"
 #include "utils/JobManager.h"
-#include "utils/FileOperationJob.h"
 #include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
-#include "utils/log.h"
 #include "utils/Variant.h"
-#include "GUIPassword.h"
-#include "Util.h"
-#include "interfaces/builtins/Builtins.h"
+#include "utils/log.h"
 
 #include <functional>
 #include <sstream>
@@ -58,7 +55,6 @@ using namespace KODI;
 using namespace ADDON;
 using namespace XFILE;
 using namespace KODI::MESSAGING;
-using KODI::MESSAGING::HELPERS::DialogResponse;
 
 CGUIDialogAddonInfo::CGUIDialogAddonInfo(void)
   : CGUIDialog(WINDOW_DIALOG_ADDON_INFO, "DialogAddonInfo.xml")
@@ -164,7 +160,7 @@ void CGUIDialogAddonInfo::UpdateControls()
   bool isInstalled = NULL != m_localAddon.get();
   m_addonEnabled = m_localAddon && !CServiceBroker::GetAddonMgr().IsAddonDisabled(m_localAddon->ID());
   bool canDisable = isInstalled && CServiceBroker::GetAddonMgr().CanAddonBeDisabled(m_localAddon->ID());
-  bool canInstall = !isInstalled && m_item->GetAddonInfo()->Broken().empty();
+  bool canInstall = !isInstalled && !m_item->GetAddonInfo()->IsBroken();
   bool canUninstall = m_localAddon && CServiceBroker::GetAddonMgr().CanUninstall(m_localAddon);
 
   CONTROL_ENABLE_ON_CONDITION(CONTROL_BTN_INSTALL, canInstall || canUninstall);
@@ -232,13 +228,13 @@ int CGUIDialogAddonInfo::AskForVersion(std::vector<std::pair<AddonVersion, std::
     if (versionInfo.second == LOCAL_CACHE)
     {
       item.SetLabel2(g_localizeStrings.Get(24095));
-      item.SetIconImage("DefaultAddonRepository.png");
+      item.SetArt("icon", "DefaultAddonRepository.png");
       dialog->Add(item);
     }
     else if (CServiceBroker::GetAddonMgr().GetAddon(versionInfo.second, repo, ADDON_REPOSITORY))
     {
       item.SetLabel2(repo->Name());
-      item.SetIconImage(repo->Icon());
+      item.SetArt("icon", repo->Icon());
       dialog->Add(item);
     }
   }
@@ -275,7 +271,7 @@ void CGUIDialogAddonInfo::OnUpdate()
           {
             std::string md5 = CUtil::GetFileDigest(path, KODI::UTILITY::CDigest::Type::MD5);
             if (StringUtils::EqualsNoCase(md5, hash))
-              versions.push_back(std::make_pair(AddonVersion(versionString), LOCAL_CACHE));
+              versions.emplace_back(AddonVersion(versionString), LOCAL_CACHE);
           }
         }
       }
@@ -455,7 +451,7 @@ void CGUIDialogAddonInfo::OnEnableDisable()
     if (PromptIfDependency(24075, 24091))
       return; //required. can't disable
 
-    CServiceBroker::GetAddonMgr().DisableAddon(m_localAddon->ID());
+    CServiceBroker::GetAddonMgr().DisableAddon(m_localAddon->ID(), AddonDisabledReason::USER);
   }
   else
     CServiceBroker::GetAddonMgr().EnableAddon(m_localAddon->ID());
@@ -474,14 +470,23 @@ bool CGUIDialogAddonInfo::ShowDependencyList(const std::vector<ADDON::Dependency
   CFileItemList items;
   for (auto& it : deps)
   {
-    AddonPtr dep_addon, local_addon;
+    AddonPtr dep_addon, local_addon, info_addon;
+    // Find add-on in repositories
     CServiceBroker::GetAddonMgr().FindInstallableById(it.id, dep_addon);
+    // Find add-on in local installation
     CServiceBroker::GetAddonMgr().GetAddon(it.id, local_addon);
-    if (dep_addon)
+
+    // All combinations of dep_addon and local_addon validity are possible and information
+    // must be displayed even when there is no dep_addon.
+    // info_addon is the add-on to take the information to display (name, icon) from. The
+    // version in the repository is preferred because it might contain more recent data.
+    info_addon = dep_addon ? dep_addon : local_addon;
+
+    if (info_addon)
     {
-      CFileItemPtr item(new CFileItem(dep_addon->Name()));
+      CFileItemPtr item(new CFileItem(info_addon->Name()));
       std::stringstream str;
-      str << it.id << " " << it.requiredVersion.asString();
+      str << it.id << " " << it.versionMin.asString() << " -> " << it.version.asString();
       if ((it.optional && !local_addon) || (!it.optional && local_addon))
         str << " " << StringUtils::Format(g_localizeStrings.Get(39022).c_str(),
                                           local_addon ? g_localizeStrings.Get(39019).c_str()
@@ -492,7 +497,7 @@ bool CGUIDialogAddonInfo::ShowDependencyList(const std::vector<ADDON::Dependency
                                           g_localizeStrings.Get(39018).c_str());
 
       item->SetLabel2(str.str());
-      item->SetIconImage(dep_addon->Icon());
+      item->SetArt("icon", info_addon->Icon());
       item->SetProperty("addon_id", it.id);
       items.Add(item);
     }
@@ -513,6 +518,7 @@ bool CGUIDialogAddonInfo::ShowDependencyList(const std::vector<ADDON::Dependency
     for (auto& it : items)
       pDialog->Add(*it);
     pDialog->EnableButton(!reactivate, 186);
+    pDialog->SetButtonFocus(true);
     pDialog->Open();
 
     if (pDialog->IsButtonPressed())

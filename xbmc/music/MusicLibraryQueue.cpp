@@ -8,20 +8,21 @@
 
 #include "MusicLibraryQueue.h"
 
-#include <utility>
-
+#include "GUIUserMessages.h"
 #include "ServiceBroker.h"
+#include "Util.h"
 #include "dialogs/GUIDialogProgress.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
-#include "GUIUserMessages.h"
 #include "music/jobs/MusicLibraryCleaningJob.h"
 #include "music/jobs/MusicLibraryExportJob.h"
-#include "music/jobs/MusicLibraryScanningJob.h"
+#include "music/jobs/MusicLibraryImportJob.h"
 #include "music/jobs/MusicLibraryJob.h"
+#include "music/jobs/MusicLibraryScanningJob.h"
 #include "threads/SingleLock.h"
-#include "Util.h"
 #include "utils/Variant.h"
+
+#include <utility>
 
 CMusicLibraryQueue::CMusicLibraryQueue()
   : CJobQueue(false, 1, CJob::PRIORITY_LOW),
@@ -72,6 +73,45 @@ void CMusicLibraryQueue::ExportLibrary(const CLibExportSettings& settings, bool 
     exportJob->DoWork();
 
     delete exportJob;
+    m_modal = false;
+    Refresh();
+  }
+}
+
+void CMusicLibraryQueue::ImportLibrary(const std::string& xmlFile, bool showDialog /* = false */)
+{
+  CGUIDialogProgress* progress = nullptr;
+  if (showDialog)
+  {
+    progress = CServiceBroker::GetGUI()->GetWindowManager().GetWindow<CGUIDialogProgress>(WINDOW_DIALOG_PROGRESS);
+    if (progress)
+    {
+      progress->SetHeading(CVariant{ 20197 }); //"Import music library"
+      progress->SetText(CVariant{ 649 });   //"Importing"
+      progress->SetLine(1, CVariant{ 330 }); //"This could take some time"
+      progress->SetLine(2, CVariant{ "" });
+      progress->SetPercentage(0);
+      progress->Open();
+      progress->ShowProgressBar(true);
+    }
+  }
+
+  CMusicLibraryImportJob* importJob = new CMusicLibraryImportJob(xmlFile, progress);
+  if (showDialog)
+  {
+    AddJob(importJob);
+
+    // Wait for import to complete or be canceled, but render every 10ms so that the
+    // pointer movements work on dialog even when import is reporting progress infrequently
+    if (progress)
+      progress->Wait();
+  }
+  else
+  {
+    m_modal = true;
+    importJob->DoWork();
+
+    delete importJob;
     m_modal = false;
     Refresh();
   }

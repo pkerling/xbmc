@@ -7,15 +7,15 @@
  */
 
 #include "Addon.h"
-#include "LanguageHook.h"
 
+#include "GUIUserMessages.h"
+#include "LanguageHook.h"
 #include "ServiceBroker.h"
 #include "addons/AddonManager.h"
 #include "addons/settings/GUIDialogAddonSettings.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "GUIUserMessages.h"
 #include "utils/StringUtils.h"
 
 using namespace ADDON;
@@ -40,7 +40,7 @@ namespace XBMCAddon
 
       CGUIMessage message(GUI_MSG_SETTING_UPDATED, 0, 0);
       std::vector<std::string> params;
-      params.push_back(id);
+      params.emplace_back(id);
       params.push_back(value);
       message.SetStringParams(params);
       CServiceBroker::GetGUI()->GetWindowManager().SendThreadMessage(message, WINDOW_DIALOG_ADDON_SETTINGS);
@@ -199,33 +199,33 @@ namespace XBMCAddon
 
     String Addon::getAddonInfo(const char* id)
     {
-      if (strcmpi(id, "author") == 0)
+      if (StringUtils::CompareNoCase(id, "author") == 0)
         return pAddon->Author();
-      else if (strcmpi(id, "changelog") == 0)
+      else if (StringUtils::CompareNoCase(id, "changelog") == 0)
         return pAddon->ChangeLog();
-      else if (strcmpi(id, "description") == 0)
+      else if (StringUtils::CompareNoCase(id, "description") == 0)
         return pAddon->Description();
-      else if (strcmpi(id, "disclaimer") == 0)
+      else if (StringUtils::CompareNoCase(id, "disclaimer") == 0)
         return pAddon->Disclaimer();
-      else if (strcmpi(id, "fanart") == 0)
+      else if (StringUtils::CompareNoCase(id, "fanart") == 0)
         return pAddon->FanArt();
-      else if (strcmpi(id, "icon") == 0)
+      else if (StringUtils::CompareNoCase(id, "icon") == 0)
         return pAddon->Icon();
-      else if (strcmpi(id, "id") == 0)
+      else if (StringUtils::CompareNoCase(id, "id") == 0)
         return pAddon->ID();
-      else if (strcmpi(id, "name") == 0)
+      else if (StringUtils::CompareNoCase(id, "name") == 0)
         return pAddon->Name();
-      else if (strcmpi(id, "path") == 0)
+      else if (StringUtils::CompareNoCase(id, "path") == 0)
         return pAddon->Path();
-      else if (strcmpi(id, "profile") == 0)
+      else if (StringUtils::CompareNoCase(id, "profile") == 0)
         return pAddon->Profile();
-      else if (strcmpi(id, "stars") == 0)
+      else if (StringUtils::CompareNoCase(id, "stars") == 0)
         return StringUtils::Format("-1");
-      else if (strcmpi(id, "summary") == 0)
+      else if (StringUtils::CompareNoCase(id, "summary") == 0)
         return pAddon->Summary();
-      else if (strcmpi(id, "type") == 0)
+      else if (StringUtils::CompareNoCase(id, "type") == 0)
         return ADDON::CAddonInfo::TranslateType(pAddon->Type());
-      else if (strcmpi(id, "version") == 0)
+      else if (StringUtils::CompareNoCase(id, "version") == 0)
         return pAddon->Version().asString();
       else
         throw AddonException("'%s' is an invalid Id", id);

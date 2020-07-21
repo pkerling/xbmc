@@ -7,36 +7,36 @@
  */
 
 #include "ServiceManager.h"
+
+#include "ContextMenuManager.h"
+#include "DatabaseManager.h"
+#include "PlayListPlayer.h"
 #include "addons/BinaryAddonCache.h"
+#include "addons/RepositoryUpdater.h"
 #include "addons/VFSEntry.h"
 #include "addons/binary-addons/BinaryAddonManager.h"
-#include "addons/RepositoryUpdater.h"
-#include "ContextMenuManager.h"
 #include "cores/DataCacheCore.h"
-#include "cores/playercorefactory/PlayerCoreFactory.h"
 #include "cores/RetroPlayer/guibridge/GUIGameRenderManager.h"
+#include "cores/playercorefactory/PlayerCoreFactory.h"
 #include "favourites/FavouritesService.h"
-#include "games/controllers/ControllerManager.h"
 #include "games/GameServices.h"
-#include "peripherals/Peripherals.h"
-#include "PlayListPlayer.h"
-#include "profiles/ProfileManager.h"
-#include "utils/log.h"
+#include "games/controllers/ControllerManager.h"
 #include "input/InputManager.h"
 #include "interfaces/generic/ScriptInvocationManager.h"
 #include "interfaces/python/XBPython.h"
-#include "pvr/PVRManager.h"
 #include "network/Network.h"
-#include "utils/FileExtensionProvider.h"
+#include "peripherals/Peripherals.h"
 #include "powermanagement/PowerManager.h"
+#include "profiles/ProfileManager.h"
+#include "pvr/PVRManager.h"
+#include "storage/MediaManager.h"
+#include "utils/FileExtensionProvider.h"
+#include "utils/log.h"
 #include "weather/WeatherManager.h"
-#include "DatabaseManager.h"
 
 using namespace KODI;
 
-CServiceManager::CServiceManager()
-{
-}
+CServiceManager::CServiceManager() = default;
 
 CServiceManager::~CServiceManager()
 {
@@ -62,14 +62,7 @@ bool CServiceManager::InitForTesting()
     return false;
   }
 
-  if (!m_binaryAddonManager->Init())
-  {
-    CLog::Log(LOGFATAL, "CServiceManager::%s: Unable to initialize CBinaryAddonManager", __FUNCTION__);
-    return false;
-  }
-
-  m_fileExtensionProvider.reset(new CFileExtensionProvider(*m_addonMgr,
-                                                           *m_binaryAddonManager));
+  m_fileExtensionProvider.reset(new CFileExtensionProvider(*m_addonMgr));
 
   init_level = 1;
   return true;
@@ -87,6 +80,9 @@ void CServiceManager::DeinitTesting()
 
 bool CServiceManager::InitStageOne()
 {
+  m_Platform.reset(CPlatform::CreateInstance());
+  m_Platform->Init();
+
 #ifdef HAS_PYTHON
   m_XBPython.reset(new XBPython());
   CScriptInvocationManager::GetInstance().RegisterLanguageInvocationHandler(m_XBPython.get(), ".py");
@@ -105,20 +101,11 @@ bool CServiceManager::InitStageTwo(const CAppParamParser &params, const std::str
   // Initialize the addon database (must be before the addon manager is init'd)
   m_databaseManager.reset(new CDatabaseManager);
 
-  m_Platform.reset(CPlatform::CreateInstance());
-  m_Platform->Init();
-
   m_binaryAddonManager.reset(new ADDON::CBinaryAddonManager()); /* Need to constructed before, GetRunningInstance() of binary CAddonDll need to call them */
   m_addonMgr.reset(new ADDON::CAddonMgr());
   if (!m_addonMgr->Init())
   {
     CLog::Log(LOGFATAL, "CServiceManager::%s: Unable to start CAddonMgr", __FUNCTION__);
-    return false;
-  }
-
-  if (!m_binaryAddonManager->Init())
-  {
-    CLog::Log(LOGFATAL, "CServiceManager::%s: Unable to initialize CBinaryAddonManager", __FUNCTION__);
     return false;
   }
 
@@ -149,14 +136,16 @@ bool CServiceManager::InitStageTwo(const CAppParamParser &params, const std::str
 
   m_gameRenderManager.reset(new RETRO::CGUIGameRenderManager);
 
-  m_fileExtensionProvider.reset(new CFileExtensionProvider(*m_addonMgr,
-                                                           *m_binaryAddonManager));
+  m_fileExtensionProvider.reset(new CFileExtensionProvider(*m_addonMgr));
 
   m_powerManager.reset(new CPowerManager());
   m_powerManager->Initialize();
   m_powerManager->SetDefaults();
 
   m_weatherManager.reset(new CWeatherManager());
+
+  m_mediaManager.reset(new CMediaManager());
+  m_mediaManager->Initialize();
 
   init_level = 2;
   return true;
@@ -174,7 +163,10 @@ bool CServiceManager::InitStageThree(const std::shared_ptr<CProfileManager>& pro
     *profileManager));
 
   m_contextMenuManager->Init();
-  m_PVRManager->Init();
+
+  // Init PVR manager after login, not already on login screen
+  if (!profileManager->UsingLoginScreen())
+    m_PVRManager->Init();
 
   m_playerCoreFactory.reset(new CPlayerCoreFactory(*profileManager));
 
@@ -216,6 +208,9 @@ void CServiceManager::DeinitStageTwo()
   m_addonMgr.reset();
   m_Platform.reset();
   m_databaseManager.reset();
+
+  m_mediaManager->Stop();
+  m_mediaManager.reset();
 }
 
 void CServiceManager::DeinitStageOne()
@@ -366,4 +361,9 @@ CPlayerCoreFactory &CServiceManager::GetPlayerCoreFactory()
 CDatabaseManager &CServiceManager::GetDatabaseManager()
 {
   return *m_databaseManager;
+}
+
+CMediaManager& CServiceManager::GetMediaManager()
+{
+  return *m_mediaManager;
 }

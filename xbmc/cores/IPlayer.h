@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include <vector>
-#include <string>
-#include <memory>
-
 #include "IPlayerCallback.h"
-#include "VideoSettings.h"
 #include "Interface/StreamInfo.h"
+#include "VideoSettings.h"
+
+#include <memory>
+#include <string>
+#include <vector>
 
 #define CURRENT_STREAM -1
 #define CAPTUREFLAG_CONTINUOUS  0x01 //after a render is done, render a new one immediately
@@ -110,7 +110,7 @@ public:
   virtual void SetVolume(float volume){}
   virtual void SetDynamicRangeCompression(long drc){}
 
-  virtual void  SetAVDelay(float fValue = 0.0f) { return; }
+  virtual void SetAVDelay(float fValue = 0.0f) {}
   virtual float GetAVDelay()                    { return 0.0f;};
 
   virtual void SetSubTitleDelay(float fValue = 0.0f){};
@@ -149,7 +149,7 @@ public:
 
   virtual int  GetChapterCount()                               { return 0; }
   virtual int  GetChapter()                                    { return -1; }
-  virtual void GetChapterName(std::string& strChapterName, int chapterIdx = -1) { return; }
+  virtual void GetChapterName(std::string& strChapterName, int chapterIdx = -1) {}
   virtual int64_t GetChapterPos(int chapterIdx=-1)             { return 0; }
   virtual int  SeekChapter(int iChapter)                       { return -1; }
 //  virtual bool GetChapterInfo(int chapter, SChapterInfo &info) { return false; }
@@ -226,6 +226,14 @@ public:
   // video and audio settings
   virtual CVideoSettings GetVideoSettings() { return CVideoSettings(); };
   virtual void SetVideoSettings(CVideoSettings& settings) {};
+
+  /*!
+   * \brief Check if any players are playing a game
+   *
+   * \return True if at least one player has an input device attached to the
+   * game, false otherwise
+   */
+  virtual bool HasGameAgent() { return false; }
 
   std::string m_name;
   std::string m_type;

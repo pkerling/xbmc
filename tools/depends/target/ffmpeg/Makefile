@@ -21,6 +21,7 @@ ffmpg_config += --enable-encoder=ac3 --enable-encoder=aac
 ffmpg_config += --enable-encoder=wmav2 --enable-protocol=http
 ffmpg_config += --enable-gnutls
 ffmpg_config += --enable-encoder=png --enable-encoder=mjpeg
+ffmpg_config += --enable-libdav1d
 ffmpg_config += $(FFMPEG_CONFIGURE_OPTIONS)
 
 ifeq ($(CROSS_COMPILING), yes)
@@ -37,17 +38,18 @@ ifeq ($(OS), android)
     ifeq ($(findstring arm, $(CPU)), arm)
       ffmpg_config += --cpu=cortex-a9
     else
-      ffmpg_config += --cpu=i686 --disable-mmx
+      ifeq ($(CPU), x86_64)
+        ffmpg_config += --cpu=x86_64 --enable-pic
+      else
+        ffmpg_config += --cpu=i686 --disable-mmx
+      endif
+      ffmpg_config += --extra-cflags='-no-integrated-as -mno-stackrealign'
     endif
   endif
   ffmpg_config += --target-os=linux --extra-libs=-liconv --disable-linux-perf
 endif
-ifeq ($(OS), ios)
-  ifneq ($(CPU), arm64)
-    ffmpg_config += --cpu=cortex-a8
-  else
-    ffmpg_config += --as="$(NATIVEPREFIX)/bin/gas-preprocessor.pl -arch aarch64 -- $(CC)"
-  endif
+ifeq ($(OS), darwin_embedded)
+  ffmpg_config += --as="$(NATIVEPREFIX)/bin/gas-preprocessor.pl -arch aarch64 -- $(CC)"
   ffmpg_config += --yasmexe=$(NATIVEPREFIX)/bin/yasm
   ffmpg_config += --disable-decoder=mpeg_xvmc --disable-crystalhd --enable-videotoolbox
   ffmpg_config += --target-os=darwin
@@ -79,9 +81,6 @@ $(PLATFORM): $(TARBALLS_LOCATION)/$(ARCHIVE) $(DEPS)
 	cd $(PLATFORM);\
 	CFLAGS="$(CFLAGS)" CXXFLAGS="$(CXXFLAGS)" CPPFLAGS="$(CPPFLAGS)" LDFLAGS="$(LDFLAGS)" \
 	./configure $(ffmpg_config)
-ifeq ($(OS), ios)
-	cd $(PLATFORM); sed -i -- 's/HAVE_CLOCK_GETTIME 1/HAVE_CLOCK_GETTIME 0/g' config.h
-endif
 
 .build-$(PLATFORM): $(PLATFORM)
 	$(MAKE) -C $(PLATFORM)

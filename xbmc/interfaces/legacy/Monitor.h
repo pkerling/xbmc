@@ -44,13 +44,11 @@ namespace XBMCAddon
       {
 	XBMC_TRACE;
 	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onScanStarted,library));
-	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onDatabaseScanStarted,library));
       }
       inline void    OnScanFinished(const String &library)
       {
 	XBMC_TRACE;
 	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onScanFinished,library));
-	invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onDatabaseUpdated,library));
       }
       inline void    OnCleanStarted(const String &library) { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onCleanStarted,library)); }
       inline void    OnCleanFinished(const String &library) { XBMC_TRACE; invokeCallback(new CallbackFunction<Monitor,const String>(this,&Monitor::onCleanFinished,library)); }
@@ -59,14 +57,16 @@ namespace XBMCAddon
       inline const String& GetId() { return Id; }
       inline long GetInvokerId() { return invokerId; }
 
-      void OnAbortRequested();
+      /**
+       * Called from XBPython to notify registered monitors that a script is aborting/ending.
+       */
+      void AbortNotify();
 #endif
 
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onSettingsChanged() }
-      ///-----------------------------------------------------------------------
       /// onSettingsChanged method.
       ///
       /// Will be called when addon settings are changed
@@ -80,7 +80,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onScreensaverActivated() }
-      ///-----------------------------------------------------------------------
       /// onScreensaverActivated method.
       ///
       /// Will be called when screensaver kicks in
@@ -94,7 +93,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onScreensaverDeactivated() }
-      ///-----------------------------------------------------------------------
       /// onScreensaverDeactivated method.
       ///
       /// Will be called when screensaver goes off
@@ -108,7 +106,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onDPMSActivated() }
-      ///-----------------------------------------------------------------------
       /// onDPMSActivated method.
       ///
       /// Will be called when energysaving/DPMS gets active
@@ -122,7 +119,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onDPMSDeactivated() }
-      ///-----------------------------------------------------------------------
       /// onDPMSDeactivated method.
       ///
       /// Will be called when energysaving/DPMS is turned off
@@ -136,7 +132,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onScanStarted(library) }
-      ///-----------------------------------------------------------------------
       /// onScanStarted method.
       ///
       /// @param library             Video / music as string
@@ -144,6 +139,8 @@ namespace XBMCAddon
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library is being scanned
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -156,7 +153,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onScanFinished(library)  }
-      ///-----------------------------------------------------------------------
       /// onScanFinished method.
       ///
       /// @param library             Video / music as string
@@ -164,6 +160,8 @@ namespace XBMCAddon
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library has been scanned
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -175,40 +173,16 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_monitor
-      /// @brief \python_func{ onDatabaseScanStarted(database) }
-      ///-----------------------------------------------------------------------
-      /// @python_v13 New function added.
-      /// @python_v14 Deprecated. Use **onScanStarted()**.
-      ///
-      onDatabaseScanStarted(...);
-#else
-      virtual void onDatabaseScanStarted(const String database) { XBMC_TRACE; }
-#endif
-
-#ifdef DOXYGEN_SHOULD_USE_THIS
-      ///
-      /// \ingroup python_monitor
-      /// @brief \python_func{ onDatabaseUpdated(database) }
-      ///-----------------------------------------------------------------------
-      /// @python_v14 Deprecated. Use **onScanFinished()**.
-      ///
-      onDatabaseUpdated(...);
-#else
-      virtual void onDatabaseUpdated(const String database) { XBMC_TRACE; }
-#endif
-
-#ifdef DOXYGEN_SHOULD_USE_THIS
-      ///
-      /// \ingroup python_monitor
       /// @brief \python_func{ onCleanStarted(library) }
-      ///-----------------------------------------------------------------------
-      /// @brief onCleanStarted method.
+      /// onCleanStarted method.
       ///
       /// @param library             Video / music as string
       ///
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library has been cleaned
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -221,7 +195,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_monitor
       /// @brief \python_func{ onCleanFinished(library) }
-      ///-----------------------------------------------------------------------
       /// onCleanFinished method.
       ///
       /// @param library             Video / music as string
@@ -229,6 +202,8 @@ namespace XBMCAddon
       ///
       /// @note Will be called when library clean has ended and return video or
       /// music to indicate which library has been finished
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///
@@ -240,20 +215,7 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_monitor
-      /// @brief \python_func{ onAbortRequested() }
-      ///-----------------------------------------------------------------------
-      /// @python_v14 Deprecated. Use **waitForAbort()** to be notified about this event.
-      ///
-      onAbortRequested();
-#else
-      virtual void    onAbortRequested() { XBMC_TRACE; }
-#endif
-
-#ifdef DOXYGEN_SHOULD_USE_THIS
-      ///
-      /// \ingroup python_monitor
       /// @brief \python_func{ onNotification(sender, method, data) }
-      ///-----------------------------------------------------------------------
       /// onNotification method.
       ///
       /// @param sender              Sender of the notification
@@ -261,6 +223,8 @@ namespace XBMCAddon
       /// @param data                JSON-encoded data of the notification
       ///
       /// @note Will be called when Kodi receives or sends a notification
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v13 New function added.
       ///
@@ -272,19 +236,33 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       /// \ingroup python_monitor
       /// @brief \python_func{ waitForAbort([timeout]) }
-      ///-----------------------------------------------------------------------
       /// Wait for Abort
+      /// \anchor xbmc_Monitor_waitForAbort
       ///
       /// Block until abort is requested, or until timeout occurs. If an
       /// abort requested have already been made, return immediately.
       ///
       /// @param timeout                 [opt] float - timeout in seconds.
       ///                                Default: no timeout.
+      ///
       /// @return                        True when abort have been requested,
       ///                                False if a timeout is given and the
       ///                                operation times out.
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
+      ///
+      /// **Example:**
+      /// ~~~~~~~~~~~~~{.py}
+      /// ..
+      /// monitor = xbmc.Monitor()
+      /// # do something
+      /// monitor.waitForAbort(10) # sleeps for 10 secs or returns early if kodi aborts
+      /// if monitor.abortRequested():
+      ///     # abort was requested to Kodi (e.g. shutdown), do your cleanup logic
+      /// ..
+      /// ~~~~~~~~~~~~~
       ///
       waitForAbort(...);
 #else
@@ -294,10 +272,11 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       /// \ingroup python_monitor
       /// @brief \python_func{ abortRequested() }
-      ///-----------------------------------------------------------------------
       /// Returns True if abort has been requested.
       ///
       /// @return                        True if requested
+      ///
+      ///
       ///-----------------------------------------------------------------------
       /// @python_v14 New function added.
       ///

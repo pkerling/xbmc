@@ -7,12 +7,12 @@
  */
 
 #include "JNIXBMCFile.h"
-#include <androidjni/jutils-details.hpp>
 
 #include "CompileInfo.h"
-
-#include "utils/log.h"
 #include "utils/FileUtils.h"
+#include "utils/log.h"
+
+#include <androidjni/jutils-details.hpp>
 
 #define BUFFSIZE 8192
 
@@ -22,7 +22,6 @@ static std::string s_className = std::string(CCompileInfo::GetClass()) + "/XBMCF
 
 CJNIXBMCFile::CJNIXBMCFile()
   : CJNIBase()
-  , m_eof(true)
 {
 }
 

@@ -8,23 +8,24 @@
 
 #pragma once
 
-#include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h"
+#include "cores/VideoPlayer/Buffers/VideoBufferDRMPRIME.h"
 #include "utils/EGLImage.h"
+#include "utils/Geometry.h"
 
 #include "system_gl.h"
 
 class CDRMPRIMETexture
 {
 public:
-  bool Map(CVideoBufferDRMPRIME *buffer);
+  bool Map(CVideoBufferDRMPRIME* buffer);
   void Unmap();
   void Init(EGLDisplay eglDisplay);
 
   GLuint GetTexture() { return m_texture; }
-  CSizeInt GetTextureSize() { return { m_texWidth, m_texHeight }; }
+  CSizeInt GetTextureSize() { return {m_texWidth, m_texHeight}; }
 
 protected:
-  CVideoBufferDRMPRIME *m_primebuffer{nullptr};
+  CVideoBufferDRMPRIME* m_primebuffer{nullptr};
   std::unique_ptr<CEGLImage> m_eglImage;
 
   const GLenum m_textureTarget{GL_TEXTURE_EXTERNAL_OES};
@@ -35,5 +36,4 @@ protected:
 private:
   static int GetColorSpace(int colorSpace);
   static int GetColorRange(int colorRange);
-
 };

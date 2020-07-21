@@ -8,20 +8,20 @@
 
 #pragma once
 
-#include <utility>
-#include <vector>
-
 #include "RenderInfo.h"
-#include "windowing/Resolution.h"
-#include "utils/Geometry.h"
 #include "VideoShaders/ShaderFormats.h"
 #include "cores/IPlayer.h"
-#include "cores/VideoPlayer/Process/VideoBuffer.h"
+#include "cores/VideoPlayer/Buffers/VideoBuffer.h"
+#include "utils/Geometry.h"
+
+#include <utility>
+#include <vector>
 
 #define MAX_FIELDS 3
 #define NUM_BUFFERS 6
 
 class CSetting;
+struct IntegerSettingOption;
 
 enum EFIELDSYNC
 {
@@ -85,7 +85,7 @@ public:
   void GetVideoRect(CRect &source, CRect &dest, CRect &view);
   float GetAspectRatio() const;
 
-  static void SettingOptionsRenderMethodsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsRenderMethodsFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
 
   void SetVideoSettings(const CVideoSettings &settings);
 

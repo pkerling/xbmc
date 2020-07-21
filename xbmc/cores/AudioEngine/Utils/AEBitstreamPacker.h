@@ -8,10 +8,11 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <list>
-#include "AEPackIEC61937.h"
 #include "AEChannelInfo.h"
+#include "AEPackIEC61937.h"
+
+#include <list>
+#include <stdint.h>
 
 class CAEStreamInfo;
 
@@ -25,7 +26,7 @@ public:
   bool PackPause(CAEStreamInfo &info, unsigned int millis, bool iecBursts);
   void Reset();
   uint8_t* GetBuffer();
-  unsigned int GetSize();
+  unsigned int GetSize() const;
   static unsigned int GetOutputRate(CAEStreamInfo &info);
   static CAEChannelInfo GetOutputChannelMap(CAEStreamInfo &info);
 

@@ -7,12 +7,12 @@
  */
 
 #include "CodecFactory.h"
+
+#include "ServiceBroker.h"
 #include "URL.h"
 #include "VideoPlayerCodec.h"
-#include "utils/StringUtils.h"
 #include "addons/AudioDecoder.h"
-#include "addons/binary-addons/BinaryAddonBase.h"
-#include "ServiceBroker.h"
+#include "utils/StringUtils.h"
 
 using namespace ADDON;
 
@@ -21,11 +21,12 @@ ICodec* CodecFactory::CreateCodec(const std::string &strFileType)
   std::string fileType = strFileType;
   StringUtils::ToLower(fileType);
 
-  BinaryAddonBaseList addonInfos;
-  CServiceBroker::GetBinaryAddonManager().GetAddonInfos(addonInfos, true, ADDON_AUDIODECODER);
+  std::vector<AddonInfoPtr> addonInfos;
+  CServiceBroker::GetAddonMgr().GetAddonInfos(addonInfos, true, ADDON_AUDIODECODER);
   for (const auto& addonInfo : addonInfos)
   {
-    if (CAudioDecoder::GetExtensions(addonInfo).find("."+fileType) != std::string::npos)
+    auto exts = StringUtils::Split(CAudioDecoder::GetExtensions(addonInfo), "|");
+    if (std::find(exts.begin(), exts.end(), "." + fileType) != exts.end())
     {
       CAudioDecoder* result = new CAudioDecoder(addonInfo);
       if (!result->CreateDecoder())
@@ -48,11 +49,12 @@ ICodec* CodecFactory::CreateCodecDemux(const CFileItem& file, unsigned int filec
   StringUtils::ToLower(content);
   if (!content.empty())
   {
-    BinaryAddonBaseList addonInfos;
-    CServiceBroker::GetBinaryAddonManager().GetAddonInfos(addonInfos, true, ADDON_AUDIODECODER);
+    std::vector<AddonInfoPtr> addonInfos;
+    CServiceBroker::GetAddonMgr().GetAddonInfos(addonInfos, true, ADDON_AUDIODECODER);
     for (const auto& addonInfo : addonInfos)
     {
-      if (CAudioDecoder::GetMimetypes(addonInfo).find(content) != std::string::npos)
+      auto types = StringUtils::Split(CAudioDecoder::GetMimetypes(addonInfo), "|");
+      if (std::find(types.begin(), types.end(), content) != types.end())
       {
         CAudioDecoder* result = new CAudioDecoder(addonInfo);
         if (!result->CreateDecoder())

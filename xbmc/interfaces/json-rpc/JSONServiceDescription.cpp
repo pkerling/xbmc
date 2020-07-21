@@ -6,28 +6,29 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "ServiceDescription.h"
 #include "JSONServiceDescription.h"
-#include "utils/log.h"
-#include "utils/JSONVariantParser.h"
-#include "utils/StringUtils.h"
+
+#include "AddonsOperations.h"
+#include "ApplicationOperations.h"
+#include "AudioLibrary.h"
+#include "FavouritesOperations.h"
+#include "FileOperations.h"
+#include "GUIOperations.h"
+#include "InputOperations.h"
 #include "JSONRPC.h"
+#include "PVROperations.h"
 #include "PlayerOperations.h"
 #include "PlaylistOperations.h"
-#include "FileOperations.h"
-#include "AudioLibrary.h"
-#include "VideoLibrary.h"
-#include "GUIOperations.h"
-#include "AddonsOperations.h"
-#include "SystemOperations.h"
-#include "InputOperations.h"
-#include "XBMCOperations.h"
-#include "ApplicationOperations.h"
-#include "PVROperations.h"
 #include "ProfilesOperations.h"
-#include "FavouritesOperations.h"
-#include "TextureOperations.h"
+#include "ServiceDescription.h"
 #include "SettingsOperations.h"
+#include "SystemOperations.h"
+#include "TextureOperations.h"
+#include "VideoLibrary.h"
+#include "XBMCOperations.h"
+#include "utils/JSONVariantParser.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
 
 using namespace JSONRPC;
 
@@ -58,6 +59,8 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
   { "Player.Seek",                                  CPlayerOperations::Seek },
   { "Player.Move",                                  CPlayerOperations::Move },
   { "Player.Zoom",                                  CPlayerOperations::Zoom },
+  { "Player.SetViewMode",                           CPlayerOperations::SetViewMode },
+  { "Player.GetViewMode",                           CPlayerOperations::GetViewMode },
   { "Player.Rotate",                                CPlayerOperations::Rotate },
 
   { "Player.Open",                                  CPlayerOperations::Open },
@@ -195,6 +198,7 @@ JsonRpcMethodMap CJSONServiceDescription::m_methodMaps[] = {
 // Input operations
   { "Input.SendText",                               CInputOperations::SendText },
   { "Input.ExecuteAction",                          CInputOperations::ExecuteAction },
+  { "Input.ButtonEvent",                            CInputOperations::ButtonEvent },
   { "Input.Left",                                   CInputOperations::Left },
   { "Input.Right",                                  CInputOperations::Right },
   { "Input.Down",                                   CInputOperations::Down },
@@ -301,9 +305,9 @@ bool JSONSchemaTypeDefinition::Parse(const CVariant &value, bool isParameter /* 
       // sure that the default value is a valid enum value
       else
       {
-        for (std::vector<CVariant>::const_iterator itr = enums.begin(); itr != enums.end(); ++itr)
+        for (const auto& itr : enums)
         {
-          if (value["default"] == *itr)
+          if (value["default"] == itr)
           {
             ok = true;
             break;
@@ -626,15 +630,14 @@ bool JSONSchemaTypeDefinition::Parse(const CVariant &value, bool isParameter /* 
   return true;
 }
 
-JSONRPC_STATUS JSONSchemaTypeDefinition::Check(const CVariant &value, CVariant &outputValue, CVariant &errorData)
+JSONRPC_STATUS JSONSchemaTypeDefinition::Check(const CVariant& value,
+                                               CVariant& outputValue,
+                                               CVariant& errorData) const
 {
   if (!name.empty())
     errorData["name"] = name;
   SchemaValueTypeToJson(type, errorData["type"]);
   std::string errorMessage;
-
-  if (referencedType != NULL && !referencedTypeSet)
-    Set(referencedType);
 
   // Let's check the type of the provided parameter
   if (!IsType(value, type))
@@ -897,9 +900,9 @@ JSONRPC_STATUS JSONSchemaTypeDefinition::Check(const CVariant &value, CVariant &
   if (enums.size() > 0)
   {
     bool valid = false;
-    for (std::vector<CVariant>::const_iterator enumItr = enums.begin(); enumItr != enums.end(); ++enumItr)
+    for (const auto& enumItr : enums)
     {
-      if (*enumItr == value)
+      if (enumItr == value)
       {
         valid = true;
         break;
@@ -1132,9 +1135,31 @@ void JSONSchemaTypeDefinition::Print(bool isParameter, bool isGlobal, bool print
   }
 }
 
-void JSONSchemaTypeDefinition::Set(const JSONSchemaTypeDefinitionPtr typeDefinition)
+void JSONSchemaTypeDefinition::ResolveReference()
 {
-  if (typeDefinition.get() == NULL)
+  // Check and set the reference type before recursing
+  // to guard against cycles
+  if (referencedTypeSet)
+    return;
+
+  referencedTypeSet = true;
+
+  // Take care of all nested types
+  for (auto it : extends)
+    it->ResolveReference();
+  for (auto it : unionTypes)
+    it->ResolveReference();
+  for (auto it : items)
+    it->ResolveReference();
+  for (auto it : additionalItems)
+    it->ResolveReference();
+  for (auto it : properties)
+    it.second->ResolveReference();
+
+  if (additionalProperties)
+    additionalProperties->ResolveReference();
+
+  if (referencedType == nullptr)
     return;
 
   std::string origName = name;
@@ -1144,7 +1169,7 @@ void JSONSchemaTypeDefinition::Set(const JSONSchemaTypeDefinitionPtr typeDefinit
   JSONSchemaTypeDefinitionPtr referencedTypeDef = referencedType;
 
   // set all the values from the given type definition
-  *this = *typeDefinition;
+  *this = *referencedType;
 
   // restore the original values
   if (!origName.empty())
@@ -1162,6 +1187,8 @@ void JSONSchemaTypeDefinition::Set(const JSONSchemaTypeDefinitionPtr typeDefinit
   if (referencedTypeDef.get() != NULL)
     referencedType = referencedTypeDef;
 
+  // This will have been overwritten by the copy of the reference
+  // type so we need to set it again
   referencedTypeSet = true;
 }
 
@@ -1379,6 +1406,12 @@ JSONRPC_STATUS JsonRpcMethod::checkParameter(const CVariant &requestParameters, 
   }
 
   return OK;
+}
+
+void CJSONServiceDescription::ResolveReferences()
+{
+  for (auto it : m_types)
+    it.second->ResolveReference();
 }
 
 void CJSONServiceDescription::Cleanup()
@@ -1675,8 +1708,8 @@ bool CJSONServiceDescription::AddEnum(const std::string &name, const std::vector
 bool CJSONServiceDescription::AddEnum(const std::string &name, const std::vector<std::string> &values)
 {
   std::vector<CVariant> enums;
-  for (std::vector<std::string>::const_iterator it = values.begin(); it != values.end(); ++it)
-    enums.push_back(CVariant(*it));
+  for (const auto& it : values)
+    enums.emplace_back(it);
 
   return AddEnum(name, enums, CVariant::VariantTypeString);
 }
@@ -1684,8 +1717,8 @@ bool CJSONServiceDescription::AddEnum(const std::string &name, const std::vector
 bool CJSONServiceDescription::AddEnum(const std::string &name, const std::vector<int> &values)
 {
   std::vector<CVariant> enums;
-  for (std::vector<int>::const_iterator it = values.begin(); it != values.end(); ++it)
-    enums.push_back(CVariant(*it));
+  for (const auto& it : values)
+    enums.emplace_back(it);
 
   return AddEnum(name, enums, CVariant::VariantTypeInteger);
 }

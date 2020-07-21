@@ -7,8 +7,9 @@
  */
 
 #include "StaticProvider.h"
-#include "utils/XMLUtils.h"
+
 #include "utils/TimeUtils.h"
+#include "utils/XMLUtils.h"
 
 CStaticListProvider::CStaticListProvider(const TiXmlElement *element, int parentID)
 : IListProvider(parentID),
@@ -32,7 +33,7 @@ CStaticListProvider::CStaticListProvider(const TiXmlElement *element, int parent
   if (XMLUtils::GetInt(element, "default", m_defaultItem))
   {
     const char *always = element->FirstChildElement("default")->Attribute("always");
-    if (always && strnicmp(always, "true", 4) == 0)
+    if (always && StringUtils::CompareNoCase(always, "true", 4) == 0)
       m_defaultAlways = true;
   }
 }
@@ -56,21 +57,21 @@ bool CStaticListProvider::Update(bool forceRefresh)
   else if (CTimeUtils::GetFrameTime() - m_updateTime > 1000)
   {
     m_updateTime = CTimeUtils::GetFrameTime();
-    for (std::vector<CGUIStaticItemPtr>::iterator i = m_items.begin(); i != m_items.end(); ++i)
-      (*i)->UpdateProperties(m_parentID);
+    for (auto& i : m_items)
+      i->UpdateProperties(m_parentID);
   }
-  for (std::vector<CGUIStaticItemPtr>::iterator i = m_items.begin(); i != m_items.end(); ++i)
-    changed |= (*i)->UpdateVisibility(m_parentID);
+  for (auto& i : m_items)
+    changed |= i->UpdateVisibility(m_parentID);
   return changed; //! @todo Also returned changed if properties are changed (if so, need to update scroll to letter).
 }
 
 void CStaticListProvider::Fetch(std::vector<CGUIListItemPtr> &items)
 {
   items.clear();
-  for (std::vector<CGUIStaticItemPtr>::const_iterator i = m_items.begin(); i != m_items.end(); ++i)
+  for (const auto& i : m_items)
   {
-    if ((*i)->IsVisible())
-      items.push_back(*i);
+    if (i->IsVisible())
+      items.push_back(i);
   }
 }
 
@@ -85,11 +86,11 @@ int CStaticListProvider::GetDefaultItem() const
   if (m_defaultItem >= 0)
   {
     unsigned int offset = 0;
-    for (std::vector<CGUIStaticItemPtr>::const_iterator i = m_items.begin(); i != m_items.end(); ++i)
+    for (const auto& i : m_items)
     {
-      if ((*i)->IsVisible())
+      if (i->IsVisible())
       {
-        if ((*i)->m_iprogramCount == m_defaultItem)
+        if (i->m_iprogramCount == m_defaultItem)
           return offset;
         offset++;
       }

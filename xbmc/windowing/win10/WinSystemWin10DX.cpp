@@ -6,11 +6,15 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "WinSystemWin10DX.h"
+
 #include "input/touch/generic/GenericTouchActionHandler.h"
 #include "input/touch/generic/GenericTouchInputHandler.h"
 #include "rendering/dx/DirectXHelper.h"
+#include "utils/XTimeUtils.h"
 #include "utils/log.h"
-#include "WinSystemWin10DX.h"
+
+#include "platform/win32/WIN32Util.h"
 
 std::unique_ptr<CWinSystemBase> CWinSystemBase::CreateWinSystem()
 {
@@ -37,7 +41,7 @@ void CWinSystemWin10DX::PresentRenderImpl(bool rendered)
   }
 
   if (!rendered)
-    Sleep(40);
+    KODI::TIME::Sleep(40);
 }
 
 bool CWinSystemWin10DX::CreateNewWindow(const std::string& name, bool fullScreen, RESOLUTION_INFO& res)
@@ -52,8 +56,7 @@ bool CWinSystemWin10DX::CreateNewWindow(const std::string& name, bool fullScreen
   if (CWinSystemWin10::CreateNewWindow(name, fullScreen, res) && m_deviceResources->HasValidDevice())
   {
     CGenericTouchInputHandler::GetInstance().RegisterHandler(&CGenericTouchActionHandler::GetInstance());
-    CGenericTouchInputHandler::GetInstance().SetScreenDPI(DX::DisplayMetrics::Dpi100);
-    ChangeResolution(res, true);
+    CGenericTouchInputHandler::GetInstance().SetScreenDPI(m_deviceResources->GetDpi());
     return true;
   }
   return false;
@@ -151,4 +154,34 @@ void CWinSystemWin10DX::UninitHooks()
 
 void CWinSystemWin10DX::InitHooks(IDXGIOutput* pOutput)
 {
+}
+
+bool CWinSystemWin10DX::IsHDRDisplay()
+{
+  return (CWIN32Util::GetWindowsHDRStatus() != HDR_STATUS::HDR_UNSUPPORTED);
+}
+
+HDR_STATUS CWinSystemWin10DX::GetOSHDRStatus()
+{
+  return CWIN32Util::GetWindowsHDRStatus();
+}
+
+HDR_STATUS CWinSystemWin10DX::ToggleHDR()
+{
+  return m_deviceResources->ToggleHDR();
+}
+
+bool CWinSystemWin10DX::IsHDROutput() const
+{
+  return m_deviceResources->IsHDROutput();
+}
+
+void CWinSystemWin10DX::SetHdrMetaData(DXGI_HDR_METADATA_HDR10& hdr10) const
+{
+  m_deviceResources->SetHdrMetaData(hdr10);
+}
+
+void CWinSystemWin10DX::SetHdrColorSpace(const DXGI_COLOR_SPACE_TYPE colorSpace) const
+{
+  m_deviceResources->SetHdrColorSpace(colorSpace);
 }

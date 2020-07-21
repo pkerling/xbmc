@@ -8,9 +8,8 @@
 
 #pragma once
 
-#include "music/Song.h"
-#include "music/Album.h"
 #include "addons/Scraper.h"
+#include "music/Album.h"
 #include "utils/ScraperUrl.h"
 
 class CXBMCTinyXML;

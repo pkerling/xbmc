@@ -7,11 +7,12 @@
  */
 
 #include "GUITexture.h"
-#include "windowing/GraphicContext.h"
-#include "TextureManager.h"
+
 #include "GUILargeTextureManager.h"
+#include "TextureManager.h"
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
+#include "windowing/GraphicContext.h"
 
 CTextureInfo::CTextureInfo()
 {
@@ -24,17 +25,6 @@ CTextureInfo::CTextureInfo(const std::string &file):
 {
   orientation = 0;
   useLarge = false;
-}
-
-CTextureInfo& CTextureInfo::operator=(const CTextureInfo &right)
-{
-  border = right.border;
-  orientation = right.orientation;
-  diffuse = right.diffuse;
-  filename = right.filename;
-  useLarge = right.useLarge;
-  diffuseColor = right.diffuseColor;
-  return *this;
 }
 
 CGUITextureBase::CGUITextureBase(float posX, float posY, float width, float height, const CTextureInfo& texture) :

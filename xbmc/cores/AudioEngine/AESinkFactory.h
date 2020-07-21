@@ -8,11 +8,13 @@
 
 #pragma once
 
-#include <stdint.h>
+#include "Utils/AEAudioFormat.h"
+#include "Utils/AEDeviceInfo.h"
+
 #include <map>
+#include <stdint.h>
 #include <string>
 #include <vector>
-#include "Utils/AEDeviceInfo.h"
 
 class IAESink;
 
@@ -46,7 +48,7 @@ public:
 
   static void ParseDevice(std::string &device, std::string &driver);
   static IAESink *Create(std::string &device, AEAudioFormat &desiredFormat);
-  static void EnumerateEx(std::vector<AESinkInfo> &list, bool force);
+  static void EnumerateEx(std::vector<AESinkInfo>& list, bool force, std::string driver);
   static void Cleanup();
 
 protected:

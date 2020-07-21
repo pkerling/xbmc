@@ -13,7 +13,7 @@
 #include <math.h>
 
 extern "C" {
-#include "libavutil/samplefmt.h"
+#include <libavutil/samplefmt.h>
 }
 
 #if defined(HAVE_SSE) && defined(__SSE__)
@@ -42,7 +42,7 @@ enum AVSync
 struct AEDelayStatus
 {
   void   SetDelay(double d);
-  double GetDelay();
+  double GetDelay() const;
 
   double delay = 0.0;  // delay in sink currently
   double maxcorrection = 0.0; // time correction must not be greater than sink delay

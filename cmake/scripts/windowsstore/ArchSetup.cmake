@@ -1,5 +1,5 @@
 # Minimum SDK version we support
-set(VS_MINIMUM_SDK_VERSION 10.0.16299.0)
+set(VS_MINIMUM_SDK_VERSION 10.0.17763.0)
 
 if(CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION VERSION_LESS VS_MINIMUM_SDK_VERSION)
   message(FATAL_ERROR "Detected Windows SDK version is ${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}.\n"
@@ -49,12 +49,10 @@ set(DEPENDENCIES_DIR ${CMAKE_SOURCE_DIR}/${DEPS_FOLDER_RELATIVE}/win10-${ARCH})
 set(MINGW_LIBS_DIR ${CMAKE_SOURCE_DIR}/${DEPS_FOLDER_RELATIVE}/mingwlibs/win10-${ARCH})
 
 # mingw libs
-list(APPEND CMAKE_SYSTEM_PREFIX_PATH ${MINGW_LIBS_DIR})
-list(APPEND CMAKE_SYSTEM_LIBRARY_PATH ${MINGW_LIBS_DIR}/bin)
+list(APPEND CMAKE_PREFIX_PATH ${MINGW_LIBS_DIR})
+list(APPEND CMAKE_LIBRARY_PATH ${MINGW_LIBS_DIR}/bin)
 # dependencies
-list(APPEND CMAKE_SYSTEM_PREFIX_PATH ${DEPENDENCIES_DIR})
-# for python
-set(PYTHON_INCLUDE_DIR ${DEPENDENCIES_DIR}/include/python)
+list(APPEND CMAKE_PREFIX_PATH ${DEPENDENCIES_DIR})
 
 
 # -------- Compiler options ---------
@@ -64,22 +62,24 @@ add_options(CXX ALL_BUILDS "/wd\"4146\"")
 add_options(CXX ALL_BUILDS "/wd\"4251\"")
 add_options(CXX ALL_BUILDS "/wd\"4668\"")
 add_options(CXX ALL_BUILDS "/wd\"5033\"")
-set(ARCH_DEFINES -D_WINDOWS -DTARGET_WINDOWS -DTARGET_WINDOWS_STORE -DXBMC_EXPORT -DMS_UWP)
+set(ARCH_DEFINES -D_WINDOWS -DTARGET_WINDOWS -DTARGET_WINDOWS_STORE -DXBMC_EXPORT -DMS_UWP -DMS_STORE)
 if(NOT SDK_TARGET_ARCH STREQUAL arm)
   list(APPEND ARCH_DEFINES -D__SSE__ -D__SSE2__)
 endif()
 set(SYSTEM_DEFINES -DWIN32_LEAN_AND_MEAN -DNOMINMAX -DHAS_DX -D__STDC_CONSTANT_MACROS
-                   -DFMT_HEADER_ONLY -DTAGLIB_STATIC -DNPT_CONFIG_ENABLE_LOGGING
+                   -DTAGLIB_STATIC -DNPT_CONFIG_ENABLE_LOGGING
                    -DPLT_HTTP_DEFAULT_USER_AGENT="UPnP/1.0 DLNADOC/1.50 Kodi"
                    -DPLT_HTTP_DEFAULT_SERVER="UPnP/1.0 DLNADOC/1.50 Kodi"
                    -DUNICODE -D_UNICODE
+                   -DFRIBIDI_STATIC
                    $<$<CONFIG:Debug>:-DD3D_DEBUG_INFO>)
 
 # Additional SYSTEM_DEFINES
 list(APPEND SYSTEM_DEFINES -DHAS_WIN10_NETWORK)
 
 # The /MP option enables /FS by default.
-set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS} /EHsc /await /std:c++latest")
+set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS} /EHsc /await")
+set(CMAKE_CXX_STANDARD 17)
 # Google Test needs to use shared version of runtime libraries
 set(gtest_force_shared_crt ON CACHE STRING "" FORCE)
 
@@ -91,7 +91,8 @@ set(gtest_force_shared_crt ON CACHE STRING "" FORCE)
 link_directories(${MINGW_LIBS_DIR}/lib
                  ${DEPENDENCIES_DIR}/lib)
 
-list(APPEND DEPLIBS d3d11.lib WS2_32.lib dxguid.lib dloadhelper.lib WindowsApp.lib)
+list(APPEND DEPLIBS bcrypt.lib d3d11.lib WS2_32.lib dxguid.lib dloadhelper.lib WindowsApp.lib
+                    Mfplat.lib Mfuuid.lib Strmiids.lib)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /WINMD:NO")
 set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} /NODEFAULTLIB:msvcrt /DEBUG:FASTLINK /OPT:NOREF /OPT:NOICF")

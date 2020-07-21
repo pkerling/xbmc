@@ -12,11 +12,11 @@
 #include <algorithm>
 
 extern "C" {
-#include "libavfilter/avfilter.h"
-#include "libavcodec/avcodec.h"
-#include "libavfilter/buffersink.h"
-#include "libavfilter/buffersrc.h"
-#include "libswresample/swresample.h"
+#include <libavfilter/avfilter.h>
+#include <libavcodec/avcodec.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
+#include <libswresample/swresample.h>
 }
 
 using namespace ActiveAE;
@@ -157,6 +157,7 @@ bool CActiveAEFilter::CreateAtempoFilter()
   m_needData = true;
   m_filterEof = false;
   m_started = false;
+  m_ptsInitialized = false;
 
   return true;
 }
@@ -182,6 +183,8 @@ void CActiveAEFilter::CloseFilter()
 
   m_SamplesIn = 0;
   m_SamplesOut = 0;
+
+  m_ptsInitialized = false;
 }
 
 int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_t **src_buffer, int src_samples, int src_bufsize)
@@ -211,6 +214,11 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
     frame->sample_rate = m_sampleRate;
     frame->nb_samples = src_samples;
     frame->format = m_sampleFormat;
+    if (!m_ptsInitialized)
+    {
+      frame->pts = 0;
+      m_ptsInitialized = true;
+    }
 
     m_SamplesIn += src_samples;
 
@@ -220,6 +228,7 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
     {
       av_frame_free(&frame);
       CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - avcodec_fill_audio_frame failed");
+      m_filterEof = true;
       return -1;
     }
 
@@ -228,6 +237,7 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
     if (result < 0)
     {
       CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - av_buffersrc_add_frame failed");
+      m_filterEof = true;
       return -1;
     }
 
@@ -239,6 +249,7 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
     if (result < 0)
     {
       CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - av_buffersrc_add_frame");
+      m_filterEof = true;
       return -1;
     }
   }
@@ -265,6 +276,7 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
     else if (result < 0)
     {
       CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - av_buffersink_get_frame");
+      m_filterEof = true;
       return -1;
     }
 
@@ -281,6 +293,7 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
       if (result < 0)
       {
         CLog::Log(LOGERROR, "CActiveAEFilter::ProcessFilter - swr_convert_frame failed");
+        m_filterEof = true;
         return -1;
       }
     }
@@ -314,25 +327,22 @@ int CActiveAEFilter::ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_
   return 0;
 }
 
-bool CActiveAEFilter::IsEof()
+bool CActiveAEFilter::IsEof() const
 {
   return m_filterEof;
 }
 
-bool CActiveAEFilter::NeedData()
+bool CActiveAEFilter::NeedData() const
 {
   return m_needData;
 }
 
-bool CActiveAEFilter::IsActive()
+bool CActiveAEFilter::IsActive() const
 {
-  if (m_pFilterGraph)
-    return true;
-  else
-    return false;
+  return m_pFilterGraph != nullptr && !m_filterEof;
 }
 
-int CActiveAEFilter::GetBufferedSamples()
+int CActiveAEFilter::GetBufferedSamples() const
 {
   int ret = m_SamplesIn - (m_SamplesOut * m_tempo);
   if (m_hasData)

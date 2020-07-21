@@ -19,8 +19,10 @@
  */
 
 #include "PNGDecoder.h"
-#include "png.h"
+
 #include "SimpleFS.h"
+
+#include <png.h>
 
 #ifndef png_jmpbuf
 #  define png_jmpbuf(png_ptr) ((png_ptr)->jmpbuf)
@@ -241,5 +243,5 @@ void PNGDecoder::FreeDecodedFrames(DecodedFrames &frames)
 
 void PNGDecoder::FillSupportedExtensions()
 {
-  m_supportedExtensions.push_back(".png");
+  m_supportedExtensions.emplace_back(".png");
 }

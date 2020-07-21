@@ -8,18 +8,11 @@
 
 #include "DVDInputStreamFFmpeg.h"
 
-#include "filesystem/CurlFile.h"
 #include "playlists/PlayListM3U.h"
-#include "settings/Settings.h"
-#include "settings/SettingsComponent.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
 
-#include <limits.h>
 
 using namespace XFILE;
-using PLAYLIST::CPlayListM3U;
 
 CDVDInputStreamFFmpeg::CDVDInputStreamFFmpeg(const CFileItem& fileitem)
   : CDVDInputStream(DVDSTREAM_TYPE_FFMPEG, fileitem)
@@ -47,8 +40,8 @@ bool CDVDInputStreamFFmpeg::Open()
 
   m_aborted = false;
 
-  if(strnicmp(m_item.GetDynPath().c_str(), "udp://", 6) == 0 ||
-     strnicmp(m_item.GetDynPath().c_str(), "rtp://", 6) == 0)
+  if (StringUtils::CompareNoCase(m_item.GetDynPath(), "udp://", 6) == 0 ||
+      StringUtils::CompareNoCase(m_item.GetDynPath(), "rtp://", 6) == 0)
   {
     m_realtime = true;
   }

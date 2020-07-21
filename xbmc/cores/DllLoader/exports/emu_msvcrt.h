@@ -8,6 +8,11 @@
 
 #pragma once
 
+#include <stdint.h>
+#include <stdio.h>
+
+#include "PlatformDefs.h"
+
 #ifdef TARGET_POSIX
 #define _onexit_t void*
 #endif
@@ -150,11 +155,6 @@ extern "C"
   int dll_open_osfhandle(intptr_t _OSFileHandle, int _Flags);
 #endif
   int dll_setvbuf(FILE *stream, char *buf, int type, size_t size);
-
-#if _MSC_VER < 1900
-  int dll_filbuf(FILE *fp);
-  int dll_flsbuf(int data, FILE*fp);
-#endif
 
 #if defined(TARGET_ANDROID)
   volatile int * __cdecl dll_errno(void);

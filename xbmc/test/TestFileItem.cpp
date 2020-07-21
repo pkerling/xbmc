@@ -8,14 +8,14 @@
 
 #include "AppParamParser.h"
 #include "FileItem.h"
-#include "URL.h"
 #include "ServiceBroker.h"
-#include "settings/lib/SettingsManager.h"
+#include "URL.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "settings/lib/SettingsManager.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 using ::testing::Test;
 using ::testing::WithParamInterface;
@@ -69,14 +69,14 @@ const TestFileData MovieFiles[] = {{ "c:\\dir\\filename.avi", false, "c:\\dir\\f
                                    { "stack:///path/to/movie_name/cd1/some_file1.avi , /path/to/movie_name/cd2/some_file2.avi", true,  "/path/to/movie_name/art.jpg" },
                                    { "/home/user/TV Shows/Dexter/S1/1x01.avi", false, "/home/user/TV Shows/Dexter/S1/1x01-art.jpg" },
                                    { "/home/user/TV Shows/Dexter/S1/1x01.avi", true, "/home/user/TV Shows/Dexter/S1/art.jpg" },
-                                   { "rar://g%3a%5cmultimedia%5cmovies%5cSphere%2erar/Sphere.avi", false, "g:\\multimedia\\movies\\Sphere-art.jpg" },
-                                   { "rar://g%3a%5cmultimedia%5cmovies%5cSphere%2erar/Sphere.avi", true, "g:\\multimedia\\movies\\art.jpg" },
+                                   { "zip://g%3a%5cmultimedia%5cmovies%5cSphere%2ezip/Sphere.avi", false, "g:\\multimedia\\movies\\Sphere-art.jpg" },
+                                   { "zip://g%3a%5cmultimedia%5cmovies%5cSphere%2ezip/Sphere.avi", true, "g:\\multimedia\\movies\\art.jpg" },
                                    { "/home/user/movies/movie_name/video_ts/VIDEO_TS.IFO", false, "/home/user/movies/movie_name/art.jpg" },
                                    { "/home/user/movies/movie_name/video_ts/VIDEO_TS.IFO", true, "/home/user/movies/movie_name/art.jpg" },
                                    { "/home/user/movies/movie_name/BDMV/index.bdmv", false, "/home/user/movies/movie_name/art.jpg" },
                                    { "/home/user/movies/movie_name/BDMV/index.bdmv", true, "/home/user/movies/movie_name/art.jpg" }};
 
-INSTANTIATE_TEST_CASE_P(MovieFiles, TestFileItemSpecifiedArtJpg, ValuesIn(MovieFiles));
+INSTANTIATE_TEST_SUITE_P(MovieFiles, TestFileItemSpecifiedArtJpg, ValuesIn(MovieFiles));
 
 class TestFileItemFallbackArt : public AdvancedSettingsResetBase,
                                 public WithParamInterface<TestFileData>
@@ -96,9 +96,9 @@ const TestFileData NoArtFiles[] = {{ "c:\\dir\\filename.avi", false, "c:\\dir\\f
                                    { "/dir/filename.avi", false, "/dir/filename.tbn" },
                                    { "smb://somepath/file.avi", false, "smb://somepath/file.tbn" },
                                    { "/home/user/TV Shows/Dexter/S1/1x01.avi", false, "/home/user/TV Shows/Dexter/S1/1x01.tbn" },
-                                   { "rar://g%3a%5cmultimedia%5cmovies%5cSphere%2erar/Sphere.avi", false, "g:\\multimedia\\movies\\Sphere.tbn" }};
+                                   { "zip://g%3a%5cmultimedia%5cmovies%5cSphere%2ezip/Sphere.avi", false, "g:\\multimedia\\movies\\Sphere.tbn" }};
 
-INSTANTIATE_TEST_CASE_P(NoArt, TestFileItemFallbackArt, ValuesIn(NoArtFiles));
+INSTANTIATE_TEST_SUITE_P(NoArt, TestFileItemFallbackArt, ValuesIn(NoArtFiles));
 
 class TestFileItemBasePath : public AdvancedSettingsResetBase,
                              public WithParamInterface<TestFileData>
@@ -124,10 +124,10 @@ const TestFileData BaseMovies[] = {{ "c:\\dir\\filename.avi", false, "c:\\dir\\f
                                    { "stack:///path/to/movie_name/cd1/some_file1.avi , /path/to/movie_name/cd2/some_file2.avi", true,  "/path/to/movie_name/" },
                                    { "/home/user/TV Shows/Dexter/S1/1x01.avi", false, "/home/user/TV Shows/Dexter/S1/1x01.avi" },
                                    { "/home/user/TV Shows/Dexter/S1/1x01.avi", true, "/home/user/TV Shows/Dexter/S1/" },
-                                   { "rar://g%3a%5cmultimedia%5cmovies%5cSphere%2erar/Sphere.avi", true, "g:\\multimedia\\movies\\" },
+                                   { "zip://g%3a%5cmultimedia%5cmovies%5cSphere%2ezip/Sphere.avi", true, "g:\\multimedia\\movies\\" },
                                    { "/home/user/movies/movie_name/video_ts/VIDEO_TS.IFO", false, "/home/user/movies/movie_name/" },
                                    { "/home/user/movies/movie_name/video_ts/VIDEO_TS.IFO", true, "/home/user/movies/movie_name/" },
                                    { "/home/user/movies/movie_name/BDMV/index.bdmv", false, "/home/user/movies/movie_name/" },
                                    { "/home/user/movies/movie_name/BDMV/index.bdmv", true, "/home/user/movies/movie_name/" }};
 
-INSTANTIATE_TEST_CASE_P(BaseNameMovies, TestFileItemBasePath, ValuesIn(BaseMovies));
+INSTANTIATE_TEST_SUITE_P(BaseNameMovies, TestFileItemBasePath, ValuesIn(BaseMovies));

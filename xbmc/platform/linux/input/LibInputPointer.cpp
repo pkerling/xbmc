@@ -9,14 +9,15 @@
 #include "LibInputPointer.h"
 
 #include "AppInboundProtocol.h"
-#include "input/mouse/MouseStat.h"
 #include "ServiceBroker.h"
+#include "input/mouse/MouseStat.h"
 #include "utils/log.h"
 #include "windowing/GraphicContext.h"
 
 #include <algorithm>
-#include <linux/input.h>
 #include <string.h>
+
+#include <linux/input.h>
 
 void CLibInputPointer::ProcessButton(libinput_event_pointer *e)
 {
@@ -85,6 +86,23 @@ void CLibInputPointer::ProcessMotion(libinput_event_pointer *e)
   XBMC_Event event;
   memset(&event, 0, sizeof(event));
 
+  event.type = XBMC_MOUSEMOTION;
+  event.motion.x = static_cast<uint16_t>(m_pos.X);
+  event.motion.y = static_cast<uint16_t>(m_pos.Y);
+
+  CLog::Log(LOGDEBUG, "CLibInputPointer::%s - event.type: %i, event.motion.x: %i, event.motion.y: %i", __FUNCTION__, event.type, event.motion.x, event.motion.y);
+
+  std::shared_ptr<CAppInboundProtocol> appPort = CServiceBroker::GetAppPort();
+  if (appPort)
+    appPort->OnEvent(event);
+}
+
+void CLibInputPointer::ProcessMotionAbsolute(libinput_event_pointer *e)
+{
+  m_pos.X = static_cast<int>(libinput_event_pointer_get_absolute_x_transformed(e, CServiceBroker::GetWinSystem()->GetGfxContext().GetWidth()));
+  m_pos.Y = static_cast<int>(libinput_event_pointer_get_absolute_y_transformed(e, CServiceBroker::GetWinSystem()->GetGfxContext().GetHeight()));
+
+  XBMC_Event event;
   event.type = XBMC_MOUSEMOTION;
   event.motion.x = static_cast<uint16_t>(m_pos.X);
   event.motion.y = static_cast<uint16_t>(m_pos.Y);

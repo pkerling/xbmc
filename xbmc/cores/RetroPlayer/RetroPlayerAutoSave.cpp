@@ -7,21 +7,19 @@
  */
 
 #include "RetroPlayerAutoSave.h"
-#include "cores/RetroPlayer/playback/IPlayback.h"
+
+#include "URL.h"
 #include "games/GameSettings.h"
 #include "utils/log.h"
-#include "URL.h"
 
 using namespace KODI;
 using namespace RETRO;
 
-#define AUTOSAVE_DURATION_SECS    10 // Auto-save every 10 seconds
+#define AUTOSAVE_DURATION_SECS 10 // Auto-save every 10 seconds
 
-CRetroPlayerAutoSave::CRetroPlayerAutoSave(IAutoSaveCallback &callback,
-                                           GAME::CGameSettings &settings) :
-  CThread("CRetroPlayerAutoSave"),
-  m_callback(callback),
-  m_settings(settings)
+CRetroPlayerAutoSave::CRetroPlayerAutoSave(IAutoSaveCallback& callback,
+                                           GAME::CGameSettings& settings)
+  : CThread("CRetroPlayerAutoSave"), m_callback(callback), m_settings(settings)
 {
   CLog::Log(LOGDEBUG, "RetroPlayer[SAVE]: Initializing autosave");
 
@@ -41,7 +39,7 @@ void CRetroPlayerAutoSave::Process()
 
   while (!m_bStop)
   {
-    Sleep(AUTOSAVE_DURATION_SECS * 1000);
+    CThread::Sleep(AUTOSAVE_DURATION_SECS * 1000);
 
     if (m_bStop)
       break;
@@ -53,7 +51,8 @@ void CRetroPlayerAutoSave::Process()
     {
       std::string savePath = m_callback.CreateSavestate();
       if (!savePath.empty())
-        CLog::Log(LOGDEBUG, "RetroPlayer[SAVE]: Saved state to %s", CURL::GetRedacted(savePath).c_str());
+        CLog::Log(LOGDEBUG, "RetroPlayer[SAVE]: Saved state to %s",
+                  CURL::GetRedacted(savePath).c_str());
     }
   }
 

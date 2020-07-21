@@ -20,7 +20,6 @@ set(APP_PREFIX ${prefix})
 set(APP_LIB_DIR ${libdir}/${APP_NAME_LC})
 set(APP_DATA_DIR ${datarootdir}/${APP_NAME_LC})
 set(APP_INCLUDE_DIR ${includedir}/${APP_NAME_LC})
-set(CXX11_SWITCH "-std=c++11")
 
 # Set XBMC_STANDALONE_SH_PULSE so we can insert PulseAudio block into kodi-standalone
 if(EXISTS ${CMAKE_SOURCE_DIR}/tools/Linux/kodi-standalone.sh.pulse)
@@ -264,11 +263,11 @@ if(ENABLE_EVENTCLIENTS)
             COMPONENT kodi-eventclients-wiiremote)
   endif()
 
-  # Install kodi-eventclients-xbmc-send
+  # Install kodi-eventclients-kodi-send
   install(PROGRAMS ${CMAKE_SOURCE_DIR}/tools/EventClients/Clients/KodiSend/kodi-send.py
           RENAME ${APP_NAME_LC}-send
           DESTINATION ${bindir}
-          COMPONENT kodi-eventclients-xbmc-send)
+          COMPONENT kodi-eventclients-kodi-send)
 endif()
 
 # Install XBT skin files

@@ -8,13 +8,18 @@
 
 #pragma once
 
-#include "JSONRPC.h"
 #include "FileItemHandler.h"
-#include "pvr/PVRTypes.h"
+#include "JSONRPC.h"
 
 #include <string>
 
 class CVariant;
+
+namespace PVR
+{
+class CPVRChannelGroup;
+class CPVREpgInfoTag;
+}
 
 namespace JSONRPC
 {
@@ -45,6 +50,8 @@ namespace JSONRPC
 
     static JSONRPC_STATUS Move(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
     static JSONRPC_STATUS Zoom(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
+    static JSONRPC_STATUS SetViewMode(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
+    static JSONRPC_STATUS GetViewMode(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
     static JSONRPC_STATUS Rotate(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
 
     static JSONRPC_STATUS Open(const std::string &method, ITransportLayer *transport, IClient *client, const CVariant &parameterObject, CVariant &result);
@@ -62,12 +69,11 @@ namespace JSONRPC
     static int GetPlaylist(PlayerType player);
     static JSONRPC_STATUS StartSlideshow(const std::string& path, bool recursive, bool random, const std::string &firstPicturePath = "");
     static void SendSlideshowAction(int actionID);
-    static void OnPlaylistChanged();
     static JSONRPC_STATUS GetPropertyValue(PlayerType player, const std::string &property, CVariant &result);
 
     static int ParseRepeatState(const CVariant &repeat);
     static double ParseTimeInSeconds(const CVariant &time);
     static bool IsPVRChannel();
-    static PVR::CPVREpgInfoTagPtr GetCurrentEpg();
+    static std::shared_ptr<PVR::CPVREpgInfoTag> GetCurrentEpg();
   };
 }

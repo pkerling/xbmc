@@ -13,14 +13,12 @@
 \brief
 */
 
-#include "threads/CriticalSection.h"
 #include "threads/SharedSection.h"
+#include "utils/ILocalizer.h"
 
 #include <map>
-#include <string>
 #include <stdint.h>
-
-#include "utils/ILocalizer.h"
+#include <string>
 
 /*!
  \ingroup strings

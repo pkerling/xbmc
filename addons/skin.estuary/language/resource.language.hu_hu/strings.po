@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: KODI Main\n"
-"Report-Msgid-Bugs-To: http://trac.kodi.tv/\n"
+"Report-Msgid-Bugs-To: https://github.com/xbmc/xbmc/issues/\n"
 "POT-Creation-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: Kodi Translation Team\n"
@@ -148,10 +148,6 @@ msgctxt "#31033"
 msgid "Your rating"
 msgstr "Értékelés"
 
-msgctxt "#31034"
-msgid "Extended info"
-msgstr "Bővített információ"
-
 msgctxt "#31035"
 msgid "Pages"
 msgstr "Oldalak"
@@ -264,6 +260,10 @@ msgctxt "#31072"
 msgid "Power Options"
 msgstr "Kikapcsolási lehetőségek"
 
+msgctxt "#31074"
+msgid "Total duration"
+msgstr "Teljes időtartam"
+
 msgctxt "#31075"
 msgid "Movie sets"
 msgstr "Film gyűjtemények"
@@ -291,10 +291,6 @@ msgstr "Vizualizáció beállítások"
 msgctxt "#31089"
 msgid "Available groups"
 msgstr "Elérhető csoportok"
-
-msgctxt "#31090"
-msgid "Search trailer"
-msgstr "Filmajánló keresése"
 
 msgctxt "#31092"
 msgid "Video menu"
@@ -376,10 +372,6 @@ msgctxt "#31114"
 msgid "Search YouTube"
 msgstr "YouTube keresés"
 
-msgctxt "#31115"
-msgid "Search TheMovieDB"
-msgstr " TheMovieDB keresés"
-
 msgctxt "#31116"
 msgid "Remove this main menu item"
 msgstr "Főmenü elem eltávolítása"
@@ -406,15 +398,11 @@ msgstr "Időjárás-szolgáltató beállítása"
 
 msgctxt "#31122"
 msgid "Unwatched TV Shows"
-msgstr "Nem látott TV sorozatok"
+msgstr "Nem látott TV-sorozatok"
 
 msgctxt "#31123"
 msgid "Same director"
 msgstr "Egyazon rendező"
-
-msgctxt "#31124"
-msgid "Show images on map"
-msgstr "Képek megjelenítése a térképen"
 
 msgctxt "#31125"
 msgid "Press up for actor info"
@@ -560,6 +548,18 @@ msgctxt "#31163"
 msgid "Show Fanart background"
 msgstr "Illusztráció háttér megjelenítése"
 
+msgctxt "#31164"
+msgid "Choose kind of profile identification"
+msgstr "Válassza ki a profil azonosítását"
+
 msgctxt "#31165"
 msgid "Profile name"
 msgstr "Profil neve"
+
+msgctxt "#31166"
+msgid "Profile avatar"
+msgstr "Profil avatar"
+
+msgctxt "#31167"
+msgid "Animate background"
+msgstr "Animált háttér"

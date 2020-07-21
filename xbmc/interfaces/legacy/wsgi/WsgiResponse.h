@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include <vector>
-
 #include "interfaces/legacy/AddonClass.h"
 #include "interfaces/legacy/Tuple.h"
 #include "interfaces/legacy/wsgi/WsgiResponseBody.h"
 #include "network/httprequesthandler/python/HTTPPythonRequest.h"
+
+#include <vector>
 
 namespace XBMCAddon
 {
@@ -39,7 +39,6 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       /// \ingroup python_xbmcwsgi_WsgiInputStreamIterator
       /// \python_func{ operator(status, response_headers[, exc_info]) }
-      ///------------------------------------------------------------------------
       ///
       /// Callable implementation to initialize the response with the given
       /// HTTP status and the HTTP response headers.

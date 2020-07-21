@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include <android/input.h>
 #include <math.h>
+
+#include <android/input.h>
 
 class CAndroidTouch
 {
@@ -23,5 +24,5 @@ protected:
   virtual void setDPI(uint32_t dpi);
 
 private:
-  uint32_t m_dpi;
+  uint32_t m_dpi = 160;
 };

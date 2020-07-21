@@ -7,13 +7,15 @@
  */
 
 #include "dll.h"
+
 #include "DllLoader.h"
 #include "DllLoaderContainer.h"
 #include "dll_tracker.h"
 #include "dll_util.h"
-#include <climits>
 #include "filesystem/SpecialProtocol.h"
 #include "utils/log.h"
+
+#include <climits>
 
 #define DEFAULT_DLLPATH "special://xbmc/system/players/mplayer/codecs/"
 #define HIGH_WORD(a) ((uintptr_t)(a) >> 16)
@@ -163,7 +165,7 @@ extern "C" intptr_t (*__stdcall dllGetProcAddress(HMODULE hModule, const char* f
     }
     else if( dll->IsSystemDll() )
     {
-      char ordinal[5];
+      char ordinal[6] = {};
       sprintf(ordinal, "%u", LOW_WORD(function));
       address = (void*)create_dummy_function(dll->GetName(), ordinal);
 
@@ -191,8 +193,8 @@ extern "C" intptr_t (*__stdcall dllGetProcAddress(HMODULE hModule, const char* f
       DllTrackInfo* track = tracker_get_dlltrackinfo(loc);
       /* some dll's require us to always return a function or it will fail, other's  */
       /* decide functionality depending on if the functions exist and may fail      */
-      if( dll->IsSystemDll() && track
-       && stricmp(track->pDll->GetName(), "CoreAVCDecoder.ax") == 0 )
+      if (dll->IsSystemDll() && track &&
+          StringUtils::CompareNoCase(track->pDll->GetName(), "CoreAVCDecoder.ax") == 0)
       {
         address = (void*)create_dummy_function(dll->GetName(), function);
         tracker_dll_data_track(track->pDll, (uintptr_t)address);

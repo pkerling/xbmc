@@ -7,30 +7,27 @@
  */
 
 #include "GUIGameControl.h"
+
+#include "Application.h"
 #include "GUIRenderSettings.h"
+#include "ServiceBroker.h"
+#include "cores/RetroPlayer/RetroPlayerUtils.h"
 #include "cores/RetroPlayer/guibridge/GUIGameRenderManager.h"
 #include "cores/RetroPlayer/guibridge/GUIRenderHandle.h"
-#include "cores/RetroPlayer/rendering/RenderSettings.h"
-#include "cores/RetroPlayer/rendering/RenderVideoSettings.h"
-#include "games/GameServices.h"
-#include "windowing/GraphicContext.h"
-#include "utils/TransformMatrix.h"
 #include "settings/GameSettings.h"
 #include "settings/MediaSettings.h"
 #include "utils/Geometry.h"
 #include "utils/StringUtils.h"
-#include "Application.h"
-#include "ApplicationPlayer.h"
-#include "ServiceBroker.h"
 
 #include <sstream>
 
 using namespace KODI;
 using namespace RETRO;
 
-CGUIGameControl::CGUIGameControl(int parentID, int controlID, float posX, float posY, float width, float height) :
-  CGUIControl(parentID, controlID, posX, posY, width, height),
-  m_renderSettings(new CGUIRenderSettings(*this))
+CGUIGameControl::CGUIGameControl(
+    int parentID, int controlID, float posX, float posY, float width, float height)
+  : CGUIControl(parentID, controlID, posX, posY, width, height),
+    m_renderSettings(new CGUIRenderSettings(*this))
 {
   // Initialize CGUIControl
   ControlType = GUICONTROL_GAME;
@@ -40,15 +37,15 @@ CGUIGameControl::CGUIGameControl(int parentID, int controlID, float posX, float 
   RegisterControl();
 }
 
-CGUIGameControl::CGUIGameControl(const CGUIGameControl &other) :
-  CGUIControl(other),
-  m_videoFilterInfo(other.m_videoFilterInfo),
-  m_stretchModeInfo(other.m_stretchModeInfo),
-  m_rotationInfo(other.m_rotationInfo),
-  m_bHasVideoFilter(other.m_bHasVideoFilter),
-  m_bHasStretchMode(other.m_bHasStretchMode),
-  m_bHasRotation(other.m_bHasRotation),
-  m_renderSettings(new CGUIRenderSettings(*this))
+CGUIGameControl::CGUIGameControl(const CGUIGameControl& other)
+  : CGUIControl(other),
+    m_videoFilterInfo(other.m_videoFilterInfo),
+    m_stretchModeInfo(other.m_stretchModeInfo),
+    m_rotationInfo(other.m_rotationInfo),
+    m_bHasVideoFilter(other.m_bHasVideoFilter),
+    m_bHasStretchMode(other.m_bHasStretchMode),
+    m_bHasRotation(other.m_bHasRotation),
+    m_renderSettings(new CGUIRenderSettings(*this))
 {
   m_renderSettings->SetSettings(other.m_renderSettings->GetSettings());
   m_renderSettings->SetDimensions(CRect(CPoint(m_posX, m_posY), CSize(m_width, m_height)));
@@ -61,27 +58,27 @@ CGUIGameControl::~CGUIGameControl()
   UnregisterControl();
 }
 
-void CGUIGameControl::SetVideoFilter(const GUILIB::GUIINFO::CGUIInfoLabel &videoFilter)
+void CGUIGameControl::SetVideoFilter(const GUILIB::GUIINFO::CGUIInfoLabel& videoFilter)
 {
   m_videoFilterInfo = videoFilter;
 }
 
-void CGUIGameControl::SetStretchMode(const GUILIB::GUIINFO::CGUIInfoLabel &stretchMode)
+void CGUIGameControl::SetStretchMode(const GUILIB::GUIINFO::CGUIInfoLabel& stretchMode)
 {
   m_stretchModeInfo = stretchMode;
 }
 
-void CGUIGameControl::SetRotation(const KODI::GUILIB::GUIINFO::CGUIInfoLabel &rotation)
+void CGUIGameControl::SetRotation(const KODI::GUILIB::GUIINFO::CGUIInfoLabel& rotation)
 {
   m_rotationInfo = rotation;
 }
 
-IGUIRenderSettings *CGUIGameControl::GetRenderSettings() const
+IGUIRenderSettings* CGUIGameControl::GetRenderSettings() const
 {
   return m_renderSettings.get();
 }
 
-void CGUIGameControl::Process(unsigned int currentTime, CDirtyRegionList &dirtyregions)
+void CGUIGameControl::Process(unsigned int currentTime, CDirtyRegionList& dirtyregions)
 {
   //! @todo Proper processing which marks when its actually changed
   if (m_renderHandle->IsDirty())
@@ -128,7 +125,7 @@ void CGUIGameControl::SetHeight(float height)
   m_renderSettings->SetDimensions(CRect(CPoint(m_posX, m_posY), CSize(m_width, height)));
 }
 
-void CGUIGameControl::UpdateInfo(const CGUIListItem *item /* = nullptr */)
+void CGUIGameControl::UpdateInfo(const CGUIListItem* item /* = nullptr */)
 {
   Reset();
 
@@ -142,11 +139,10 @@ void CGUIGameControl::UpdateInfo(const CGUIListItem *item /* = nullptr */)
     }
 
     std::string strStretchMode = m_stretchModeInfo.GetItemLabel(item);
-    if (StringUtils::IsNaturalNumber(strStretchMode))
+    if (!strStretchMode.empty())
     {
-      unsigned int stretchMode;
-      std::istringstream(std::move(strStretchMode)) >> stretchMode;
-      m_renderSettings->SetStretchMode(static_cast<STRETCHMODE>(stretchMode));
+      STRETCHMODE stretchMode = CRetroPlayerUtils::IdentifierToStretchMode(strStretchMode);
+      m_renderSettings->SetStretchMode(stretchMode);
       m_bHasStretchMode = true;
     }
 

@@ -9,24 +9,27 @@
 #pragma once
 
 #include "DVDVideoCodec.h"
-#include "cores/VideoPlayer/Process/VideoBuffer.h"
+#include "cores/VideoPlayer/Buffers/VideoBuffer.h"
 #include "cores/VideoSettings.h"
 #include "threads/CriticalSection.h"
-#include "threads/SharedSection.h"
 #include "threads/Event.h"
+#include "threads/SharedSection.h"
 #include "threads/Thread.h"
 #include "utils/ActorProtocol.h"
 #include "utils/Geometry.h"
+
+#include "platform/linux/sse4/DllLibSSE4.h"
+
 #include <list>
 #include <map>
 #include <memory>
 #include <vector>
+
 #include <va/va.h>
-#include "platform/linux/sse4/DllLibSSE4.h"
 
 extern "C" {
-#include "libavutil/avutil.h"
-#include "libavfilter/avfilter.h"
+#include <libavutil/avutil.h>
+#include <libavfilter/avfilter.h>
 }
 
 using namespace Actor;
@@ -37,6 +40,9 @@ class CProcessInfo;
 
 namespace VAAPI
 {
+
+void VaErrorCallback(void *user_context, const char *message);
+void VaInfoCallback(void *user_context, const char *message);
 
 //-----------------------------------------------------------------------------
 // VAAPI data structs
@@ -261,7 +267,6 @@ protected:
   void Flush();
   void EnsureBufferPool();
   void ReleaseBufferPool(bool precleanup = false);
-  bool CheckSuccess(VAStatus status);
   void ReadyForDisposal(CPostproc *pp);
   CEvent m_outMsgEvent;
   CEvent *m_inMsgEvent;
@@ -271,7 +276,8 @@ protected:
 
   // extended state variables for state machine
   int m_extTimeout;
-  bool m_vaError;
+  /// \brief Whether at least one interlaced frame was encountered in the video stream (indicating that more interlaced frames could potentially follow)
+  bool m_seenInterlaced;
   CVaapiConfig m_config;
   std::shared_ptr<CVaapiBufferPool> m_bufferPool;
   CVaapiDecodedPicture m_currentPicture;
@@ -327,7 +333,7 @@ private:
   bool CreateContext();
   void DestroyContext();
   void QueryCaps();
-  bool CheckSuccess(VAStatus status);
+  bool CheckSuccess(VAStatus status, const std::string& function);
   bool IsValidDecoder(CDecoder *decoder);
   void SetValidDRMVaDisplayFromRenderNode();
   static CVAAPIContext *m_context;
@@ -393,7 +399,7 @@ protected:
   void FiniVAAPIOutput();
   void ReturnRenderPicture(CVaapiRenderPicture *renderPic);
   long ReleasePicReference();
-  bool CheckSuccess(VAStatus status);
+  bool CheckSuccess(VAStatus status, const std::string& function);
 
   enum EDisplayState
   { VAAPI_OPEN
@@ -405,7 +411,6 @@ protected:
   CEvent m_DisplayEvent;
   int m_ErrorCount;
 
-  ThreadIdentifier m_decoderThread;
   bool m_vaapiConfigured;
   CVaapiConfig  m_vaapiConfig;
   CVideoSurfaces m_videoSurfaces;
@@ -495,7 +500,7 @@ public:
   bool UseVideoSurface() override;
   void Discard(COutput *output, ReadyToDispose cb) override;
 protected:
-  bool CheckSuccess(VAStatus status);
+  bool CheckSuccess(VAStatus status, const std::string& function);
   void Dispose();
   void Advance();
   VAConfigID m_configId;
@@ -530,7 +535,7 @@ public:
   bool UseVideoSurface() override;
   void Discard(COutput *output, ReadyToDispose cb) override;
 protected:
-  bool CheckSuccess(VAStatus status);
+  bool CheckSuccess(VAStatus status, const std::string& function);
   void Close();
   DllLibSSE4 m_dllSSE4;
   uint8_t *m_cache;

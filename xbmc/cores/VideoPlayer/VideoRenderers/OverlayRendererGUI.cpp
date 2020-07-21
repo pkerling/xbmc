@@ -7,33 +7,35 @@
  */
 
 #include "OverlayRendererGUI.h"
-#include "settings/Settings.h"
-#include "settings/SettingsComponent.h"
 
-#include "filesystem/File.h"
 #include "ServiceBroker.h"
 #include "Util.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
-#include "utils/log.h"
-#include "guilib/GUIFontManager.h"
+#include "cores/VideoPlayer/DVDCodecs/Overlay/DVDOverlayText.h"
+#include "filesystem/File.h"
 #include "guilib/GUIFont.h"
+#include "guilib/GUIFontManager.h"
 #include "guilib/GUITextLayout.h"
 #include "guilib/GUITexture.h"
-#include "cores/VideoPlayer/DVDCodecs/Overlay/DVDOverlayText.h"
+#include "settings/Settings.h"
+#include "settings/SettingsComponent.h"
+#include "utils/ColorUtils.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
 
 using namespace OVERLAY;
 
-static UTILS::Color colors[8] = { UTILS::COLOR::YELLOW,
+static UTILS::Color colors[9] = { UTILS::COLOR::YELLOW,
                                   UTILS::COLOR::WHITE,
                                   UTILS::COLOR::BLUE,
                                   UTILS::COLOR::BRIGHTGREEN,
                                   UTILS::COLOR::YELLOWGREEN,
                                   UTILS::COLOR::CYAN,
                                   UTILS::COLOR::LIGHTGREY,
-                                  UTILS::COLOR::GREY };
+                                  UTILS::COLOR::GREY,
+                                  UTILS::COLOR::DARKGREY };
 
-CGUITextLayout* COverlayText::GetFontLayout(const std::string &font, int color, int height, int style,
+CGUITextLayout* COverlayText::GetFontLayout(const std::string &font, int color, int opacity, int height, int style,
                                             const std::string &fontcache, const std::string &fontbordercache)
 {
   if (CUtil::IsUsingTTFSubtitles())
@@ -43,18 +45,31 @@ CGUITextLayout* COverlayText::GetFontLayout(const std::string &font, int color, 
     if (!XFILE::CFile::Exists(font_path))
       font_path = URIUtils::AddFileToFolder("special://xbmc/media/Fonts/", font_file);
 
+    // Apply opacity to the color
+    UTILS::Color fgcolor = colors[color];
+    UTILS::Color bordercolor = UTILS::COLOR::BLACK;
+    if (opacity > 0 && opacity < 100)
+    {
+      fgcolor = ColorUtils::ChangeOpacity(fgcolor, opacity / 100.0f);
+      bordercolor = ColorUtils::ChangeOpacity(bordercolor, opacity / 100.0f);
+    }
+    else if (opacity == 0)
+    {
+      fgcolor = bordercolor = UTILS::COLOR::NONE;
+    }
+
     // We scale based on PAL4x3 - this at least ensures all sizing is constant across resolutions.
     RESOLUTION_INFO pal(720, 576, 0);
     CGUIFont *subtitle_font = g_fontManager.LoadTTF(fontcache
                                                     , font_path
-                                                    , colors[color]
+                                                    , fgcolor
                                                     , 0
                                                     , height
                                                     , style
                                                     , false, 1.0f, 1.0f, &pal, true);
     CGUIFont *border_font   = g_fontManager.LoadTTF(fontbordercache
                                                     , font_path
-                                                    , 0xFF000000
+                                                    , bordercolor
                                                     , 0
                                                     , height
                                                     , style
@@ -65,7 +80,7 @@ CGUITextLayout* COverlayText::GetFontLayout(const std::string &font, int color, 
       return new CGUITextLayout(subtitle_font, true, 0, border_font);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 COverlayText::COverlayText(CDVDOverlayText * src)
@@ -135,7 +150,6 @@ COverlayText::COverlayText(CDVDOverlayText * src)
   m_height = 0;
 
   m_type = TYPE_GUITEXT;
-
   m_layout = nullptr;
 }
 
@@ -144,60 +158,39 @@ COverlayText::~COverlayText()
   delete m_layout;
 }
 
-void COverlayText::PrepareRender(const std::string &font, int color, int height, int style, const std::string &fontcache,
-                                 const std::string &fontbordercache, const UTILS::Color bgcolor)
+void COverlayText::PrepareRender(const std::string &font, int color, int opacity, int height, int style, const std::string &fontcache,
+                                 const std::string &fontbordercache, const UTILS::Color bgcolor, const CRect &rectView)
 {
   if (!m_layout)
-    m_layout = GetFontLayout(font, color, height, style, fontcache, fontbordercache);
+    m_layout = GetFontLayout(font, color, opacity, height, style, fontcache, fontbordercache);
 
-  if (m_layout == NULL)
+  if (m_layout == nullptr)
   {
     CLog::Log(LOGERROR, "COverlayText::PrepareRender - GetFontLayout failed for font %s", font.c_str());
     return;
   }
-  RESOLUTION_INFO res = CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo();
-  float width_max = (float)res.Overscan.right - res.Overscan.left;
-  m_layout->Update(m_text, width_max * 0.9f, false, true); // true to force LTR reading order (most Hebrew subs are this format)
+  
+  m_rv = rectView;
+  m_bgcolor = bgcolor;
+  m_bordercolor = ColorUtils::ChangeOpacity(UTILS::COLOR::BLACK, opacity / 100.0f);
+  
+  m_layout->Update(m_text, m_rv.Width() * 0.9f, false, true); // true to force LTR reading order (most Hebrew subs are this format)
   m_layout->GetTextExtent(m_width, m_height);
   
-  m_bgcolor = bgcolor;
 }
 
 void COverlayText::Render(OVERLAY::SRenderState &state)
 {
-  if(m_layout == NULL)
+  if(m_layout == nullptr)
     return;
-
-  CRect rd = CServiceBroker::GetWinSystem()->GetGfxContext().GetViewWindow();
-  RESOLUTION_INFO res = CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo();
-
-  /* our coordinates are in screen coordinates constrained to rd, but the font is sized suitably for fullscreen,
-     so we must scale up the positioning to screen coordinates, and then scale down to our final size and position
-     on render */
-
-  /* transform matrix is scale and translate */
-  float scale = rd.Width() / (res.Overscan.right - res.Overscan.left);
-  TransformMatrix mat;
-  mat.m[0][0] = mat.m[1][1] = scale;
-  mat.m[0][3] = rd.x1;
-  mat.m[1][3] = rd.y1;
 
   float x = state.x;
   float y = state.y;
-  mat.InverseTransformPosition(x, y);
-
-  CServiceBroker::GetWinSystem()->GetGfxContext().SetTransform(mat, 1.0f, 1.0f);
-
-  float width_max = (float) res.Overscan.right - res.Overscan.left;
 
   if (m_subalign == SUBTITLE_ALIGN_MANUAL
   ||  m_subalign == SUBTITLE_ALIGN_BOTTOM_OUTSIDE
   ||  m_subalign == SUBTITLE_ALIGN_BOTTOM_INSIDE)
     y -= m_height;
-
-  // clamp inside screen
-  y = std::max(y, (float) res.Overscan.top);
-  y = std::min(y, res.Overscan.bottom - m_height);
   
   // draw the overlay background
   if (m_bgcolor != UTILS::COLOR::NONE)
@@ -206,6 +199,6 @@ void COverlayText::Render(OVERLAY::SRenderState &state)
     CGUITexture::DrawQuad(backgroundbox, m_bgcolor);
   }
 
-  m_layout->RenderOutline(x, y, 0, 0xFF000000, XBFONT_CENTER_X, width_max);
+  m_layout->RenderOutline(x, y, 0, m_bordercolor, XBFONT_CENTER_X, m_rv.Width());
   CServiceBroker::GetWinSystem()->GetGfxContext().RemoveTransform();
 }

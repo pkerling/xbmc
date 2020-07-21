@@ -6,12 +6,12 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "ActiveAE.h"
 #include "ActiveAEBuffer.h"
+
+#include "ActiveAE.h"
 #include "ActiveAEFilter.h"
-#include "cores/AudioEngine/Engines/ActiveAE/ActiveAE.h"
-#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/AudioEngine/AEResampleFactory.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
 
 using namespace ActiveAE;
 
@@ -27,10 +27,6 @@ CSoundPacket::~CSoundPacket()
 {
   if (data)
     CActiveAE::FreeSoundSample(data);
-}
-
-CSampleBuffer::CSampleBuffer()
-{
 }
 
 CSampleBuffer::~CSampleBuffer()
@@ -439,7 +435,7 @@ void CActiveAEBufferPoolResample::SetRR(double rr)
   m_resampleRatio = rr;
 }
 
-double CActiveAEBufferPoolResample::GetRR()
+double CActiveAEBufferPoolResample::GetRR() const
 {
   return m_resampleRatio;
 }
@@ -449,7 +445,7 @@ void CActiveAEBufferPoolResample::FillBuffer()
   m_fillPackets = true;
 }
 
-bool CActiveAEBufferPoolResample::DoesNormalize()
+bool CActiveAEBufferPoolResample::DoesNormalize() const
 {
   return m_normalize;
 }
@@ -688,7 +684,7 @@ void CActiveAEBufferPoolAtempo::SetTempo(float tempo)
   m_tempo = tempo;
 }
 
-float CActiveAEBufferPoolAtempo::GetTempo()
+float CActiveAEBufferPoolAtempo::GetTempo() const
 {
   return m_tempo;
 }

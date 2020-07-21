@@ -6,13 +6,14 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "threads/SystemClock.h"
 #include "SectionLoader.h"
+
 #include "cores/DllLoader/DllLoaderContainer.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
-#include "utils/StringUtils.h"
+#include "threads/SystemClock.h"
 #include "utils/GlobalsHandling.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
 
 #define g_sectionLoader XBMC_GLOBAL_USE(CSectionLoader)
 
@@ -46,7 +47,7 @@ LibraryLoader *CSectionLoader::LoadDLL(const std::string &dllname, bool bDelayUn
   }
 
   // ok, now load the dll
-  CLog::Log(LOGDEBUG, "SECTION:LoadDLL(%s)\n", dllname.c_str());
+  CLog::Log(LOGDEBUG, "SECTION:LoadDLL(%s)", dllname.c_str());
   LibraryLoader* pDll = DllLoaderContainer::LoadModule(dllname.c_str(), NULL, bLoadSymbols);
   if (!pDll)
     return NULL;

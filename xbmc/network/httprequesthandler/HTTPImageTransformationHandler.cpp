@@ -6,9 +6,8 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <map>
-
 #include "HTTPImageTransformationHandler.h"
+
 #include "TextureCacheJob.h"
 #include "URL.h"
 #include "filesystem/ImageFile.h"
@@ -17,6 +16,8 @@
 #include "utils/Mime.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+
+#include <map>
 
 #define TRANSFORMATION_OPTION_WIDTH             "width"
 #define TRANSFORMATION_OPTION_HEIGHT            "height"
@@ -104,7 +105,7 @@ bool CHTTPImageTransformationHandler::CanHandleRequest(const HTTPRequest &reques
           options.find(TRANSFORMATION_OPTION_HEIGHT) != options.end());
 }
 
-int CHTTPImageTransformationHandler::HandleRequest()
+MHD_RESULT CHTTPImageTransformationHandler::HandleRequest()
 {
   if (m_response.type == HTTPError)
     return MHD_YES;

@@ -7,17 +7,19 @@
  */
 
 #include "AnnouncementManager.h"
-#include "threads/SingleLock.h"
-#include <stdio.h>
-#include "utils/log.h"
-#include "utils/Variant.h"
-#include "utils/StringUtils.h"
+
 #include "FileItem.h"
-#include "music/tags/MusicInfoTag.h"
-#include "music/MusicDatabase.h"
-#include "video/VideoDatabase.h"
-#include "pvr/channels/PVRChannel.h"
 #include "PlayListPlayer.h"
+#include "music/MusicDatabase.h"
+#include "music/tags/MusicInfoTag.h"
+#include "pvr/channels/PVRChannel.h"
+#include "threads/SingleLock.h"
+#include "utils/StringUtils.h"
+#include "utils/Variant.h"
+#include "utils/log.h"
+#include "video/VideoDatabase.h"
+
+#include <stdio.h>
 
 #define LOOKUP_PROPERTY "database-lookup"
 
@@ -42,7 +44,7 @@ void CAnnouncementManager::Deinitialize()
   m_bStop = true;
   m_queueEvent.Set();
   StopThread();
-  CSingleLock lock (m_critSection);
+  CSingleLock lock (m_announcersCritSection);
   m_announcers.clear();
 }
 
@@ -51,7 +53,7 @@ void CAnnouncementManager::AddAnnouncer(IAnnouncer *listener)
   if (!listener)
     return;
 
-  CSingleLock lock (m_critSection);
+  CSingleLock lock (m_announcersCritSection);
   m_announcers.push_back(listener);
 }
 
@@ -60,7 +62,7 @@ void CAnnouncementManager::RemoveAnnouncer(IAnnouncer *listener)
   if (!listener)
     return;
 
-  CSingleLock lock (m_critSection);
+  CSingleLock lock (m_announcersCritSection);
   for (unsigned int i = 0; i < m_announcers.size(); i++)
   {
     if (m_announcers[i] == listener)
@@ -100,7 +102,7 @@ void CAnnouncementManager::Announce(AnnouncementFlag flag, const char *sender, c
     announcement.item = CFileItemPtr(new CFileItem(*item));
 
   {
-    CSingleLock lock (m_critSection);
+    CSingleLock lock (m_queueCritSection);
     m_announcementQueue.push_back(announcement);
   }
   m_queueEvent.Set();
@@ -108,11 +110,12 @@ void CAnnouncementManager::Announce(AnnouncementFlag flag, const char *sender, c
 
 void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag, const char *sender, const char *message, const CVariant &data)
 {
-  CLog::Log(LOGDEBUG, "CAnnouncementManager - Announcement: %s from %s", message, sender);
+  CLog::Log(LOGDEBUG, LOGANNOUNCE, "CAnnouncementManager - Announcement: {} from {}", message, sender);
 
-  CSingleLock lock (m_critSection);
+  CSingleLock lock(m_announcersCritSection);
 
   // Make a copy of announcers. They may be removed or even remove themselves during execution of IAnnouncer::Announce()!
+
   std::vector<IAnnouncer *> announcers(m_announcers);
   for (unsigned int i = 0; i < announcers.size(); i++)
     announcers[i]->Announce(flag, sender, message, data);
@@ -133,7 +136,7 @@ void CAnnouncementManager::DoAnnounce(AnnouncementFlag flag, const char *sender,
 
   if(item->HasPVRChannelInfoTag())
   {
-    const PVR::CPVRChannelPtr channel(item->GetPVRChannelInfoTag());
+    const std::shared_ptr<PVR::CPVRChannel> channel(item->GetPVRChannelInfoTag());
     id = channel->ChannelID();
     type = "channel";
 
@@ -271,19 +274,19 @@ void CAnnouncementManager::Process()
 
   while (!m_bStop)
   {
-    CSingleLock lock (m_critSection);
+    CSingleLock lock (m_queueCritSection);
     if (!m_announcementQueue.empty())
     {
       auto announcement = m_announcementQueue.front();
       m_announcementQueue.pop_front();
       {
-        CSingleExit ex(m_critSection);
+        CSingleExit ex(m_queueCritSection);
         DoAnnounce(announcement.flag, announcement.sender.c_str(), announcement.message.c_str(), announcement.item, announcement.data);
       }
     }
     else
     {
-      CSingleExit ex(m_critSection);
+      CSingleExit ex(m_queueCritSection);
       m_queueEvent.Wait();
     }
   }

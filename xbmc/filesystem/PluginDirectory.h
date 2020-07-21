@@ -10,16 +10,16 @@
 
 #include "IDirectory.h"
 #include "SortFileItem.h"
-
-#include <atomic>
-#include <string>
-#include <map>
-#include "threads/CriticalSection.h"
 #include "addons/IAddon.h"
-#include "PlatformDefs.h"
-
+#include "threads/CriticalSection.h"
 #include "threads/Event.h"
 #include "threads/Thread.h"
+
+#include <atomic>
+#include <map>
+#include <string>
+
+#include "PlatformDefs.h"
 
 class CURL;
 class CFileItem;
@@ -75,7 +75,7 @@ private:
 
   static std::map<int,CPluginDirectory*> globalHandles;
   static int getNewHandle(CPluginDirectory *cp);
-  static void reuseHandle(int handle, CPluginDirectory *cp);
+  static void reuseHandle(int handle, CPluginDirectory* cp);
 
   static void removeHandle(int handle);
   static CPluginDirectory *dirFromHandle(int handle);

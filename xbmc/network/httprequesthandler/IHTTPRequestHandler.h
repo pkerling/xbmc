@@ -8,19 +8,25 @@
 
 #pragma once
 
-#include <sys/types.h>
-#include <sys/select.h>
-#include <sys/socket.h>
+#include "utils/HttpRangeUtils.h"
+
+#include <map>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <map>
 #include <string>
 
 #include <microhttpd.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
-#include "utils/HttpRangeUtils.h"
+#if MHD_VERSION >= 0x00097002
+using MHD_RESULT = MHD_Result;
+#else
+using MHD_RESULT = int;
+#endif
 
 class CDateTime;
 class CWebServer;
@@ -114,7 +120,7 @@ public:
    *
    * \return MHD_NO if a severe error has occurred otherwise MHD_YES.
    */
-  virtual int HandleRequest() = 0;
+  virtual MHD_RESULT HandleRequest() = 0;
 
   /*!
    * \brief Whether the HTTP response could also be provided in ranges.

@@ -8,8 +8,9 @@
 
 #pragma once
 
-#include "X11/Xlib.h"
 #include <string>
+
+#include <X11/Xlib.h>
 
 class CGLContext
 {
@@ -20,6 +21,7 @@ public:
   }
   virtual ~CGLContext() = default;
   virtual bool Refresh(bool force, int screen, Window glWindow, bool &newContext) = 0;
+  virtual bool CreatePB() { return false; };
   virtual void Destroy() = 0;
   virtual void Detach() = 0;
   virtual void SetVSync(bool enable) = 0;
@@ -33,4 +35,7 @@ public:
   std::string m_extensions;
 
   Display *m_dpy;
+
+protected:
+  bool m_omlSync = false;
 };

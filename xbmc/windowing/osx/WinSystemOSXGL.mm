@@ -6,8 +6,9 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "guilib/Texture.h"
 #include "WinSystemOSXGL.h"
+
+#include "guilib/Texture.h"
 #include "rendering/gl/RenderSystemGL.h"
 
 
@@ -17,14 +18,6 @@ std::unique_ptr<CWinSystemBase> CWinSystemBase::CreateWinSystem()
 {
   std::unique_ptr<CWinSystemBase> winSystem(new CWinSystemOSXGL());
   return winSystem;
-}
-
-CWinSystemOSXGL::CWinSystemOSXGL()
-{
-}
-
-CWinSystemOSXGL::~CWinSystemOSXGL()
-{
 }
 
 void CWinSystemOSXGL::PresentRenderImpl(bool rendered)

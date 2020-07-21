@@ -7,32 +7,32 @@
  */
 
 #include "GUIWindowMusicPlaylist.h"
-#include "dialogs/GUIDialogSmartPlaylistEditor.h"
-#include "view/GUIViewState.h"
-#include "Util.h"
-#include "playlists/PlayListM3U.h"
+
 #include "Application.h"
-#include "PlayListPlayer.h"
-#include "PartyModeManager.h"
-#include "ServiceBroker.h"
-#include "cores/playercorefactory/PlayerCoreFactory.h"
-#include "utils/LabelFormatter.h"
-#include "music/tags/MusicInfoTag.h"
-#include "guilib/GUIComponent.h"
-#include "guilib/GUIWindowManager.h"
-#include "guilib/GUIKeyboardFactory.h"
-#include "input/Key.h"
 #include "GUIUserMessages.h"
-#include "favourites/FavouritesService.h"
+#include "PartyModeManager.h"
+#include "PlayListPlayer.h"
+#include "ServiceBroker.h"
+#include "Util.h"
+#include "cores/playercorefactory/PlayerCoreFactory.h"
+#include "dialogs/GUIDialogSmartPlaylistEditor.h"
+#include "guilib/GUIComponent.h"
+#include "guilib/GUIKeyboardFactory.h"
+#include "guilib/GUIWindowManager.h"
+#include "guilib/LocalizeStrings.h"
+#include "input/Key.h"
+#include "music/tags/MusicInfoTag.h"
+#include "playlists/PlayListM3U.h"
 #include "profiles/ProfileManager.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "guilib/LocalizeStrings.h"
+#include "utils/LabelFormatter.h"
 #include "utils/StringUtils.h"
-#include "utils/log.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
+#include "view/GUIViewState.h"
 
 using namespace PLAYLIST;
 
@@ -425,7 +425,7 @@ bool CGUIWindowMusicPlayList::OnPlayMedia(int iItem, const std::string &player)
     int iPlaylist=m_guiState->GetPlaylist();
     if (iPlaylist!=PLAYLIST_NONE)
     {
-      if (m_guiState.get())
+      if (m_guiState)
         m_guiState->SetPlaylistDirectory(m_vecItems->GetPath());
 
       CServiceBroker::GetPlaylistPlayer().SetCurrentPlaylist( iPlaylist );
@@ -523,10 +523,6 @@ void CGUIWindowMusicPlayList::GetContextButtons(int itemNumber, CContextButtons 
       if (players.size() > 1)
         buttons.Add(CONTEXT_BUTTON_PLAY_WITH, 15213); // Play With...
 
-      if (CServiceBroker::GetFavouritesService().IsFavourited(*item.get(), GetID()))
-        buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14077);     // Remove Favourite
-      else
-        buttons.Add(CONTEXT_BUTTON_ADD_FAVOURITE, 14076);     // Add To Favourites;
       if (itemNumber > (g_partyModeManager.IsEnabled() ? 1 : 0))
         buttons.Add(CONTEXT_BUTTON_MOVE_ITEM_UP, 13332);
       if (itemNumber + 1 < m_vecItems->Size())
@@ -590,13 +586,6 @@ bool CGUIWindowMusicPlayList::OnContextButton(int itemNumber, CONTEXT_BUTTON but
   case CONTEXT_BUTTON_DELETE:
     RemovePlayListItem(itemNumber);
     return true;
-
-  case CONTEXT_BUTTON_ADD_FAVOURITE:
-    {
-      CFileItemPtr item = m_vecItems->Get(itemNumber);
-      CServiceBroker::GetFavouritesService().AddOrRemove(*item.get(), GetID());
-      return true;
-    }
 
   case CONTEXT_BUTTON_CANCEL_PARTYMODE:
     g_partyModeManager.Disable();

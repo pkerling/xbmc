@@ -8,21 +8,19 @@
 
 #pragma once
 
-#include "addons/AddonInfo.h"
 #include "addons/AddonEvents.h"
+#include "addons/addoninfo/AddonInfo.h"
 #include "settings/AdvancedSettings.h"
 
 namespace ADDON
 {
   class CAddonMgr;
-  class CBinaryAddonManager;
 }
 
 class CFileExtensionProvider
 {
 public:
-  CFileExtensionProvider(ADDON::CAddonMgr &addonManager,
-                         ADDON::CBinaryAddonManager &binaryAddonManager);
+  CFileExtensionProvider(ADDON::CAddonMgr& addonManager);
   ~CFileExtensionProvider();
 
   /*!
@@ -55,6 +53,11 @@ public:
    */
   std::string GetFileFolderExtensions() const;
 
+  /*!
+   * @brief Returns whether a url protocol from add-ons use encoded hostnames
+   */
+  bool EncodedHostName(const std::string& protocol) const;
+
 private:
   std::string GetAddonExtensions(const ADDON::TYPE &type) const;
   std::string GetAddonFileFolderExtensions(const ADDON::TYPE &type) const;
@@ -66,9 +69,11 @@ private:
   // Construction properties
   std::shared_ptr<CAdvancedSettings> m_advancedSettings;
   ADDON::CAddonMgr &m_addonManager;
-  ADDON::CBinaryAddonManager &m_binaryAddonManager;
 
   // File extension properties
   std::map<ADDON::TYPE, std::string> m_addonExtensions;
   std::map<ADDON::TYPE, std::string> m_addonFileFolderExtensions;
+
+  // Protocols from add-ons with encoded host names
+  std::vector<std::string> m_encoded;
 };

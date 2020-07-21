@@ -20,29 +20,24 @@
 #include "GUIPassword.h"
 #include "input/KeyboardLayoutManager.h"
 #if defined(TARGET_POSIX)
-#include "platform/linux/LinuxTimezone.h"
+#include "platform/posix/PosixTimezone.h"
 #endif // defined(TARGET_POSIX)
 #include "network/upnp/UPnPSettings.h"
 #include "network/WakeOnAccess.h"
 #if defined(TARGET_DARWIN_OSX)
 #include "platform/darwin/osx/XBMCHelper.h"
 #endif // defined(TARGET_DARWIN_OSX)
-#if defined(TARGET_DARWIN)
-#include "platform/darwin/DarwinUtils.h"
-#endif
-#if defined(TARGET_DARWIN_IOS)
+#if defined(TARGET_DARWIN_TVOS)
+#include "platform/darwin/tvos/TVOSSettingsHandler.h"
+#endif // defined(TARGET_DARWIN_TVOS)
+#if defined(TARGET_DARWIN_EMBEDDED)
 #include "SettingAddon.h"
 #endif
 #if defined(TARGET_RASPBERRY_PI)
 #include "platform/linux/RBP.h"
 #endif
-#if defined(HAS_LIBAMCODEC)
-#include "utils/AMLUtils.h"
-#endif // defined(HAS_LIBAMCODEC)
 #include "powermanagement/PowerTypes.h"
 #include "profiles/ProfileManager.h"
-#include "pvr/PVRSettings.h"
-#include "pvr/windows/GUIWindowPVRGuide.h"
 #include "ServiceBroker.h"
 #include "settings/DisplaySettings.h"
 #include "settings/MediaSettings.h"
@@ -122,6 +117,7 @@ const std::string CSettings::SETTING_VIDEOLIBRARY_CLEANUP = "videolibrary.cleanu
 const std::string CSettings::SETTING_VIDEOLIBRARY_EXPORT = "videolibrary.export";
 const std::string CSettings::SETTING_VIDEOLIBRARY_IMPORT = "videolibrary.import";
 const std::string CSettings::SETTING_VIDEOLIBRARY_SHOWEMPTYTVSHOWS = "videolibrary.showemptytvshows";
+const std::string CSettings::SETTING_VIDEOLIBRARY_MOVIESETSFOLDER = "videolibrary.moviesetsfolder";
 const std::string CSettings::SETTING_LOCALE_AUDIOLANGUAGE = "locale.audiolanguage";
 const std::string CSettings::SETTING_VIDEOPLAYER_PREFERDEFAULTFLAG = "videoplayer.preferdefaultflag";
 const std::string CSettings::SETTING_VIDEOPLAYER_AUTOPLAYNEXTITEM = "videoplayer.autoplaynextitem";
@@ -137,10 +133,6 @@ const std::string CSettings::SETTING_VIDEOPLAYER_STEREOSCOPICPLAYBACKMODE = "vid
 const std::string CSettings::SETTING_VIDEOPLAYER_QUITSTEREOMODEONSTOP = "videoplayer.quitstereomodeonstop";
 const std::string CSettings::SETTING_VIDEOPLAYER_RENDERMETHOD = "videoplayer.rendermethod";
 const std::string CSettings::SETTING_VIDEOPLAYER_HQSCALERS = "videoplayer.hqscalers";
-const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODEC = "videoplayer.useamcodec";
-const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODECMPEG2 = "videoplayer.useamcodecmpeg2";
-const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODECMPEG4 = "videoplayer.useamcodecmpeg4";
-const std::string CSettings::SETTING_VIDEOPLAYER_USEAMCODECH264 = "videoplayer.useamcodech264";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEMEDIACODEC = "videoplayer.usemediacodec";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE = "videoplayer.usemediacodecsurface";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEVDPAU = "videoplayer.usevdpau";
@@ -149,7 +141,6 @@ const std::string CSettings::SETTING_VIDEOPLAYER_USEVDPAUMPEG2 = "videoplayer.us
 const std::string CSettings::SETTING_VIDEOPLAYER_USEVDPAUMPEG4 = "videoplayer.usevdpaumpeg4";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEVDPAUVC1 = "videoplayer.usevdpauvc1";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEDXVA2 = "videoplayer.usedxva2";
-const std::string CSettings::SETTING_VIDEOPLAYER_USEOMXPLAYER = "videoplayer.useomxplayer";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEVTB = "videoplayer.usevtb";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEMMAL = "videoplayer.usemmal";
 const std::string CSettings::SETTING_VIDEOPLAYER_USEPRIMEDECODER = "videoplayer.useprimedecoder";
@@ -197,13 +188,15 @@ const std::string CSettings::SETTING_PVRMANAGER_PRESELECTPLAYINGCHANNEL = "pvrma
 const std::string CSettings::SETTING_PVRMANAGER_SYNCCHANNELGROUPS = "pvrmanager.syncchannelgroups";
 const std::string CSettings::SETTING_PVRMANAGER_BACKENDCHANNELORDER = "pvrmanager.backendchannelorder";
 const std::string CSettings::SETTING_PVRMANAGER_USEBACKENDCHANNELNUMBERS = "pvrmanager.usebackendchannelnumbers";
+const std::string CSettings::SETTING_PVRMANAGER_USEBACKENDCHANNELNUMBERSALWAYS = "pvrmanager.usebackendchannelnumbersalways";
+const std::string CSettings::SETTING_PVRMANAGER_STARTGROUPCHANNELNUMBERSFROMONE = "pvrmanager.startgroupchannelnumbersfromone";
 const std::string CSettings::SETTING_PVRMANAGER_CLIENTPRIORITIES = "pvrmanager.clientpriorities";
 const std::string CSettings::SETTING_PVRMANAGER_CHANNELMANAGER = "pvrmanager.channelmanager";
 const std::string CSettings::SETTING_PVRMANAGER_GROUPMANAGER = "pvrmanager.groupmanager";
 const std::string CSettings::SETTING_PVRMANAGER_CHANNELSCAN = "pvrmanager.channelscan";
 const std::string CSettings::SETTING_PVRMANAGER_RESETDB = "pvrmanager.resetdb";
 const std::string CSettings::SETTING_PVRMENU_DISPLAYCHANNELINFO = "pvrmenu.displaychannelinfo";
-const std::string CSettings::SETTING_PVRMENU_USESIMPLETIMESHIFTOSD = "pvrmenu.usesimpletimeshiftosd";
+const std::string CSettings::SETTING_PVRMENU_CLOSECHANNELOSDONSWITCH = "pvrmenu.closechannelosdonswitch";
 const std::string CSettings::SETTING_PVRMENU_ICONPATH = "pvrmenu.iconpath";
 const std::string CSettings::SETTING_PVRMENU_SEARCHICONS = "pvrmenu.searchicons";
 const std::string CSettings::SETTING_EPG_PAST_DAYSTODISPLAY = "epg.pastdaystodisplay";
@@ -212,12 +205,12 @@ const std::string CSettings::SETTING_EPG_SELECTACTION = "epg.selectaction";
 const std::string CSettings::SETTING_EPG_HIDENOINFOAVAILABLE = "epg.hidenoinfoavailable";
 const std::string CSettings::SETTING_EPG_EPGUPDATE = "epg.epgupdate";
 const std::string CSettings::SETTING_EPG_PREVENTUPDATESWHILEPLAYINGTV = "epg.preventupdateswhileplayingtv";
-const std::string CSettings::SETTING_EPG_IGNOREDBFORCLIENT = "epg.ignoredbforclient";
 const std::string CSettings::SETTING_EPG_RESETEPG = "epg.resetepg";
-const std::string CSettings::SETTING_PVRPLAYBACK_SWITCHTOFULLSCREEN = "pvrplayback.switchtofullscreen";
+const std::string CSettings::SETTING_PVRPLAYBACK_SWITCHTOFULLSCREENCHANNELTYPES = "pvrplayback.switchtofullscreenchanneltypes";
 const std::string CSettings::SETTING_PVRPLAYBACK_SIGNALQUALITY = "pvrplayback.signalquality";
 const std::string CSettings::SETTING_PVRPLAYBACK_CONFIRMCHANNELSWITCH = "pvrplayback.confirmchannelswitch";
 const std::string CSettings::SETTING_PVRPLAYBACK_CHANNELENTRYTIMEOUT = "pvrplayback.channelentrytimeout";
+const std::string CSettings::SETTING_PVRPLAYBACK_DELAYMARKLASTWATCHED = "pvrplayback.delaymarklastwatched";
 const std::string CSettings::SETTING_PVRPLAYBACK_FPS = "pvrplayback.fps";
 const std::string CSettings::SETTING_PVRRECORD_INSTANTRECORDACTION = "pvrrecord.instantrecordaction";
 const std::string CSettings::SETTING_PVRRECORD_INSTANTRECORDTIME = "pvrrecord.instantrecordtime";
@@ -225,6 +218,8 @@ const std::string CSettings::SETTING_PVRRECORD_MARGINSTART = "pvrrecord.marginst
 const std::string CSettings::SETTING_PVRRECORD_MARGINEND = "pvrrecord.marginend";
 const std::string CSettings::SETTING_PVRRECORD_TIMERNOTIFICATIONS = "pvrrecord.timernotifications";
 const std::string CSettings::SETTING_PVRRECORD_GROUPRECORDINGS = "pvrrecord.grouprecordings";
+const std::string CSettings::SETTING_PVRREMINDERS_AUTOCLOSEDELAY = "pvrreminders.autoclosedelay";
+const std::string CSettings::SETTING_PVRREMINDERS_AUTORECORD = "pvrreminders.autorecord";
 const std::string CSettings::SETTING_PVRPOWERMANAGEMENT_ENABLED = "pvrpowermanagement.enabled";
 const std::string CSettings::SETTING_PVRPOWERMANAGEMENT_BACKENDIDLETIME = "pvrpowermanagement.backendidletime";
 const std::string CSettings::SETTING_PVRPOWERMANAGEMENT_SETWAKEUPCMD = "pvrpowermanagement.setwakeupcmd";
@@ -237,6 +232,8 @@ const std::string CSettings::SETTING_PVRPARENTAL_DURATION = "pvrparental.duratio
 const std::string CSettings::SETTING_PVRCLIENT_MENUHOOK = "pvrclient.menuhook";
 const std::string CSettings::SETTING_PVRTIMERS_HIDEDISABLEDTIMERS = "pvrtimers.hidedisabledtimers";
 const std::string CSettings::SETTING_MUSICLIBRARY_SHOWCOMPILATIONARTISTS = "musiclibrary.showcompilationartists";
+const std::string CSettings::SETTING_MUSICLIBRARY_SHOWDISCS = "musiclibrary.showdiscs";
+const std::string CSettings::SETTING_MUSICLIBRARY_USEORIGINALDATE = "musiclibrary.useoriginaldate";
 const std::string CSettings::SETTING_MUSICLIBRARY_USEARTISTSORTNAME = "musiclibrary.useartistsortname";
 const std::string CSettings::SETTING_MUSICLIBRARY_DOWNLOADINFO = "musiclibrary.downloadinfo";
 const std::string CSettings::SETTING_MUSICLIBRARY_ARTISTSFOLDER = "musiclibrary.artistsfolder";
@@ -268,6 +265,7 @@ const std::string CSettings::SETTING_MUSICPLAYER_REPLAYGAINAVOIDCLIPPING = "musi
 const std::string CSettings::SETTING_MUSICPLAYER_CROSSFADE = "musicplayer.crossfade";
 const std::string CSettings::SETTING_MUSICPLAYER_CROSSFADEALBUMTRACKS = "musicplayer.crossfadealbumtracks";
 const std::string CSettings::SETTING_MUSICPLAYER_VISUALISATION = "musicplayer.visualisation";
+const std::string CSettings::SETTING_MUSICFILES_SELECTACTION = "musicfiles.selectaction";
 const std::string CSettings::SETTING_MUSICFILES_USETAGS = "musicfiles.usetags";
 const std::string CSettings::SETTING_MUSICFILES_TRACKFORMAT = "musicfiles.trackformat";
 const std::string CSettings::SETTING_MUSICFILES_NOWPLAYINGTRACKFORMAT = "musicfiles.nowplayingtrackformat";
@@ -303,6 +301,8 @@ const std::string CSettings::SETTING_SERVICES_UPNPCONTROLLER = "services.upnpcon
 const std::string CSettings::SETTING_SERVICES_UPNPRENDERER = "services.upnprenderer";
 const std::string CSettings::SETTING_SERVICES_WEBSERVER = "services.webserver";
 const std::string CSettings::SETTING_SERVICES_WEBSERVERPORT = "services.webserverport";
+const std::string CSettings::SETTING_SERVICES_WEBSERVERAUTHENTICATION =
+    "services.webserverauthentication";
 const std::string CSettings::SETTING_SERVICES_WEBSERVERUSERNAME = "services.webserverusername";
 const std::string CSettings::SETTING_SERVICES_WEBSERVERPASSWORD = "services.webserverpassword";
 const std::string CSettings::SETTING_SERVICES_WEBSERVERSSL = "services.webserverssl";
@@ -372,6 +372,11 @@ const std::string CSettings::SETTING_INPUT_CONTROLLERPOWEROFF = "input.controlle
 const std::string CSettings::SETTING_INPUT_APPLEREMOTEMODE = "input.appleremotemode";
 const std::string CSettings::SETTING_INPUT_APPLEREMOTEALWAYSON = "input.appleremotealwayson";
 const std::string CSettings::SETTING_INPUT_APPLEREMOTESEQUENCETIME = "input.appleremotesequencetime";
+const std::string CSettings::SETTING_INPUT_APPLESIRI = "input.applesiri";
+const std::string CSettings::SETTING_INPUT_APPLESIRITIMEOUT = "input.applesiritimeout";
+const std::string CSettings::SETTING_INPUT_APPLESIRITIMEOUTENABLED =
+    "input.applesiritimeoutenabled";
+const std::string CSettings::SETTING_INPUT_APPLEUSEKODIKEYBOARD = "input.appleusekodikeyboard";
 const std::string CSettings::SETTING_NETWORK_USEHTTPPROXY = "network.usehttpproxy";
 const std::string CSettings::SETTING_NETWORK_HTTPPROXYTYPE = "network.httpproxytype";
 const std::string CSettings::SETTING_NETWORK_HTTPPROXYSERVER = "network.httpproxyserver";
@@ -388,6 +393,7 @@ const std::string CSettings::SETTING_DEBUG_SHOWLOGINFO = "debug.showloginfo";
 const std::string CSettings::SETTING_DEBUG_EXTRALOGGING = "debug.extralogging";
 const std::string CSettings::SETTING_DEBUG_SETEXTRALOGLEVEL = "debug.setextraloglevel";
 const std::string CSettings::SETTING_DEBUG_SCREENSHOTPATH = "debug.screenshotpath";
+const std::string CSettings::SETTING_DEBUG_SHARE_LOG = "debug.sharelog";
 const std::string CSettings::SETTING_EVENTLOG_ENABLED = "eventlog.enabled";
 const std::string CSettings::SETTING_EVENTLOG_ENABLED_NOTIFICATIONS = "eventlog.enablednotifications";
 const std::string CSettings::SETTING_EVENTLOG_SHOW = "eventlog.show";
@@ -409,6 +415,7 @@ const std::string CSettings::SETTING_ADDONS_AUTOUPDATES = "general.addonupdates"
 const std::string CSettings::SETTING_ADDONS_NOTIFICATIONS = "general.addonnotifications";
 const std::string CSettings::SETTING_ADDONS_SHOW_RUNNING = "addons.showrunning";
 const std::string CSettings::SETTING_ADDONS_ALLOW_UNKNOWN_SOURCES = "addons.unknownsources";
+const std::string CSettings::SETTING_ADDONS_UPDATEMODE = "addons.updatemode";
 const std::string CSettings::SETTING_ADDONS_MANAGE_DEPENDENCIES = "addons.managedependencies";
 const std::string CSettings::SETTING_GENERAL_ADDONFOREIGNFILTER = "general.addonforeignfilter";
 const std::string CSettings::SETTING_GENERAL_ADDONBROKENFILTER = "general.addonbrokenfilter";
@@ -447,6 +454,24 @@ bool CSettings::Initialize()
   return true;
 }
 
+void CSettings::RegisterSubSettings(ISubSettings* subSettings)
+{
+  if (subSettings == nullptr)
+    return;
+
+  CSingleLock lock(m_critical);
+  m_subSettings.insert(subSettings);
+}
+
+void CSettings::UnregisterSubSettings(ISubSettings* subSettings)
+{
+  if (subSettings == nullptr)
+    return;
+
+  CSingleLock lock(m_critical);
+  m_subSettings.erase(subSettings);
+}
+
 bool CSettings::Load()
 {
   const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
@@ -459,7 +484,7 @@ bool CSettings::Load(const std::string &file)
   CXBMCTinyXML xmlDoc;
   bool updated = false;
   if (!XFILE::CFile::Exists(file) || !xmlDoc.LoadFile(file) ||
-      !LoadValuesFromXml(xmlDoc, updated))
+      !Load(xmlDoc.RootElement(), updated))
   {
     CLog::Log(LOGERROR, "CSettings: unable to load settings from %s, creating new default settings", file.c_str());
     if (!Reset())
@@ -475,6 +500,12 @@ bool CSettings::Load(const std::string &file)
   return true;
 }
 
+bool CSettings::Load(const TiXmlElement* root)
+{
+  bool updated = false;
+  return Load(root, updated);
+}
+
 bool CSettings::Save()
 {
   const std::shared_ptr<CProfileManager> profileManager = CServiceBroker::GetSettingsComponent()->GetProfileManager();
@@ -488,7 +519,27 @@ bool CSettings::Save(const std::string &file)
   if (!SaveValuesToXml(xmlDoc))
     return false;
 
+  TiXmlElement* root = xmlDoc.RootElement();
+  if (root == nullptr)
+    return false;
+
+  if (!Save(root))
+    return false;
+
   return xmlDoc.SaveFile(file);
+}
+
+bool CSettings::Save(TiXmlNode* root) const
+{
+  CSingleLock lock(m_critical);
+  // save any ISubSettings implementations
+  for (const auto& subSetting : m_subSettings)
+  {
+    if (!subSetting->Save(root))
+      return false;
+  }
+
+  return true;
 }
 
 bool CSettings::LoadSetting(const TiXmlNode *node, const std::string &settingId)
@@ -503,6 +554,41 @@ bool CSettings::GetBool(const std::string& id) const
     return CSettingsBase::GetBool(CSettings::SETTING_INPUT_ENABLEMOUSE);
 
   return CSettingsBase::GetBool(id);
+}
+
+void CSettings::Clear()
+{
+  CSingleLock lock(m_critical);
+  if (!m_initialized)
+    return;
+
+  GetSettingsManager()->Clear();
+
+  for (auto& subSetting : m_subSettings)
+    subSetting->Clear();
+
+  m_initialized = false;
+}
+
+bool CSettings::Load(const TiXmlElement* root, bool& updated)
+{
+  if (root == nullptr)
+    return false;
+
+  if (!CSettingsBase::LoadValuesFromXml(root, updated))
+    return false;
+
+  return Load(static_cast<const TiXmlNode*>(root));
+}
+
+bool CSettings::Load(const TiXmlNode* settings)
+{
+  bool ok = true;
+  CSingleLock lock(m_critical);
+  for (const auto& subSetting : m_subSettings)
+    ok &= subSetting->Load(settings);
+
+  return ok;
 }
 
 bool CSettings::Initialize(const std::string &file)
@@ -539,10 +625,6 @@ bool CSettings::InitializeDefinitions()
 #elif defined(TARGET_ANDROID)
   if (CFile::Exists(SETTINGS_XML_FOLDER "android.xml") && !Initialize(SETTINGS_XML_FOLDER "android.xml"))
     CLog::Log(LOGFATAL, "Unable to load android-specific settings definitions");
-#if defined(HAS_LIBAMCODEC)
-  if (aml_present() && CFile::Exists(SETTINGS_XML_FOLDER "aml-android.xml") && !Initialize(SETTINGS_XML_FOLDER "aml-android.xml"))
-    CLog::Log(LOGFATAL, "Unable to load aml-android-specific settings definitions");
-#endif // defined(HAS_LIBAMCODEC)
 #elif defined(TARGET_RASPBERRY_PI)
   if (CFile::Exists(SETTINGS_XML_FOLDER "rbp.xml") && !Initialize(SETTINGS_XML_FOLDER "rbp.xml"))
     CLog::Log(LOGFATAL, "Unable to load rbp-specific settings definitions");
@@ -554,10 +636,6 @@ bool CSettings::InitializeDefinitions()
 #elif defined(TARGET_LINUX)
   if (CFile::Exists(SETTINGS_XML_FOLDER "linux.xml") && !Initialize(SETTINGS_XML_FOLDER "linux.xml"))
     CLog::Log(LOGFATAL, "Unable to load linux-specific settings definitions");
-#if defined(HAS_LIBAMCODEC)
-  if (aml_present() && CFile::Exists(SETTINGS_XML_FOLDER "aml-linux.xml") && !Initialize(SETTINGS_XML_FOLDER "aml-linux.xml"))
-    CLog::Log(LOGFATAL, "Unable to load aml-linux-specific settings definitions");
-#endif // defined(HAS_LIBAMCODEC)
 #elif defined(TARGET_DARWIN)
   if (CFile::Exists(SETTINGS_XML_FOLDER "darwin.xml") && !Initialize(SETTINGS_XML_FOLDER "darwin.xml"))
     CLog::Log(LOGFATAL, "Unable to load darwin-specific settings definitions");
@@ -567,6 +645,10 @@ bool CSettings::InitializeDefinitions()
 #elif defined(TARGET_DARWIN_IOS)
   if (CFile::Exists(SETTINGS_XML_FOLDER "darwin_ios.xml") && !Initialize(SETTINGS_XML_FOLDER "darwin_ios.xml"))
     CLog::Log(LOGFATAL, "Unable to load ios-specific settings definitions");
+#elif defined(TARGET_DARWIN_TVOS)
+  if (CFile::Exists(SETTINGS_XML_FOLDER "darwin_tvos.xml") &&
+      !Initialize(SETTINGS_XML_FOLDER "darwin_tvos.xml"))
+    CLog::Log(LOGFATAL, "Unable to load tvos-specific settings definitions");
 #endif
 #endif
 
@@ -609,15 +691,12 @@ void CSettings::InitializeControls()
 void CSettings::InitializeVisibility()
 {
   // hide some settings if necessary
-#if defined(TARGET_DARWIN)
+#if defined(TARGET_DARWIN_EMBEDDED)
   std::shared_ptr<CSettingString> timezonecountry = std::static_pointer_cast<CSettingString>(GetSettingsManager()->GetSetting(CSettings::SETTING_LOCALE_TIMEZONECOUNTRY));
   std::shared_ptr<CSettingString> timezone = std::static_pointer_cast<CSettingString>(GetSettingsManager()->GetSetting(CSettings::SETTING_LOCALE_TIMEZONE));
 
-  if (CDarwinUtils::GetIOSVersion() >= 4.3)
-  {
-    timezonecountry->SetRequirementsMet(false);
-    timezone->SetRequirementsMet(false);
-  }
+  timezonecountry->SetRequirementsMet(false);
+  timezone->SetRequirementsMet(false);
 #endif
 }
 
@@ -694,11 +773,10 @@ void CSettings::InitializeOptionFillers()
   GetSettingsManager()->RegisterSettingOptionsFiller("skinfonts", ADDON::CSkinInfo::SettingOptionsSkinFontsFiller);
   GetSettingsManager()->RegisterSettingOptionsFiller("skinthemes", ADDON::CSkinInfo::SettingOptionsSkinThemesFiller);
 #ifdef TARGET_LINUX
-  GetSettingsManager()->RegisterSettingOptionsFiller("timezonecountries", CLinuxTimezone::SettingOptionsTimezoneCountriesFiller);
-  GetSettingsManager()->RegisterSettingOptionsFiller("timezones", CLinuxTimezone::SettingOptionsTimezonesFiller);
+  GetSettingsManager()->RegisterSettingOptionsFiller("timezonecountries", CPosixTimezone::SettingOptionsTimezoneCountriesFiller);
+  GetSettingsManager()->RegisterSettingOptionsFiller("timezones", CPosixTimezone::SettingOptionsTimezonesFiller);
 #endif
   GetSettingsManager()->RegisterSettingOptionsFiller("keyboardlayouts", CKeyboardLayoutManager::SettingOptionsKeyboardLayoutsFiller);
-  GetSettingsManager()->RegisterSettingOptionsFiller("pvrrecordmargins", PVR::CPVRSettings::MarginTimeFiller);
 }
 
 void CSettings::UninitializeOptionFillers()
@@ -744,7 +822,6 @@ void CSettings::UninitializeOptionFillers()
 #endif // defined(TARGET_LINUX)
   GetSettingsManager()->UnregisterSettingOptionsFiller("verticalsyncs");
   GetSettingsManager()->UnregisterSettingOptionsFiller("keyboardlayouts");
-  GetSettingsManager()->UnregisterSettingOptionsFiller("pvrrecordmargins");
 }
 
 void CSettings::InitializeConditions()
@@ -759,7 +836,7 @@ void CSettings::InitializeConditions()
   // add more complex conditions
   const std::map<std::string, SettingConditionCheck> &complexConditions = CSettingConditions::GetComplexConditions();
   for (std::map<std::string, SettingConditionCheck>::const_iterator itCondition = complexConditions.begin(); itCondition != complexConditions.end(); ++itCondition)
-    GetSettingsManager()->AddCondition(itCondition->first, itCondition->second);
+    GetSettingsManager()->AddDynamicCondition(itCondition->first, itCondition->second);
 }
 
 void CSettings::UninitializeConditions()
@@ -805,23 +882,23 @@ void CSettings::UninitializeISettingsHandlers()
 void CSettings::InitializeISubSettings()
 {
   // register ISubSettings implementations
-  GetSettingsManager()->RegisterSubSettings(&g_application);
-  GetSettingsManager()->RegisterSubSettings(&CDisplaySettings::GetInstance());
-  GetSettingsManager()->RegisterSubSettings(&CMediaSettings::GetInstance());
-  GetSettingsManager()->RegisterSubSettings(&CSkinSettings::GetInstance());
-  GetSettingsManager()->RegisterSubSettings(&g_sysinfo);
-  GetSettingsManager()->RegisterSubSettings(&CViewStateSettings::GetInstance());
+  RegisterSubSettings(&g_application);
+  RegisterSubSettings(&CDisplaySettings::GetInstance());
+  RegisterSubSettings(&CMediaSettings::GetInstance());
+  RegisterSubSettings(&CSkinSettings::GetInstance());
+  RegisterSubSettings(&g_sysinfo);
+  RegisterSubSettings(&CViewStateSettings::GetInstance());
 }
 
 void CSettings::UninitializeISubSettings()
 {
   // unregister ISubSettings implementations
-  GetSettingsManager()->UnregisterSubSettings(&g_application);
-  GetSettingsManager()->UnregisterSubSettings(&CDisplaySettings::GetInstance());
-  GetSettingsManager()->UnregisterSubSettings(&CMediaSettings::GetInstance());
-  GetSettingsManager()->UnregisterSubSettings(&CSkinSettings::GetInstance());
-  GetSettingsManager()->UnregisterSubSettings(&g_sysinfo);
-  GetSettingsManager()->UnregisterSubSettings(&CViewStateSettings::GetInstance());
+  UnregisterSubSettings(&g_application);
+  UnregisterSubSettings(&CDisplaySettings::GetInstance());
+  UnregisterSubSettings(&CMediaSettings::GetInstance());
+  UnregisterSubSettings(&CSkinSettings::GetInstance());
+  UnregisterSubSettings(&g_sysinfo);
+  UnregisterSubSettings(&CViewStateSettings::GetInstance());
 }
 
 void CSettings::InitializeISettingCallbacks()
@@ -837,6 +914,7 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert(CSettings::SETTING_VIDEOLIBRARY_CLEANUP);
   settingSet.insert(CSettings::SETTING_VIDEOLIBRARY_IMPORT);
   settingSet.insert(CSettings::SETTING_VIDEOLIBRARY_EXPORT);
+  settingSet.insert(CSettings::SETTING_VIDEOLIBRARY_SHOWUNWATCHEDPLOTS);
   GetSettingsManager()->RegisterCallback(&CMediaSettings::GetInstance(), settingSet);
 
   settingSet.clear();
@@ -847,6 +925,7 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert(CSettings::SETTING_VIDEOSCREEN_PREFEREDSTEREOSCOPICMODE);
   settingSet.insert(CSettings::SETTING_VIDEOSCREEN_3DLUT);
   settingSet.insert(CSettings::SETTING_VIDEOSCREEN_DISPLAYPROFILE);
+  settingSet.insert(CSettings::SETTING_VIDEOSCREEN_BLANKDISPLAYS);
   GetSettingsManager()->RegisterCallback(&CDisplaySettings::GetInstance(), settingSet);
 
   settingSet.clear();
@@ -875,7 +954,6 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert(CSettings::SETTING_AUDIOCDS_SETTINGS);
   settingSet.insert(CSettings::SETTING_VIDEOSCREEN_GUICALIBRATION);
   settingSet.insert(CSettings::SETTING_VIDEOSCREEN_TESTPATTERN);
-  settingSet.insert(CSettings::SETTING_VIDEOPLAYER_USEAMCODEC);
   settingSet.insert(CSettings::SETTING_VIDEOPLAYER_USEMEDIACODEC);
   settingSet.insert(CSettings::SETTING_VIDEOPLAYER_USEMEDIACODECSURFACE);
   settingSet.insert(CSettings::SETTING_AUDIOOUTPUT_VOLUMESTEPS);
@@ -923,6 +1001,14 @@ void CSettings::InitializeISettingCallbacks()
   settingSet.insert(CSettings::SETTING_INPUT_APPLEREMOTEMODE);
   settingSet.insert(CSettings::SETTING_INPUT_APPLEREMOTEALWAYSON);
   GetSettingsManager()->RegisterCallback(&XBMCHelper::GetInstance(), settingSet);
+#endif
+
+#if defined(TARGET_DARWIN_TVOS)
+  settingSet.clear();
+  settingSet.insert(CSettings::SETTING_INPUT_APPLESIRI);
+  settingSet.insert(CSettings::SETTING_INPUT_APPLESIRITIMEOUT);
+  settingSet.insert(CSettings::SETTING_INPUT_APPLESIRITIMEOUTENABLED);
+  GetSettingsManager()->RegisterCallback(&CTVOSInputSettings::GetInstance(), settingSet);
 #endif
 
   settingSet.clear();

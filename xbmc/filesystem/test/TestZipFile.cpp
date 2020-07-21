@@ -6,41 +6,26 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "FileItem.h"
 #include "ServiceBroker.h"
+#include "URL.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
-#include "utils/StringUtils.h"
-#include "utils/URIUtils.h"
-#include "FileItem.h"
+#include "filesystem/ZipFile.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "test/TestUtils.h"
-#include "URL.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
 
 #include <errno.h>
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 class TestZipFile : public testing::Test
 {
 protected:
-  TestZipFile()
-  {
-    /* Add default settings for locale.
-     * Settings here are taken from CGUISettings::Initialize()
-     */
-    //! @todo implement
-    /*
-    CSettingsCategory *loc = CServiceBroker::GetSettingsComponent()->GetSettings()->AddCategory(7, "locale", 14090);
-    CServiceBroker::GetSettingsComponent()->GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_LANGUAGE,248,"english",
-                            SPIN_CONTROL_TEXT);
-    CServiceBroker::GetSettingsComponent()->GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_COUNTRY, 20026, "USA",
-                            SPIN_CONTROL_TEXT);
-    CServiceBroker::GetSettingsComponent()->GetSettings()->AddString(loc, CSettings::SETTING_LOCALE_CHARSET, 14091, "DEFAULT",
-                            SPIN_CONTROL_TEXT); // charset is set by the
-                                                // language file
-    */
-  }
+  TestZipFile() = default;
 
   ~TestZipFile() override
   {
@@ -144,7 +129,7 @@ TEST_F(TestZipFile, CorruptedFile)
   memset(&buf, 0, sizeof(buf));
   std::string reffilepath, strpathinzip, str;
   CFileItemList itemlist;
-  unsigned int size, i;
+  ssize_t size, i;
   int64_t count = 0;
 
   reffilepath = XBMC_REF_FILE_PATH("xbmc/filesystem/test/reffile.txt.zip");
@@ -192,7 +177,7 @@ TEST_F(TestZipFile, CorruptedFile)
       str = StringUtils::Format("%02X ", buf[i]);
       std::cout << str;
     }
-    while (i++ < sizeof(buf))
+    while (i++ < static_cast<ssize_t> (sizeof(buf)))
       std::cout << "   ";
     std::cout << " [";
     for (i = 0; i < size; i++)
@@ -206,4 +191,23 @@ TEST_F(TestZipFile, CorruptedFile)
   }
   file->Close();
   XBMC_DELETETEMPFILE(file);
+}
+
+TEST_F(TestZipFile, ExtendedLocalHeader)
+{
+  XFILE::CFile file;
+  ssize_t readlen;
+  char zipdata[20000]; // size of zip file is 15352 Bytes
+
+  ASSERT_TRUE(file.Open(XBMC_REF_FILE_PATH("xbmc/filesystem/test/extendedlocalheader.zip")));
+  readlen = file.Read(zipdata, sizeof(zipdata));
+  EXPECT_TRUE(readlen);
+
+  XFILE::CZipFile zipfile;
+  std::string strBuffer;
+
+  int iSize = zipfile.UnpackFromMemory(strBuffer, std::string(zipdata, readlen), false);
+  EXPECT_EQ(152774, iSize); // sum of uncompressed size of all files in zip
+  EXPECT_TRUE(strBuffer.substr(0, 6) == "<Data>");
+  file.Close();
 }

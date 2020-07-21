@@ -8,11 +8,11 @@
 
 #import "OSXTextInputResponder.h"
 
-#include "guilib/GUIWindowManager.h"
 #include "GUIUserMessages.h"
-#include "utils/log.h"
-#include "messaging/ApplicationMessenger.h"
+#include "guilib/GUIWindowManager.h"
 #include "input/Key.h"
+#include "messaging/ApplicationMessenger.h"
+#include "utils/log.h"
 
 using namespace KODI::MESSAGING;
 
@@ -124,12 +124,7 @@ void SendEditingText(const char *text, unsigned int location, unsigned int lengt
     return;
   }
 
-  if (_markedText != aString)
-  {
-    [_markedText release];
-    _markedText = [aString retain];
-  }
-
+  _markedText = aString;
   _selectedRange = selRange;
 //  _markedRange = NSMakeRange(0, [aString length]);
   _markedRange = NSMakeRange(replacementRange.location, [aString length]);
@@ -139,7 +134,6 @@ void SendEditingText(const char *text, unsigned int location, unsigned int lengt
 
 - (void) unmarkText
 {
-  [_markedText release];
   _markedText = nil;
   _markedRange = NSMakeRange(NSNotFound, 0);
 

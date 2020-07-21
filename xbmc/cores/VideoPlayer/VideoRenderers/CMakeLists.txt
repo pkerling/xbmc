@@ -23,10 +23,8 @@ set(HEADERS BaseRenderer.h
 
 if(CORE_SYSTEM_NAME STREQUAL windows OR CORE_SYSTEM_NAME STREQUAL windowsstore)
   list(APPEND SOURCES WinRenderer.cpp
-                      WinRenderBuffer.cpp
                       OverlayRendererDX.cpp)
   list(APPEND HEADERS WinRenderer.h
-                      WinRenderBuffer.h
                       OverlayRendererDX.h)
 endif()
 
@@ -44,8 +42,9 @@ endif()
 
 if(OPENGLES_FOUND AND (CORE_PLATFORM_NAME_LC STREQUAL android OR
                        CORE_PLATFORM_NAME_LC STREQUAL ios OR
-                       CORE_PLATFORM_NAME_LC STREQUAL aml OR
+                       CORE_PLATFORM_NAME_LC STREQUAL tvos OR
                        CORE_PLATFORM_NAME_LC STREQUAL gbm OR
+                       CORE_PLATFORM_NAME_LC STREQUAL x11 OR
                        CORE_PLATFORM_NAME_LC STREQUAL wayland))
   list(APPEND SOURCES LinuxRendererGLES.cpp
                       FrameBufferObject.cpp)

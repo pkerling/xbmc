@@ -6,23 +6,24 @@
  *  See LICENSES/README.md for more information.
  */
 
+#include "PlayListPLS.h"
+
+#include "PlayListFactory.h"
+#include "Util.h"
+#include "filesystem/File.h"
+#include "music/tags/MusicInfoTag.h"
+#include "utils/CharsetConverter.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/XBMCTinyXML.h"
+#include "utils/XMLUtils.h"
+#include "utils/log.h"
+#include "video/VideoInfoTag.h"
+
 #include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "PlayListPLS.h"
-#include "PlayListFactory.h"
-#include "Util.h"
-#include "utils/StringUtils.h"
-#include "filesystem/File.h"
-#include "video/VideoInfoTag.h"
-#include "music/tags/MusicInfoTag.h"
-#include "utils/CharsetConverter.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
-#include "utils/XBMCTinyXML.h"
-#include "utils/XMLUtils.h"
 
 using namespace XFILE;
 using namespace PLAYLIST;
@@ -82,7 +83,7 @@ bool CPlayListPLS::Load(const std::string &strFile)
 
   // run through looking for the [playlist] marker.
   // if we find another http stream, then load it.
-  while (1)
+  while (true)
   {
     if ( !file.ReadString(szLine, sizeof(szLine) ) )
     {
@@ -275,7 +276,7 @@ bool CPlayListASX::LoadAsxIniInfo(std::istream &stream)
 
 bool CPlayListASX::LoadData(std::istream& stream)
 {
-  CLog::Log(LOGNOTICE, "Parsing ASX");
+  CLog::Log(LOGINFO, "Parsing ASX");
 
   if(stream.peek() == '[')
   {
@@ -372,7 +373,7 @@ bool CPlayListASX::LoadData(std::istream& stream)
         if (!value.empty())
         { // found an entryref, let's try loading that url
           std::unique_ptr<CPlayList> playlist(CPlayListFactory::Create(value));
-          if (NULL != playlist.get())
+          if (nullptr != playlist)
             if (playlist->Load(value))
               Add(*playlist);
         }

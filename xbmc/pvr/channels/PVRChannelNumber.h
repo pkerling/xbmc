@@ -20,18 +20,18 @@ namespace PVR
     constexpr CPVRChannelNumber(unsigned int iChannelNumber, unsigned int iSubChannelNumber)
     : m_iChannelNumber(iChannelNumber), m_iSubChannelNumber(iSubChannelNumber) {}
 
-    constexpr bool operator ==(const CPVRChannelNumber &right) const
+    constexpr bool operator ==(const CPVRChannelNumber& right) const
     {
-      return (m_iChannelNumber  == right.m_iChannelNumber &&
+      return (m_iChannelNumber == right.m_iChannelNumber &&
               m_iSubChannelNumber == right.m_iSubChannelNumber);
     }
 
-    constexpr bool operator !=(const CPVRChannelNumber &right) const
+    constexpr bool operator !=(const CPVRChannelNumber& right) const
     {
       return !(*this == right);
     }
 
-    constexpr bool operator <(const CPVRChannelNumber &right) const
+    constexpr bool operator <(const CPVRChannelNumber& right) const
     {
       return m_iChannelNumber == right.m_iChannelNumber
         ? m_iSubChannelNumber < right.m_iSubChannelNumber
@@ -73,7 +73,15 @@ namespace PVR
      */
     std::string FormattedChannelNumber() const;
 
+    /*!
+     * @brief Get a string representation for the channel number that can be used for SortItems.
+     * @return The sortable string in the form <channel> <subchannel>.
+     */
+    std::string SortableChannelNumber() const;
+
   private:
+    std::string ToString(char separator) const;
+
     unsigned int m_iChannelNumber = 0;
     unsigned int m_iSubChannelNumber = 0;
   };

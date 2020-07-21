@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "utils/Variant.h"
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -23,6 +25,7 @@
 #define SETTING_XML_ELM_VISIBLE "visible"
 #define SETTING_XML_ELM_REQUIREMENT "requirement"
 #define SETTING_XML_ELM_CONDITION "condition"
+#define SETTING_XML_ELM_ENABLED "enable"
 #define SETTING_XML_ELM_LEVEL "level"
 #define SETTING_XML_ELM_DEFAULT "default"
 #define SETTING_XML_ELM_VALUE "value"
@@ -58,15 +61,60 @@
 #define SETTING_XML_ATTR_BEFORE "before"
 #define SETTING_XML_ATTR_AFTER "after"
 
-using TranslatableIntegerSettingOption = std::pair<int, int>;
+struct IntegerSettingOption
+{
+  IntegerSettingOption(const std::string& _label, int _value)
+  : label(_label), value(_value) {}
+
+  IntegerSettingOption(const std::string& _label, int _value,
+                       const std::vector<std::pair<std::string, CVariant>>& props)
+  : label(_label), value(_value), properties(props) {}
+
+  std::string label;
+  int value = 0;
+  std::vector<std::pair<std::string, CVariant>> properties;
+};
+
+struct StringSettingOption
+{
+  StringSettingOption(const std::string& _label, const std::string& _value)
+  : label(_label), value(_value) {}
+
+  StringSettingOption(const std::string& _label, const std::string& _value,
+                      const std::vector<std::pair<std::string, CVariant>>& props)
+  : label(_label), value(_value), properties(props) {}
+
+  std::string label;
+  std::string value;
+  std::vector<std::pair<std::string, CVariant>> properties;
+};
+
+struct TranslatableIntegerSettingOption
+{
+  TranslatableIntegerSettingOption() = default;
+  TranslatableIntegerSettingOption(int _label, int _value, const std::string& _addonId = "")
+    : label(_label), value(_value), addonId(_addonId)
+  {
+  }
+
+  int label = 0;
+  int value = 0;
+  std::string addonId; // Leaved empty for Kodi labels
+};
+
 using TranslatableIntegerSettingOptions = std::vector<TranslatableIntegerSettingOption>;
-using IntegerSettingOption = std::pair<std::string, int>;
 using IntegerSettingOptions = std::vector<IntegerSettingOption>;
 using TranslatableStringSettingOption = std::pair<int, std::string>;
 using TranslatableStringSettingOptions = std::vector<TranslatableStringSettingOption>;
-using StringSettingOption = std::pair<std::string, std::string>;
 using StringSettingOptions = std::vector<StringSettingOption>;
 
 class CSetting;
 using IntegerSettingOptionsFiller = void (*)(std::shared_ptr<const CSetting> setting, IntegerSettingOptions &list, int &current, void *data);
 using StringSettingOptionsFiller = void (*)(std::shared_ptr<const CSetting> setting, StringSettingOptions &list, std::string &current, void *data);
+
+enum class SettingOptionsSort
+{
+  NoSorting,
+  Ascending,
+  Descending
+};

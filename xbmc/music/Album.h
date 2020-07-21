@@ -13,12 +13,13 @@
 \brief
 */
 
-#include <map>
-#include <vector>
 #include "Artist.h"
 #include "Song.h"
 #include "XBDateTime.h"
 #include "utils/ScraperUrl.h"
+
+#include <map>
+#include <vector>
 
 class TiXmlNode;
 class CFileItem;
@@ -48,16 +49,21 @@ public:
     strReview.clear();
     strLabel.clear();
     strType.clear();
+    strReleaseStatus.clear();
     strPath.clear();
-    m_strDateOfRelease.clear();
     fRating = -1;
     iUserrating = -1;
     iVotes = -1;
-    iYear = -1;
+    strOrigReleaseDate.clear();
+    strReleaseDate.clear();
     bCompilation = false;
+    bBoxedSet = false;
     iTimesPlayed = 0;
     dateAdded.Reset();
+    dateUpdated.Reset();
+    dateNew.Reset();
     lastPlayed.Reset();
+    iTotalDiscs = -1;
     songs.clear();
     releaseType = Album;
     strLastScraped.clear();
@@ -101,6 +107,8 @@ public:
   std::string GetReleaseType() const;
   void SetReleaseType(const std::string& strReleaseType);
   void SetDateAdded(const std::string& strDateAdded);
+  void SetDateUpdated(const std::string& strDateUpdated);
+  void SetDateNew(const std::string& strDateNew);
   void SetLastPlayed(const std::string& strLastPlayed);
 
   static std::string ReleaseTypeToString(ReleaseType releaseType);
@@ -148,16 +156,21 @@ public:
   std::string strReview;
   std::string strLabel;
   std::string strType;
+  std::string strReleaseStatus;
   std::string strPath;
-  std::string m_strDateOfRelease;
   float fRating = -1;
   int iUserrating = -1;
   int iVotes = -1;
-  int iYear = -1;
+  std::string strReleaseDate;
+  std::string strOrigReleaseDate;
+  bool bBoxedSet = false;
   bool bCompilation = false;
   int iTimesPlayed = 0;
-  CDateTime dateAdded;
+  CDateTime dateAdded; // From related file creation or modification times, or when (re-)scanned
+  CDateTime dateUpdated; // Time db record Last modified
+  CDateTime dateNew;  // Time db record created
   CDateTime lastPlayed;
+  int iTotalDiscs = -1;
   VECSONGS songs;     ///< Local songs
   ReleaseType releaseType = Album;
   std::string strLastScraped;

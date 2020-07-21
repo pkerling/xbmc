@@ -8,11 +8,13 @@
 
 #pragma once
 
+#include "HDRStatus.h"
+#include "URL.h"
+#include "utils/Geometry.h"
+
 #include <vector>
 
-#include "URL.h"
-#include "MediaSource.h"
-#include "utils/Geometry.h"
+#include <dxgi1_5.h>
 
 #define BONJOUR_EVENT             ( WM_USER + 0x100 )	// Message sent to the Window when a Bonjour event occurs.
 #define BONJOUR_BROWSER_EVENT     ( WM_USER + 0x110 )
@@ -64,4 +66,8 @@ public:
 
   static std::string WUSysMsg(DWORD dwError);
   static bool SetThreadLocalLocale(bool enable = true);
+
+  // HDR display support
+  static HDR_STATUS ToggleWindowsHDR(DXGI_MODE_DESC& modeDesc);
+  static HDR_STATUS GetWindowsHDRStatus();
 };

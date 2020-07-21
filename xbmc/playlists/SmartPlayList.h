@@ -8,14 +8,14 @@
 
 #pragma once
 
-#include <set>
-#include <string>
-#include <vector>
-#include <memory>
-
 #include "dbwrappers/DatabaseQuery.h"
 #include "utils/SortUtils.h"
 #include "utils/XBMCTinyXML.h"
+
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
 
 class CURL;
 class CVariant;
@@ -67,6 +67,9 @@ protected:
 private:
   std::string GetVideoResolutionQuery(const std::string &parameter) const;
   static std::string FormatLinkQuery(const char *field, const char *table, const MediaType& mediaType, const std::string& mediaField, const std::string& parameter);
+  std::string FormatYearQuery(const std::string& field,
+                              const std::string& param,
+                              const std::string& parameter) const;
 };
 
 class CSmartPlaylistRuleCombination : public CDatabaseQueryRuleCombination
@@ -88,7 +91,7 @@ class CSmartPlaylist : public IDatabaseQueryRuleFactory
 {
 public:
   CSmartPlaylist();
-  virtual ~CSmartPlaylist() = default;
+  ~CSmartPlaylist() override = default;
 
   bool Load(const CURL& url);
   bool Load(const std::string &path);

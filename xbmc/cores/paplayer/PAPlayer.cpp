@@ -7,22 +7,26 @@
  */
 
 #include "PAPlayer.h"
+
 #include "CodecFactory.h"
 #include "ServiceBroker.h"
+#include "Util.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
+#include "cores/AudioEngine/Interfaces/AEStream.h"
+#include "cores/AudioEngine/Utils/AEStreamData.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
+#include "cores/DataCacheCore.h"
+#include "cores/VideoPlayer/Process/ProcessInfo.h"
+#include "messaging/ApplicationMessenger.h"
+#include "music/tags/MusicInfoTag.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "music/tags/MusicInfoTag.h"
-#include "utils/log.h"
 #include "utils/JobManager.h"
+#include "utils/log.h"
 #include "video/Bookmark.h"
 
-#include "cores/AudioEngine/Interfaces/AE.h"
-#include "cores/AudioEngine/Utils/AEUtil.h"
-#include "cores/AudioEngine/Interfaces/AEStream.h"
-#include "cores/DataCacheCore.h"
-#include "cores/VideoPlayer/Process/ProcessInfo.h"
-#include "Util.h"
+using namespace KODI::MESSAGING;
 
 #define TIME_TO_CACHE_NEXT_FILE 5000 /* 5 seconds before end of song, start caching the next song */
 #define FAST_XFADE_TIME           80 /* 80 milliseconds */
@@ -86,7 +90,7 @@ void PAPlayer::SoftStart(bool wait/* = false */)
   {
     /* wait for them to fade in */
     lock.Leave();
-    Sleep(FAST_XFADE_TIME);
+    CThread::Sleep(FAST_XFADE_TIME);
     lock.Enter();
 
     /* be sure they have faded in */
@@ -100,7 +104,7 @@ void PAPlayer::SoftStart(bool wait/* = false */)
         {
           lock.Leave();
           wait = true;
-          Sleep(1);
+          CThread::Sleep(1);
           lock.Enter();
           break;
         }
@@ -135,7 +139,7 @@ void PAPlayer::SoftStop(bool wait/* = false */, bool close/* = true */)
 
     /* wait for them to fade out */
     lock.Leave();
-    Sleep(FAST_XFADE_TIME);
+    CThread::Sleep(FAST_XFADE_TIME);
     lock.Enter();
 
     /* be sure they have faded out */
@@ -149,7 +153,7 @@ void PAPlayer::SoftStop(bool wait/* = false */, bool close/* = true */)
         {
           lock.Leave();
           wait = true;
-          Sleep(1);
+          CThread::Sleep(1);
           lock.Enter();
           break;
         }
@@ -217,6 +221,7 @@ void PAPlayer::CloseAllStreams(bool fade/* = true */)
 bool PAPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &options)
 {
   m_defaultCrossfadeMS = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_MUSICPLAYER_CROSSFADE) * 1000;
+  m_fullScreen = options.fullscreen;
 
   if (m_streams.size() > 1 || !m_defaultCrossfadeMS || m_isPaused)
   {
@@ -229,9 +234,11 @@ bool PAPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &options)
     CSingleLock lock(m_streamsLock);
     m_jobCounter++;
   }
-  CJobManager::GetInstance().Submit([this, file]() {
-    QueueNextFileEx(file, false);
-  }, this, CJob::PRIORITY_NORMAL);
+  CJobManager::GetInstance().Submit(
+    [=]() { QueueNextFileEx(file, false); },
+    this,
+    CJob::PRIORITY_NORMAL
+  );
 
   CSingleLock lock(m_streamsLock);
   if (m_streams.size() == 2)
@@ -253,14 +260,10 @@ bool PAPlayer::OpenFile(const CFileItem& file, const CPlayerOptions &options)
   m_isPlaying = true;
   m_startEvent.Set();
 
-  m_callback.OnPlayBackStarted(file);
+  // OnPlayBackStarted to be made only once. Callback processing may be slower than player process
+  // so clear signal flag first otherwise async stream processing could also make callback
   m_signalStarted = false;
-
-  if (options.startpercent > 0.0)
-  {
-    Sleep(50);
-    SeekPercentage(options.startpercent);
-  }
+  m_callback.OnPlayBackStarted(file);
 
   return true;
 }
@@ -355,7 +358,7 @@ bool PAPlayer::QueueNextFileEx(const CFileItem &file, bool fadeIn)
       return false;
     }
 
-    /* yield our time so that the main PAP thread doesnt stall */
+    /* yield our time so that the main PAP thread doesn't stall */
     CThread::Sleep(1);
   }
 
@@ -372,7 +375,10 @@ bool PAPlayer::QueueNextFileEx(const CFileItem &file, bool fadeIn)
   si->m_finishing = false;
   si->m_framesSent = 0;
   si->m_seekNextAtFrame = 0;
-  si->m_seekFrame = -1;
+  if (si->m_fileItem.HasProperty("audiobook_bookmark"))
+    si->m_seekFrame = si->m_audioFormat.m_sampleRate * CUtil::ConvertMilliSecsToSecs(si->m_fileItem.GetProperty("audiobook_bookmark").asInteger());
+  else
+    si->m_seekFrame = -1;
   si->m_stream = NULL;
   si->m_volume = (fadeIn && m_upcomingCrossfadeMS) ? 0.0f : 1.0f;
   si->m_fadeOutTriggered = false;
@@ -497,7 +503,7 @@ inline bool PAPlayer::PrepareStream(StreamInfo *si)
     if (!QueueData(si))
       break;
 
-    /* yield our time so that the main PAP thread doesnt stall */
+    /* yield our time so that the main PAP thread doesn't stall */
     CThread::Sleep(1);
   }
 
@@ -561,14 +567,18 @@ void PAPlayer::Process()
 
     if (m_newForcedPlayerTime != -1)
     {
-      SetTimeInternal(m_newForcedPlayerTime);
-      m_newForcedPlayerTime = -1;
+      if (SetTimeInternal(m_newForcedPlayerTime))
+      {
+        m_newForcedPlayerTime = -1;
+      }
     }
 
     if (m_newForcedTotalTime != -1)
     {
-      SetTotalTimeInternal(m_newForcedTotalTime);
-      m_newForcedTotalTime = -1;
+      if (SetTotalTimeInternal(m_newForcedTotalTime))
+      {
+        m_newForcedTotalTime = -1;
+      }
     }
 
     GetTimeInternal(); //update for GUI
@@ -713,6 +723,11 @@ inline bool PAPlayer::ProcessStream(StreamInfo *si, double &freeBufferTime)
     if (m_signalStarted)
       m_callback.OnPlayBackStarted(si->m_fileItem);
     m_signalStarted = true;
+    if (m_fullScreen)
+    {
+      CApplicationMessenger::GetInstance().PostMsg(TMSG_SWITCHTOFULLSCREEN);
+      m_fullScreen = false;
+    }
     m_callback.OnAVStarted(si->m_fileItem);
   }
 
@@ -955,26 +970,32 @@ int64_t PAPlayer::GetTimeInternal()
   return (int64_t)time;
 }
 
-void PAPlayer::SetTotalTimeInternal(int64_t time)
+bool PAPlayer::SetTotalTimeInternal(int64_t time)
 {
   CSingleLock lock(m_streamsLock);
   if (!m_currentStream)
-    return;
+  {
+    return false;
+  }
 
   m_currentStream->m_decoder.SetTotalTime(time);
   UpdateGUIData(m_currentStream);
+  
+  return true;
 }
 
-void PAPlayer::SetTimeInternal(int64_t time)
+bool PAPlayer::SetTimeInternal(int64_t time)
 {
   CSingleLock lock(m_streamsLock);
   if (!m_currentStream)
-    return;
+    return false;
 
   m_currentStream->m_framesSent = time / 1000 * m_currentStream->m_audioFormat.m_sampleRate;
 
   if (m_currentStream->m_stream)
     m_currentStream->m_framesSent += m_currentStream->m_stream->GetDelay() * m_currentStream->m_audioFormat.m_sampleRate;
+  
+  return true;
 }
 
 void PAPlayer::SetTime(int64_t time)

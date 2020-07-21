@@ -8,20 +8,20 @@
 
 #include "AppParamParser.h"
 #include "CompileInfo.h"
+#include "ServiceBroker.h"
+#include "platform/Environment.h"
+#include "platform/xbmc.h"
 #include "threads/Thread.h"
 #include "threads/platform/win/Win32Exception.h"
-#include "platform/win32/CharsetConverter.h"
-#include "platform/xbmc.h"
-#include "utils/CPUInfo.h"
-#include "platform/Environment.h"
 #include "utils/CharsetConverter.h" // Required to initialize converters before usage
 
+#include "platform/win32/CharsetConverter.h"
 
+#include <Objbase.h>
+#include <WinSock2.h>
 #include <dbghelp.h>
 #include <mmsystem.h>
-#include <Objbase.h>
 #include <shellapi.h>
-#include <WinSock2.h>
 
 
 // Minidump creation function
@@ -71,13 +71,6 @@ INT WINAPI WinMain(HINSTANCE hInst, HINSTANCE, LPSTR commandLine, INT)
       ShowWindow(hwnd, SW_RESTORE);
       SetForegroundWindow(hwnd);
     }
-    ReleaseMutex(appRunningMutex);
-    return 0;
-  }
-
-  if ((g_cpuInfo.GetCPUFeatures() & CPU_FEATURE_SSE2) == 0)
-  {
-    MessageBox(NULL, L"No SSE2 support detected", ToW(appName + ": Fatal Error").c_str(), MB_OK | MB_ICONERROR);
     ReleaseMutex(appRunningMutex);
     return 0;
   }

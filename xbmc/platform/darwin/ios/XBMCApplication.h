@@ -7,8 +7,6 @@
  */
 
 #import <UIKit/UIKit.h>
-#import <AVFoundation/AVFoundation.h>
 
-@interface XBMCApplicationDelegate : NSObject <UIApplicationDelegate> {
-}
+@interface XBMCApplicationDelegate : UIResponder <UIApplicationDelegate>
 @end

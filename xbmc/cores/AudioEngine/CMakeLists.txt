@@ -48,11 +48,14 @@ set(HEADERS AEResampleFactory.h
 
 if(ALSA_FOUND)
   list(APPEND SOURCES Sinks/AESinkALSA.cpp
-                      Sinks/alsa/ALSAHControlMonitor.cpp
                       Utils/AEELDParser.cpp)
   list(APPEND HEADERS Sinks/AESinkALSA.h
-                      Sinks/alsa/ALSAHControlMonitor.h
                       Utils/AEELDParser.h)
+                      
+  if(NOT CORE_PLATFORM_NAME_LC STREQUAL x11)
+    list(APPEND SOURCES Sinks/alsa/ALSAHControlMonitor.cpp)
+    list(APPEND HEADERS Sinks/alsa/ALSAHControlMonitor.h)
+  endif()
 
   if(UDEV_FOUND)
     list(APPEND SOURCES Sinks/alsa/ALSADeviceMonitor.cpp)
@@ -100,26 +103,31 @@ endif()
 
 if(CORE_SYSTEM_NAME STREQUAL osx)
   list(APPEND SOURCES Sinks/AESinkDARWINOSX.cpp
+                      Sinks/darwin/CoreAudioHelpers.cpp
                       Sinks/osx/AEDeviceEnumerationOSX.cpp
                       Sinks/osx/CoreAudioChannelLayout.cpp
                       Sinks/osx/CoreAudioDevice.cpp
                       Sinks/osx/CoreAudioHardware.cpp
-                      Sinks/osx/CoreAudioHelpers.cpp
                       Sinks/osx/CoreAudioStream.cpp)
   list(APPEND HEADERS Sinks/AESinkDARWINOSX.h
+                      Sinks/darwin/CoreAudioHelpers.h
                       Sinks/osx/AEDeviceEnumerationOSX.h
                       Sinks/osx/CoreAudioChannelLayout.h
                       Sinks/osx/CoreAudioDevice.h
                       Sinks/osx/CoreAudioHardware.h
-                      Sinks/osx/CoreAudioHelpers.h
                       Sinks/osx/CoreAudioStream.h)
 endif()
 
-if(CORE_SYSTEM_NAME STREQUAL ios)
-  list(APPEND SOURCES Sinks/AESinkDARWINIOS.mm
-                      Sinks/osx/CoreAudioHelpers.cpp)
-  list(APPEND HEADERS Sinks/AESinkDARWINIOS.h
-                      Sinks/osx/CoreAudioHelpers.h)
+if(CORE_SYSTEM_NAME STREQUAL darwin_embedded)
+  list(APPEND SOURCES Sinks/darwin/CoreAudioHelpers.cpp)
+  list(APPEND HEADERS Sinks/darwin/CoreAudioHelpers.h)
+  if(CORE_PLATFORM_NAME_LC STREQUAL ios)
+    list(APPEND SOURCES Sinks/AESinkDARWINIOS.mm)
+    list(APPEND HEADERS Sinks/AESinkDARWINIOS.h)
+  elseif(CORE_PLATFORM_NAME_LC STREQUAL tvos)
+    list(APPEND SOURCES Sinks/AESinkDARWINTVOS.mm)
+    list(APPEND HEADERS Sinks/AESinkDARWINTVOS.h)
+  endif()
 endif()
 
 if(CORE_SYSTEM_NAME STREQUAL android)

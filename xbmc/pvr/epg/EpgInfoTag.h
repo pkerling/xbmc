@@ -8,29 +8,25 @@
 
 #pragma once
 
+#include "XBDateTime.h"
+#include "threads/CriticalSection.h"
+#include "utils/ISerializable.h"
+
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "XBDateTime.h"
-#include "addons/kodi-addon-dev-kit/include/kodi/xbmc_pvr_types.h"
-#include "utils/ISerializable.h"
-#include "utils/ISortable.h"
-
-#include "pvr/PVRTypes.h"
-#include "pvr/channels/PVRChannel.h"
-#include "pvr/recordings/PVRRecording.h"
-#include "pvr/timers/PVRTimerInfoTag.h"
-
-class CVariant;
+struct EPG_TAG;
+struct PVR_EDL_ENTRY;
 
 namespace PVR
 {
-  class CPVREpg;
+  class CPVREpgChannelData;
+  class CPVREpgDatabase;
 
-  class CPVREpgInfoTag final : public ISerializable, public ISortable, public std::enable_shared_from_this<CPVREpgInfoTag>
+  class CPVREpgInfoTag final : public ISerializable,
+                               public std::enable_shared_from_this<CPVREpgInfoTag>
   {
-    friend class CPVREpg;
     friend class CPVREpgDatabase;
 
   public:
@@ -38,73 +34,84 @@ namespace PVR
      * @brief Create a new EPG infotag.
      * @param data The tag's data.
      * @param iClientId The client id.
+     * @param channelData The channel data.
+     * @param iEpgId The id of the EPG this tag belongs to.
      */
-    CPVREpgInfoTag(const EPG_TAG &data, int iClientId);
+    CPVREpgInfoTag(const EPG_TAG& data, int iClientId, const std::shared_ptr<CPVREpgChannelData>& channelData, int iEpgID);
 
     /*!
      * @brief Create a new EPG infotag.
-     * @param channel The channel.
-     * @param epg The epg data.
-     * @param strTabelName The name of the epg database table.
+     * @param channelData The channel data.
+     * @param iEpgId The id of the EPG this tag belongs to.
+     * @param start The start time of the event
+     * @param end The end time of the event
+     * @param bIsGapTagTrue if this is a "gap" tag, false if this is a real EPG event
      */
-    CPVREpgInfoTag(const CPVRChannelPtr &channel, CPVREpg *epg = nullptr, const std::string &strTableName = "");
+    CPVREpgInfoTag(const std::shared_ptr<CPVREpgChannelData>& channelData,
+                   int iEpgID,
+                   const CDateTime& start,
+                   const CDateTime& end,
+                   bool bIsGapTag);
+
+    /*!
+     * @brief Set data for the channel linked to this EPG infotag.
+     * @param data The channel data.
+     */
+    void SetChannelData(const std::shared_ptr<CPVREpgChannelData>& data);
 
     bool operator ==(const CPVREpgInfoTag& right) const;
     bool operator !=(const CPVREpgInfoTag& right) const;
 
     // ISerializable implementation
-    void Serialize(CVariant &value) const override;
-
-    // ISortable implementation
-    void ToSortable(SortItem& sortable, Field field) const override;
+    void Serialize(CVariant& value) const override;
 
     /*!
      * @brief Get the identifier of the client that serves this event.
      * @return The identifier.
      */
-    int ClientID(void) const { return m_iClientId; }
+    int ClientID() const;
 
     /*!
      * @brief Check if this event is currently active.
      * @return True if it's active, false otherwise.
      */
-    bool IsActive(void) const;
+    bool IsActive() const;
 
     /*!
      * @brief Check if this event is in the past.
      * @return True when this event has already passed, false otherwise.
      */
-    bool WasActive(void) const;
+    bool WasActive() const;
 
     /*!
      * @brief Check if this event is in the future.
      * @return True when this event is an upcoming event, false otherwise.
      */
-    bool IsUpcoming(void) const;
+    bool IsUpcoming() const;
 
     /*!
      * @brief Get the progress of this tag in percent.
      * @return The current progress of this tag.
      */
-    float ProgressPercentage(void) const;
+    float ProgressPercentage() const;
 
     /*!
      * @brief Get the progress of this tag in seconds.
      * @return The current progress of this tag in seconds.
      */
-    int Progress(void) const;
+    int Progress() const;
 
     /*!
      * @brief Get EPG ID of this tag.
      * @return The epg ID.
      */
-    int EpgID(void) const;
+    int EpgID() const;
 
     /*!
-     * @brief Sets the EPG for this event.
-     * @param epg The epg.
+     * @brief Sets the EPG id for this event.
+     * @param iEpgID The EPG id.
      */
-    void SetEpg(CPVREpg *epg);
+    void SetEpgID(int iEpgID);
 
     /*!
      * @brief Change the unique broadcast ID of this event.
@@ -116,83 +123,79 @@ namespace PVR
      * @brief Get the unique broadcast ID.
      * @return The unique broadcast ID.
      */
-    unsigned int UniqueBroadcastID(void) const;
+    unsigned int UniqueBroadcastID() const;
 
     /*!
      * @brief Get the event's database ID.
      * @return The database ID.
      */
-    int DatabaseID(void) const;
+    int DatabaseID() const;
 
     /*!
      * @brief Get the unique ID of the channel associated with this event.
      * @return The unique channel ID.
      */
-    unsigned int UniqueChannelID(void) const;
+    int UniqueChannelID() const;
 
     /*!
      * @brief Get the event's start time.
      * @return The start time in UTC.
      */
-    CDateTime StartAsUTC(void) const;
+    CDateTime StartAsUTC() const;
 
     /*!
      * @brief Get the event's start time.
      * @return The start time as local time.
      */
-    CDateTime StartAsLocalTime(void) const;
+    CDateTime StartAsLocalTime() const;
 
     /*!
      * @brief Get the event's end time.
      * @return The end time in UTC.
      */
-    CDateTime EndAsUTC(void) const;
+    CDateTime EndAsUTC() const;
 
     /*!
      * @brief Get the event's end time.
      * @return The end time as local time.
      */
-    CDateTime EndAsLocalTime(void) const;
+    CDateTime EndAsLocalTime() const;
 
     /*!
      * @brief Change the event's end time.
      * @param end The new end time.
      */
-    void SetEndFromUTC(const CDateTime &end);
+    void SetEndFromUTC(const CDateTime& end);
 
     /*!
      * @brief Get the duration of this event in seconds.
      * @return The duration.
      */
-    int GetDuration(void) const;
+    int GetDuration() const;
 
     /*!
      * @brief Get the title of this event.
-     * @param bOverrideParental True to override parental control, false to check it.
      * @return The title.
      */
-    std::string Title(bool bOverrideParental = false) const;
+    std::string Title() const;
 
     /*!
      * @brief Get the plot outline of this event.
-     * @param bOverrideParental True to override parental control, false to check it.
      * @return The plot outline.
      */
-    std::string PlotOutline(bool bOverrideParental = false) const;
+    std::string PlotOutline() const;
 
     /*!
      * @brief Get the plot of this event.
-     * @param bOverrideParental True to override parental control, false to check it.
      * @return The plot.
      */
-    std::string Plot(bool bOverrideParental = false) const;
+    std::string Plot() const;
 
     /*!
      * @brief Get the original title of this event.
-     * @param bOverrideParental True to override parental control, false check it.
      * @return The original title.
      */
-    std::string OriginalTitle(bool bOverrideParental = false) const;
+    std::string OriginalTitle() const;
 
     /*!
      * @brief Get the cast of this event.
@@ -252,55 +255,43 @@ namespace PVR
      * @brief Get the genre type ID of this event.
      * @return The genre type ID.
      */
-    int GenreType(void) const;
+    int GenreType() const;
 
     /*!
      * @brief Get the genre subtype ID of this event.
      * @return The genre subtype ID.
      */
-    int GenreSubType(void) const;
+    int GenreSubType() const;
 
     /*!
      * @brief Get the genre as human readable string.
      * @return The genre.
      */
-    const std::vector<std::string> Genre(void) const;
+    const std::vector<std::string> Genre() const;
 
     /*!
      * @brief Get the first air date of this event.
-     * @return The first air date in UTC.
+     * @return The first air date.
      */
-    CDateTime FirstAiredAsUTC(void) const;
-
-    /*!
-     * @brief Get the first air date of this event.
-     * @return The first air date as local time.
-     */
-    CDateTime FirstAiredAsLocalTime(void) const;
+    CDateTime FirstAired() const;
 
     /*!
      * @brief Get the parental rating of this event.
      * @return The parental rating.
      */
-    int ParentalRating(void) const;
+    int ParentalRating() const;
 
     /*!
      * @brief Get the star rating of this event.
      * @return The star rating.
      */
-    int StarRating(void) const;
-
-    /*!
-     * @brief Notify on start if true.
-     * @return Notify on start.
-     */
-    bool Notify(void) const;
+    int StarRating() const;
 
     /*!
      * @brief The series number of this event.
      * @return The series number.
      */
-    int SeriesNumber(void) const;
+    int SeriesNumber() const;
 
     /*!
      * @brief The series link for this event.
@@ -312,121 +303,51 @@ namespace PVR
      * @brief The episode number of this event.
      * @return The episode number.
      */
-    int EpisodeNumber(void) const;
+    int EpisodeNumber() const;
 
     /*!
      * @brief The episode part number of this event.
      * @return The episode part number.
      */
-    int EpisodePart(void) const;
+    int EpisodePart() const;
 
     /*!
      * @brief The episode name of this event.
-     * @param bOverrideParental True to override parental control, false to check it.
      * @return The episode name.
      */
-    std::string EpisodeName(bool bOverrideParental = false) const;
+    std::string EpisodeName() const;
 
     /*!
      * @brief Get the path to the icon for this event.
      * @return The path to the icon
      */
-    std::string Icon(void) const;
+    std::string Icon() const;
 
     /*!
      * @brief The path to this event.
      * @return The path.
      */
-    std::string Path(void) const;
-
-    /*!
-     * @brief Set a timer for this event.
-     * @param timer The timer.
-     */
-    void SetTimer(const CPVRTimerInfoTagPtr &timer);
-
-    /*!
-     * @brief Clear the timer for this event.
-     */
-    void ClearTimer(void);
-
-    /*!
-     * @brief Check whether this event has a timer tag.
-     * @return True if it has a timer tag, false if not.
-     */
-    bool HasTimer(void) const;
-
-    /*!
-     * @brief Check whether this event has a timer rule.
-     * @return True if it has a timer rule, false if not.
-     */
-    bool HasTimerRule(void) const;
-
-    /*!
-     * @brief Get the timer for this event, if any.
-     * @return The timer or nullptr if there is none.
-     */
-    CPVRTimerInfoTagPtr Timer(void) const;
-
-    /*!
-     * @brief Set a recording for this event.
-     * @param recording The recording.
-     */
-    void SetRecording(const CPVRRecordingPtr &recording);
-
-    /*!
-     * @brief Clear a recording for this event.
-     */
-    void ClearRecording(void);
-
-    /*!
-     * @brief Check whether this event has a recording.
-     * @return True if it has a recording, false if not.
-     */
-    bool HasRecording(void) const;
-
-    /*!
-     * @brief Get the recording for this event, if any.
-     * @return The pointer or nullptr if there is none.
-     */
-    CPVRRecordingPtr Recording(void) const;
+    std::string Path() const;
 
     /*!
      * @brief Check if this event can be recorded.
      * @return True if it can be recorded, false otherwise.
      */
-    bool IsRecordable(void) const;
+    bool IsRecordable() const;
 
     /*!
      * @brief Check if this event can be played.
      * @return True if it can be played, false otherwise.
      */
-    bool IsPlayable(void) const;
+    bool IsPlayable() const;
 
     /*!
-     * @brief Set the channel of this epg tag
-     * @param channel The channel
-     */
-    void SetChannel(const CPVRChannelPtr &channel);
-
-    /*!
-     * @brief Check whether this event has a channel.
-     * @return True if it has a channel, false if not.
-     */
-    bool HasChannel(void) const;
-
-    /*!
-     * @brief Get the channel for this event.
-     * @return The channel.
-     */
-    const CPVRChannelPtr Channel(void) const;
-
-    /*!
-     * @brief Persist this tag in the database.
+     * @brief Persist this tag in the given database.
+     * @param database The database.
      * @param bSingleUpdate True if this is a single update, false if more updates will follow.
      * @return True if the tag was persisted correctly, false otherwise.
      */
-    bool Persist(bool bSingleUpdate = true);
+    bool Persist(const std::shared_ptr<CPVREpgDatabase>& database, bool bSingleUpdate = true);
 
     /*!
      * @brief Update the information in this tag with the info in the given tag.
@@ -434,7 +355,7 @@ namespace PVR
      * @param bUpdateBroadcastId If set to false, the tag BroadcastId (locally unique) will not be checked/updated
      * @return True if something changed, false otherwise.
      */
-    bool Update(const CPVREpgInfoTag &tag, bool bUpdateBroadcastId = true);
+    bool Update(const CPVREpgInfoTag& tag, bool bUpdateBroadcastId = true);
 
     /*!
      * @brief Retrieve the edit decision list (EDL) of an EPG tag.
@@ -449,6 +370,48 @@ namespace PVR
     bool IsSeries() const;
 
     /*!
+     * @brief Check whether this tag is associated with a radion or TV channel.
+     * @return True if this tag is associated with a radio channel, false otherwise.
+     */
+    bool IsRadio() const;
+
+    /*!
+     * @brief Check whether this event is parental locked.
+     * @return True if whether this event is parental locked, false otherwise.
+     */
+    bool IsParentalLocked() const;
+
+    /*!
+     * @brief Check whether this event is a real event or a gap in the EPG timeline.
+     * @return True if this event is a gap, false otherwise.
+     */
+    bool IsGapTag() const;
+
+    /*!
+     * @brief Check whether this tag will be flagged as new.
+     * @return True if this tag will be flagged as new, false otherwise
+     */
+    bool IsNew() const;
+
+    /*!
+     * @brief Check whether this tag will be flagged as a premiere.
+     * @return True if this tag will be flagged as a premiere, false otherwise
+     */
+    bool IsPremiere() const;
+
+    /*!
+     * @brief Check whether this tag will be flagged as a finale.
+     * @return True if this tag will be flagged as a finale, false otherwise
+     */
+    bool IsFinale() const;
+
+    /*!
+     * @brief Check whether this tag will be flagged as live.
+     * @return True if this tag will be flagged as live, false otherwise
+     */
+    bool IsLive() const;
+
+    /*!
      * @brief Return the flags (EPG_TAG_FLAG_*) of this event as a bitfield.
      * @return the flags.
      */
@@ -459,26 +422,20 @@ namespace PVR
      * @param str The string to tokenize.
      * @return the tokens.
      */
-    static const std::vector<std::string> Tokenize(const std::string &str);
+    static const std::vector<std::string> Tokenize(const std::string& str);
 
     /*!
      * @brief Combine the given strings to a single string. Inserts EPG_STRING_TOKEN_SEPARATOR as separator.
      * @param tokens The tokens.
      * @return the combined string.
      */
-    static const std::string DeTokenize(const std::vector<std::string> &tokens);
+    static const std::string DeTokenize(const std::vector<std::string>& tokens);
 
   private:
-    CPVREpgInfoTag() = default;
+    CPVREpgInfoTag();
 
-    CPVREpgInfoTag(const CPVREpgInfoTag &tag) = delete;
-    CPVREpgInfoTag &operator =(const CPVREpgInfoTag &other) = delete;
-
-    /*!
-     * @brief Check whether this event is parental locked.
-     * @return True if whether this event is parental locked, false otherwise.
-     */
-    bool IsParentalLocked() const;
+    CPVREpgInfoTag(const CPVREpgInfoTag& tag) = delete;
+    CPVREpgInfoTag& operator =(const CPVREpgInfoTag& other) = delete;
 
     /*!
      * @brief Change the genre of this event.
@@ -490,49 +447,45 @@ namespace PVR
     /*!
      * @brief Update the path of this tag.
      */
-    void UpdatePath(void);
+    void UpdatePath();
 
     /*!
      * @brief Get current time, taking timeshifting into account.
      * @return The playing time.
      */
-    CDateTime GetCurrentPlayingTime(void) const;
+    CDateTime GetCurrentPlayingTime() const;
 
-    bool                     m_bNotify = false;     /*!< notify on start */
-    int                      m_iClientId = -1;      /*!< client id */
-    int                      m_iDatabaseID = -1;    /*!< database ID */
-    int                      m_iGenreType = 0;      /*!< genre type */
-    int                      m_iGenreSubType = 0;   /*!< genre subtype */
-    int                      m_iParentalRating = 0; /*!< parental rating */
-    int                      m_iStarRating = 0;     /*!< star rating */
-    int                      m_iSeriesNumber = 0;   /*!< series number */
-    int                      m_iEpisodeNumber = 0;  /*!< episode number */
-    int                      m_iEpisodePart = 0;    /*!< episode part number */
-    unsigned int m_iUniqueBroadcastID = EPG_TAG_INVALID_UID;   /*!< unique broadcast ID */
-    unsigned int m_iUniqueChannelID = PVR_CHANNEL_INVALID_UID; /*!< unique channel ID */
-    std::string              m_strTitle;            /*!< title */
-    std::string              m_strPlotOutline;      /*!< plot outline */
-    std::string              m_strPlot;             /*!< plot */
-    std::string              m_strOriginalTitle;    /*!< original title */
-    std::vector<std::string> m_cast;                /*!< cast */
-    std::vector<std::string> m_directors;           /*!< director(s) */
-    std::vector<std::string> m_writers;             /*!< writer(s) */
-    int                      m_iYear = 0;           /*!< year */
-    std::string              m_strIMDBNumber;       /*!< imdb number */
-    std::vector<std::string> m_genre;               /*!< genre */
-    std::string              m_strEpisodeName;      /*!< episode name */
-    std::string              m_strIconPath;         /*!< the path to the icon */
-    std::string              m_strFileNameAndPath;  /*!< the filename and path */
-    CDateTime                m_startTime;           /*!< event start time */
-    CDateTime                m_endTime;             /*!< event end time */
-    CDateTime                m_firstAired;          /*!< first airdate */
-    unsigned int m_iFlags = EPG_TAG_FLAG_UNDEFINED; /*!< the flags applicable to this EPG entry */
-    std::string              m_strSeriesLink;       /*!< series link */
+    int m_iDatabaseID = -1; /*!< database ID */
+    int m_iGenreType = 0; /*!< genre type */
+    int m_iGenreSubType = 0; /*!< genre subtype */
+    int m_iParentalRating = 0; /*!< parental rating */
+    int m_iStarRating = 0; /*!< star rating */
+    int m_iSeriesNumber = -1; /*!< series number */
+    int m_iEpisodeNumber = -1; /*!< episode number */
+    int m_iEpisodePart = -1; /*!< episode part number */
+    unsigned int m_iUniqueBroadcastID = 0; /*!< unique broadcast ID */
+    std::string m_strTitle; /*!< title */
+    std::string m_strPlotOutline; /*!< plot outline */
+    std::string m_strPlot; /*!< plot */
+    std::string m_strOriginalTitle; /*!< original title */
+    std::vector<std::string> m_cast; /*!< cast */
+    std::vector<std::string> m_directors; /*!< director(s) */
+    std::vector<std::string> m_writers; /*!< writer(s) */
+    int m_iYear = 0; /*!< year */
+    std::string m_strIMDBNumber; /*!< imdb number */
+    std::vector<std::string> m_genre; /*!< genre */
+    std::string m_strEpisodeName; /*!< episode name */
+    std::string m_strIconPath; /*!< the path to the icon */
+    std::string m_strFileNameAndPath; /*!< the filename and path */
+    CDateTime m_startTime; /*!< event start time */
+    CDateTime m_endTime; /*!< event end time */
+    CDateTime m_firstAired; /*!< first airdate */
+    unsigned int m_iFlags = 0; /*!< the flags applicable to this EPG entry */
+    std::string m_strSeriesLink; /*!< series link */
+    bool m_bIsGapTag = false;
 
     mutable CCriticalSection m_critSection;
-    CPVREpg *m_epg = nullptr;
-    CPVRChannelPtr m_channel;
-    CPVRTimerInfoTagPtr m_timer;
-    CPVRRecordingPtr m_recording;
+    std::shared_ptr<CPVREpgChannelData> m_channelData;
+    int m_iEpgID = -1;
   };
 }

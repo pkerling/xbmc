@@ -80,6 +80,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL WindowsStore)
                      -DCMAKE_SYSTEM_VERSION=${CMAKE_SYSTEM_VERSION})
 endif()
 
+include(${CORE_SOURCE_DIR}/cmake/scripts/common/CompilerSettings.cmake)
+
 set(BUILD_ARGS -DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}
                -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
                -DPACKAGE_CONFIG_PATH=${ADDON_DEPENDS_PATH}/lib/pkgconfig
@@ -119,6 +121,17 @@ if(CMAKE_TOOLCHAIN_FILE)
   list(APPEND BUILD_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
   message(STATUS "Toolchain specified")
   message(STATUS ${BUILD_ARGS})
+endif()
+
+# used for addons where need special folders to store there content (if
+# not set the addon define it byself).
+# e.g. Google Chromium addon where his git bring:
+# - "unable to create file" ... "Filename too long"
+# see also WARNING by Windows on: https://bitbucket.org/chromiumembedded/cef/wiki/MasterBuildQuickStart
+if(THIRD_PARTY_PATH)
+  message(STATUS "Third party lib path specified")
+  message(STATUS ${THIRD_PARTY_PATH})
+  list(APPEND BUILD_ARGS -DTHIRD_PARTY_PATH=${THIRD_PARTY_PATH})
 endif()
 
 if(NOT ADDONS_TO_BUILD)
@@ -243,9 +256,14 @@ foreach(addon ${addons})
     if(idx GREATER -1 OR "${ADDONS_TO_BUILD}" STREQUAL "all")
       set(ADDON_FOUND TRUE)
     # Maybe we have a regex
-    elseif(id MATCHES "${ADDONS_TO_BUILD}")
-      message(STATUS "Pattern ${ADDONS_TO_BUILD} matches ${id}, building addon")
-      set(ADDON_FOUND TRUE)
+    else()
+      foreach(ADDONLISTITEM ${ADDONS_TO_BUILD})
+        if(id MATCHES "${ADDONLISTITEM}")
+          message(STATUS "Pattern ${ADDONLISTITEM} matches ${id}, building addon")
+          set(ADDON_FOUND TRUE)
+          break()
+        endif()
+      endforeach()
     endif()
 
     if(ADDON_FOUND)
@@ -375,9 +393,6 @@ foreach(addon ${addons})
                                    DEPENDEES configure
                                    DEPENDERS build
                                    ALWAYS 1)
-
-          # add "kodi-platform" as a dependency to every addon
-          add_dependencies(${id} kodi-platform)
 
           set(${id}_DEPENDS_DIR ${SOURCE_DIR}/depends)
 

@@ -84,7 +84,7 @@
 						<include content="InfoList">
 							<param name="bottom" value="0" />
 							<param name="sortby" value="year" />
-							<param name="sortorder" value="descending" />
+							<param name="sortorder" value="ascending" />
 							<param name="font" value="font13" />
 						</include>
 					</control>
@@ -112,7 +112,7 @@
 						<autoscroll time="3000" delay="7000" repeat="5000">!System.HasActiveModalDialog + Skin.HasSetting(AutoScroll)</autoscroll>
 						<label>$INFO[ListItem.Plot]</label>
 						<shadowcolor>text_shadow</shadowcolor>
-						<visible>!ListItem.IsCollection</visible>
+						<visible>![ListItem.IsCollection + String.IsEmpty(ListItem.Plot)]</visible>
 					</control>
 				</control>
 			</control>
@@ -141,7 +141,7 @@
 				<height>716</height>
 				<fadetime>200</fadetime>
 				<aspectratio>scale</aspectratio>
-				<texture fallback="DefaultVideo.png" background="true">$VAR[PosterVar]</texture>
+				<texture fallback="DefaultMovies.png" background="true">$VAR[PosterThumbVar]</texture>
 			</control>
 			<control type="image">
 				<left>1</left>

@@ -8,9 +8,8 @@
 
 #pragma once
 
-#include <androidjni/JNIBase.h>
-
 #include <androidjni/AudioManager.h>
+#include <androidjni/JNIBase.h>
 
 class CJNIXBMCAudioManagerOnAudioFocusChangeListener : public CJNIAudioManagerAudioFocusChangeListener, public CJNIInterfaceImplem<CJNIXBMCAudioManagerOnAudioFocusChangeListener>
 {
@@ -18,7 +17,7 @@ public:
   CJNIXBMCAudioManagerOnAudioFocusChangeListener();
   CJNIXBMCAudioManagerOnAudioFocusChangeListener(const CJNIXBMCAudioManagerOnAudioFocusChangeListener& other);
   explicit CJNIXBMCAudioManagerOnAudioFocusChangeListener(const jni::jhobject &object) : CJNIBase(object) {}
-  virtual ~CJNIXBMCAudioManagerOnAudioFocusChangeListener();
+  ~CJNIXBMCAudioManagerOnAudioFocusChangeListener() override;
 
   static void RegisterNatives(JNIEnv* env);
 

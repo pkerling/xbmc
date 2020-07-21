@@ -6,11 +6,13 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "cores/AudioEngine/Engines/ActiveAE/ActiveAE.h"
 #include "ALSAHControlMonitor.h"
-#include "platform/linux/FDEventMonitor.h"
-#include "utils/log.h"
+
 #include "ServiceBroker.h"
+#include "cores/AudioEngine/Engines/ActiveAE/ActiveAE.h"
+#include "utils/log.h"
+
+#include "platform/linux/FDEventMonitor.h"
 
 CALSAHControlMonitor::CALSAHControlMonitor() = default;
 
@@ -79,10 +81,7 @@ void CALSAHControlMonitor::Start()
 
     for (int j = 0; j < fdcount; ++j)
     {
-      monitoredFDs.push_back(CFDEventMonitor::MonitoredFD(pollfds[j].fd,
-                                                          pollfds[j].events,
-                                                          FDEventCallback,
-                                                          it->second.handle));
+      monitoredFDs.emplace_back(pollfds[j].fd, pollfds[j].events, FDEventCallback, it->second.handle);
     }
   }
 

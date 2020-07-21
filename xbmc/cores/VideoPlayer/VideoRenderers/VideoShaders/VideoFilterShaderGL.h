@@ -8,10 +8,11 @@
 
 #pragma once
 
-#include "system_gl.h"
-#include "guilib/Shader.h"
-#include "cores/VideoSettings.h"
 #include "GLSLOutput.h"
+#include "cores/VideoSettings.h"
+#include "guilib/Shader.h"
+
+#include "system_gl.h"
 
 namespace Shaders {
 
@@ -19,7 +20,7 @@ namespace Shaders {
   {
   public:
     BaseVideoFilterShader();
-    virtual ~BaseVideoFilterShader();
+    ~BaseVideoFilterShader() override;
     virtual bool GetTextureFilter(GLint& filter) { return false; }
 
     void SetSourceTexture(GLint ytex) { m_sourceTexUnit = ytex; }

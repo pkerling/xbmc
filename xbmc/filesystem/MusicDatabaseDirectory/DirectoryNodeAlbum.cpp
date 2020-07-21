@@ -7,6 +7,7 @@
  */
 
 #include "DirectoryNodeAlbum.h"
+
 #include "QueryParams.h"
 #include "guilib/LocalizeStrings.h"
 #include "music/MusicDatabase.h"
@@ -21,7 +22,7 @@ CDirectoryNodeAlbum::CDirectoryNodeAlbum(const std::string& strName, CDirectoryN
 
 NODE_TYPE CDirectoryNodeAlbum::GetChildType() const
 {
-  return NODE_TYPE_SONG;
+  return NODE_TYPE_DISC;
 }
 
 std::string CDirectoryNodeAlbum::GetLocalizedName() const

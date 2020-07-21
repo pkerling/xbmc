@@ -7,13 +7,14 @@
  */
 
 #include "RendererVAAPIGL.h"
+
 #include "../RenderFactory.h"
-#include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDCodecUtils.h"
-#include "settings/Settings.h"
+#include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/log.h"
+#include "settings/Settings.h"
 #include "utils/GLUtils.h"
+#include "utils/log.h"
 
 using namespace VAAPI;
 
@@ -211,7 +212,6 @@ bool CRendererVAAPI::UploadTexture(int index)
   }
 
   m_vaapiTextures[index]->Map(pic);
-  m_buffers[index].m_srcTextureBits = m_vaapiTextures[index]->GetBits();
 
   YuvImage &im = buf.image;
   CYuvPlane (&planes)[3] = buf.fields[0];

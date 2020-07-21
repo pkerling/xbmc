@@ -59,20 +59,7 @@ bool CTCPServer::StartServer(int port, bool nonlocal)
   ServerInstance = new CTCPServer(port, nonlocal);
   if (ServerInstance->Initialize())
   {
-    size_t thread_stacksize = 0;
-#if defined(TARGET_DARWIN_TVOS)
-    void *stack_addr;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_getstack(&attr, &stack_addr, &thread_stacksize);
-    pthread_attr_destroy(&attr);
-    // double the stack size under tvos, not sure why yet
-    // but it stoped crashing using Kodi json -> play video.
-    // non-tvos will pass a value of zero which means 'system default'
-    thread_stacksize *= 2;
-  CLog::Log(LOGDEBUG, "CTCPServer: increasing thread stack to %zu", thread_stacksize);
-#endif
-    ServerInstance->Create(false, thread_stacksize);
+    ServerInstance->Create(false);
     return true;
   }
   else
@@ -118,11 +105,11 @@ void CTCPServer::Process()
     struct timeval  to     = {1, 0};
     FD_ZERO(&rfds);
 
-    for (std::vector<SOCKET>::iterator it = m_servers.begin(); it != m_servers.end(); ++it)
+    for (auto& it : m_servers)
     {
-      FD_SET(*it, &rfds);
-      if ((intptr_t)*it > (intptr_t)max_fd)
-        max_fd = *it;
+      FD_SET(it, &rfds);
+      if ((intptr_t)it > (intptr_t)max_fd)
+        max_fd = it;
     }
 
     for (unsigned int i = 0; i < m_connections.size(); i++)
@@ -136,7 +123,7 @@ void CTCPServer::Process()
     if (res < 0)
     {
       CLog::Log(LOGERROR, "JSONRPC Server: Select failed");
-      Sleep(1000);
+      CThread::Sleep(1000);
       Initialize();
     }
     else if (res > 0)
@@ -188,20 +175,21 @@ void CTCPServer::Process()
         }
       }
 
-      for (std::vector<SOCKET>::iterator it = m_servers.begin(); it != m_servers.end(); ++it)
+      for (auto& it : m_servers)
       {
-        if (FD_ISSET(*it, &rfds))
+        if (FD_ISSET(it, &rfds))
         {
           CLog::Log(LOGDEBUG, "JSONRPC Server: New connection detected");
           CTCPClient *newconnection = new CTCPClient();
-          newconnection->m_socket = accept(*it, (sockaddr*)&newconnection->m_cliaddr, &newconnection->m_addrlen);
+          newconnection->m_socket =
+              accept(it, (sockaddr*)&newconnection->m_cliaddr, &newconnection->m_addrlen);
 
           if (newconnection->m_socket == INVALID_SOCKET)
           {
             CLog::Log(LOGERROR, "JSONRPC Server: Accept of new connection failed: %d", errno);
             if (EBADF == errno)
             {
-              Sleep(1000);
+              CThread::Sleep(1000);
               Initialize();
               break;
             }
@@ -549,6 +537,9 @@ void CTCPServer::CTCPClient::Send(const char *data, unsigned int size)
 void CTCPServer::CTCPClient::PushBuffer(CTCPServer *host, const char *buffer, int length)
 {
   m_new = false;
+  bool inObject = false;
+  bool inString = false;
+  bool escapeNext = false;
 
   for (int i = 0; i < length; i++)
   {
@@ -568,10 +559,42 @@ void CTCPServer::CTCPClient::PushBuffer(CTCPServer *host, const char *buffer, in
     if (m_beginChar != 0)
     {
       m_buffer.push_back(c);
-      if (c == m_beginChar)
-        m_beginBrackets++;
-      else if (c == m_endChar)
-        m_endBrackets++;
+      if (inObject)
+      {
+        if (!inString)
+        {
+          if (c == '"')
+            inString = true;
+        }
+        else
+        {
+          if (escapeNext)
+          {
+            escapeNext = false;
+          }
+          else
+          {
+            if (c == '\\')
+              escapeNext = true;
+            else if (c == '"')
+              inString = false;
+          }
+        }
+      }
+      if (!inString)
+      {
+        if (c == m_beginChar)
+        {
+          m_beginBrackets++;
+          inObject = true;
+        }
+        else if (c == m_endChar)
+        {
+          m_endBrackets++;
+          if (m_beginBrackets == m_endBrackets)
+            inObject = false;
+        }
+      }
       if (m_beginBrackets > 0 && m_endBrackets > 0 && m_beginBrackets == m_endBrackets)
       {
         std::string line = CJSONRPC::MethodCall(m_buffer, host, this);

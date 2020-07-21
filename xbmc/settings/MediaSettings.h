@@ -8,16 +8,16 @@
 
 #pragma once
 
-#include <map>
-#include <string>
-
 #include "cores/VideoSettings.h"
+#include "settings/GameSettings.h"
+#include "settings/ISubSettings.h"
+#include "settings/LibExportSettings.h"
 #include "settings/lib/ISettingCallback.h"
 #include "settings/lib/ISettingsHandler.h"
-#include "settings/lib/ISubSettings.h"
-#include "settings/GameSettings.h"
-#include "settings/LibExportSettings.h"
 #include "threads/CriticalSection.h"
+
+#include <map>
+#include <string>
 
 #define VOLUME_DRC_MINIMUM 0    // 0dB
 #define VOLUME_DRC_MAXIMUM 6000 // 60dB
@@ -39,6 +39,7 @@ public:
   bool Save(TiXmlNode *settings) const override;
 
   void OnSettingAction(std::shared_ptr<const CSetting> setting) override;
+  void OnSettingChanged(std::shared_ptr<const CSetting> setting) override;
   void OnSettingsLoaded() override;
 
   const CVideoSettings& GetDefaultVideoSettings() const { return m_defaultVideoSettings; }
@@ -75,8 +76,8 @@ public:
   void SetVideoPlaylistRepeat(bool repeats) { m_videoPlaylistRepeat = repeats; }
   void SetVideoPlaylistShuffled(bool shuffled) { m_videoPlaylistShuffle = shuffled; }
 
-  bool DoesVideoStartWindowed() const { return m_videoStartWindowed; }
-  void SetVideoStartWindowed(bool windowed) { m_videoStartWindowed = windowed; }
+  bool DoesMediaStartWindowed() const { return m_mediaStartWindowed; }
+  void SetMediaStartWindowed(bool windowed) { m_mediaStartWindowed = windowed; }
   int GetAdditionalSubtitleDirectoryChecked() const { return m_additionalSubtitleDirectoryChecked; }
   void SetAdditionalSubtitleDirectoryChecked(int checked) { m_additionalSubtitleDirectoryChecked = checked; }
 
@@ -107,7 +108,7 @@ private:
   bool m_videoPlaylistRepeat;
   bool m_videoPlaylistShuffle;
 
-  bool m_videoStartWindowed;
+  bool m_mediaStartWindowed;
   int m_additionalSubtitleDirectoryChecked;
 
   int m_musicNeedsUpdate; ///< if a database update means an update is required (set to the version number of the db)

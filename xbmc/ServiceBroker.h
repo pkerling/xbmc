@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "utils/GlobalsHandling.h"
+
 #include <memory>
 
 namespace ADDON {
@@ -52,6 +54,10 @@ class CEventLog;
 class CGUIComponent;
 class CAppInboundProtocol;
 class CSettingsComponent;
+class CDecoderFilterManager;
+class CMediaManager;
+class CCPUInfo;
+class CLog;
 
 namespace KODI
 {
@@ -75,6 +81,12 @@ namespace PERIPHERALS
 class CServiceBroker
 {
 public:
+  CServiceBroker();
+  ~CServiceBroker();
+
+  static CLog& GetLogging();
+  static void CreateLogging();
+
   static std::shared_ptr<ANNOUNCEMENT::CAnnouncementManager> GetAnnouncementManager();
   static void RegisterAnnouncementManager(std::shared_ptr<ANNOUNCEMENT::CAnnouncementManager> announcementManager);
   static void UnregisterAnnouncementManager();
@@ -105,6 +117,7 @@ public:
   static CPlayerCoreFactory &GetPlayerCoreFactory();
   static CDatabaseManager &GetDatabaseManager();
   static CEventLog &GetEventLog();
+  static CMediaManager& GetMediaManager();
 
   static CGUIComponent* GetGUI();
   static void RegisterGUI(CGUIComponent *gui);
@@ -127,11 +140,24 @@ public:
   static void RegisterAppPort(std::shared_ptr<CAppInboundProtocol> port);
   static void UnregisterAppPort();
 
+  static void RegisterDecoderFilterManager(CDecoderFilterManager* manager);
+  static CDecoderFilterManager* GetDecoderFilterManager();
+
+  static std::shared_ptr<CCPUInfo> GetCPUInfo();
+  static void RegisterCPUInfo(std::shared_ptr<CCPUInfo> cpuInfo);
+  static void UnregisterCPUInfo();
+
 private:
-  static std::shared_ptr<ANNOUNCEMENT::CAnnouncementManager> m_pAnnouncementManager;
-  static CGUIComponent* m_pGUI;
-  static CWinSystemBase* m_pWinSystem;
-  static IAE* m_pActiveAE;
-  static std::shared_ptr<CAppInboundProtocol> m_pAppPort;
-  static CSettingsComponent* m_pSettingsComponent;
+  std::unique_ptr<CLog> m_logging;
+  std::shared_ptr<ANNOUNCEMENT::CAnnouncementManager> m_pAnnouncementManager;
+  CGUIComponent* m_pGUI;
+  CWinSystemBase* m_pWinSystem;
+  IAE* m_pActiveAE;
+  std::shared_ptr<CAppInboundProtocol> m_pAppPort;
+  CSettingsComponent* m_pSettingsComponent;
+  CDecoderFilterManager* m_decoderFilterManager;
+  std::shared_ptr<CCPUInfo> m_cpuInfo;
 };
+
+XBMC_GLOBAL_REF(CServiceBroker, g_serviceBroker);
+#define g_serviceBroker XBMC_GLOBAL_USE(CServiceBroker)

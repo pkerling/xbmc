@@ -8,14 +8,13 @@
 
 #include "GUIDialogSmartPlaylistEditor.h"
 
-#include <utility>
-
 #include "FileItem.h"
-#include "ServiceBroker.h"
-#include "filesystem/File.h"
 #include "GUIDialogContextMenu.h"
-#include "GUIDialogSmartPlaylistRule.h"
 #include "GUIDialogSelect.h"
+#include "GUIDialogSmartPlaylistRule.h"
+#include "ServiceBroker.h"
+#include "Util.h"
+#include "filesystem/File.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/GUIWindowManager.h"
@@ -24,11 +23,12 @@
 #include "profiles/ProfileManager.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "Util.h"
 #include "utils/SortUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
+
+#include <utility>
 
 #define CONTROL_HEADING         2
 #define CONTROL_RULE_LIST       10
@@ -324,6 +324,16 @@ void CGUIDialogSmartPlaylistEditor::OnType()
     return;
 
   m_playlist.SetType(ConvertType(allowedTypes[newSelected]));
+  
+  // Remove any invalid grouping left over when changing the type
+  Field currentGroup = CSmartPlaylistRule::TranslateGroup(m_playlist.GetGroup().c_str());
+  if (currentGroup != FieldNone && currentGroup != FieldUnknown)
+  {
+    std::vector<Field> groups = CSmartPlaylistRule::GetGroups(m_playlist.GetType());
+    if (std::find(groups.begin(), groups.end(), currentGroup) == groups.end())
+      m_playlist.SetGroup(CSmartPlaylistRule::TranslateGroup(FieldUnknown));
+  }
+
   UpdateButtons();
 }
 

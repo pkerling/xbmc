@@ -6,13 +6,16 @@
  *  See LICENSES/README.md for more information.
  */
 #include "Win32StorageProvider.h"
-#include "guilib/LocalizeStrings.h"
+
+#include "ServiceBroker.h"
 #include "filesystem/SpecialProtocol.h"
-#include "platform/win32/CharsetConverter.h"
+#include "guilib/LocalizeStrings.h"
 #include "storage/MediaManager.h"
 #include "utils/JobManager.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/log.h"
+
+#include "platform/win32/CharsetConverter.h"
 
 #include <SetupAPI.h>
 #include <ShlObj.h>
@@ -31,17 +34,16 @@ void CWin32StorageProvider::Initialize()
   VECSOURCES vShare;
   GetDrivesByType(vShare, DVD_DRIVES);
   if(!vShare.empty())
-    g_mediaManager.SetHasOpticalDrive(true);
+    CServiceBroker::GetMediaManager().SetHasOpticalDrive(true);
   else
     CLog::Log(LOGDEBUG, "%s: No optical drive found.", __FUNCTION__);
 
 #ifdef HAS_DVD_DRIVE
   // Can be removed once the StorageHandler supports optical media
-  VECSOURCES::const_iterator it;
-  for(it=vShare.begin();it!=vShare.end();++it)
-    if(g_mediaManager.GetDriveStatus(it->strPath) == DRIVE_CLOSED_MEDIA_PRESENT)
-      CJobManager::GetInstance().AddJob(new CDetectDisc(it->strPath, false), NULL);
-  // remove end
+  for (const auto& it : vShare)
+    if (CServiceBroker::GetMediaManager().GetDriveStatus(it.strPath) == DRIVE_CLOSED_MEDIA_PRESENT)
+      CJobManager::GetInstance().AddJob(new CDetectDisc(it.strPath, false), NULL);
+      // remove end
 #endif
 }
 
@@ -362,16 +364,16 @@ bool CDetectDisc::DoWork()
   CLog::Log(LOGDEBUG, "%s: Optical media found in drive %s", __FUNCTION__, m_strPath.c_str());
   CMediaSource share;
   share.strPath = m_strPath;
-  share.strStatus = g_mediaManager.GetDiskLabel(share.strPath);
-  share.strDiskUniqueId = g_mediaManager.GetDiskUniqueId(share.strPath);
-  if(g_mediaManager.IsAudio(share.strPath))
+  share.strStatus = CServiceBroker::GetMediaManager().GetDiskLabel(share.strPath);
+  share.strDiskUniqueId = CServiceBroker::GetMediaManager().GetDiskUniqueId(share.strPath);
+  if (CServiceBroker::GetMediaManager().IsAudio(share.strPath))
     share.strStatus = "Audio-CD";
   else if(share.strStatus == "")
     share.strStatus = g_localizeStrings.Get(446);
   share.strName = share.strPath;
   share.m_ignore = true;
   share.m_iDriveType = CMediaSource::SOURCE_TYPE_DVD;
-  g_mediaManager.AddAutoSource(share, m_bautorun);
+  CServiceBroker::GetMediaManager().AddAutoSource(share, m_bautorun);
 #endif
   return true;
 }

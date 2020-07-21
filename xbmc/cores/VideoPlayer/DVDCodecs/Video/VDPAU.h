@@ -26,26 +26,28 @@
  *   of locks needed.
  */
 
+#include "cores/VideoPlayer/Buffers/VideoBuffer.h"
 #include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodec.h"
-#include "cores/VideoPlayer/Process/VideoBuffer.h"
-#include <X11/Xlib.h>
-#include <X11/Xutil.h>
-#include "threads/CriticalSection.h"
-#include "threads/SharedSection.h"
 #include "cores/VideoSettings.h"
 #include "guilib/DispResource.h"
+#include "threads/CriticalSection.h"
 #include "threads/Event.h"
+#include "threads/SharedSection.h"
 #include "threads/Thread.h"
 #include "utils/ActorProtocol.h"
 #include "utils/Geometry.h"
+
 #include <deque>
 #include <list>
 #include <map>
 #include <vector>
 
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
 extern "C" {
-#include "libavutil/avutil.h"
-#include "libavcodec/vdpau.h"
+#include <libavutil/avutil.h>
+#include <libavcodec/vdpau.h>
 }
 
 class CProcessInfo;
@@ -557,7 +559,6 @@ protected:
   CEvent m_DisplayEvent;
   int m_ErrorCount;
 
-  ThreadIdentifier m_decoderThread;
   bool m_vdpauConfigured;
   CVdpauConfig m_vdpauConfig;
   CVideoSurfaces m_videoSurfaces;

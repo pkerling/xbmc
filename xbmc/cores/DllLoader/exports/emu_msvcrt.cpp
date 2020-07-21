@@ -40,24 +40,21 @@
 #include <signal.h>
 #ifdef TARGET_POSIX
 #include "PlatformDefs.h" // for __stat64
-#include "XFileUtils.h"
-#include "XTimeUtils.h"
 #endif
+#include "FileItem.h"
 #include "ServiceBroker.h"
-#include "Util.h"
-#include "filesystem/SpecialProtocol.h"
 #include "URL.h"
+#include "Util.h"
+#include "emu_dummy.h"
+#include "emu_msvcrt.h"
+#include "filesystem/Directory.h"
 #include "filesystem/File.h"
+#include "filesystem/SpecialProtocol.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "FileItem.h"
-#include "filesystem/Directory.h"
-
-#include "emu_msvcrt.h"
-#include "emu_dummy.h"
+#include "threads/SingleLock.h"
 #include "util/EmuFileWrapper.h"
 #include "utils/log.h"
-#include "threads/SingleLock.h"
 #ifndef TARGET_POSIX
 #include "utils/CharsetConverter.h"
 #include "utils/URIUtils.h"
@@ -67,6 +64,7 @@
 #endif
 #include "platform/Environment.h"
 #include "utils/StringUtils.h"
+#include "utils/XTimeUtils.h"
 
 #if defined(TARGET_WINDOWS)
 #include "platform/win32/CharsetConverter.h"
@@ -133,8 +131,8 @@ extern "C" void __stdcall init_emu_environ()
   // check if we are running as real xbmc.app or just binary
   if (!CUtil::GetFrameworksPath(true).empty())
   {
-    // using external python, it's build looking for xxx/lib/python2.7
-    // so point it to frameworks which is where python2.7 is located
+    // using external python, it's build looking for xxx/lib/python3.7
+    // so point it to frameworks which is where python3.7 is located
     dll_putenv(("PYTHONPATH=" +
       CSpecialProtocol::TranslatePath("special://frameworks")).c_str());
     dll_putenv(("PYTHONHOME=" +
@@ -156,7 +154,7 @@ extern "C" void __stdcall init_emu_environ()
 
 #if defined(TARGET_ANDROID)
   std::string apkPath = getenv("KODI_ANDROID_APK");
-  apkPath += "/assets/python2.7";
+  apkPath += "/assets/python3.7";
   dll_putenv(("PYTHONHOME=" + apkPath).c_str());
   dll_putenv("PYTHONOPTIMIZE=");
   dll_putenv("PYTHONNOUSERSITE=1");
@@ -276,10 +274,7 @@ static void to_wfinddata64i32(_finddata64i32_t *data, _wfinddata64i32_t *wdata)
 
 extern "C"
 {
-  void dll_sleep(unsigned long imSec)
-  {
-    Sleep(imSec);
-  }
+  void dll_sleep(unsigned long imSec) { KODI::TIME::Sleep(imSec); }
 
   // FIXME, XXX, !!!!!!
   void dllReleaseAll( )
@@ -300,7 +295,7 @@ extern "C"
     void* pBlock = malloc(size);
     if (!pBlock)
     {
-      CLog::Log(LOGSEVERE, "malloc {0} bytes failed, crash imminent", size);
+      CLog::Log(LOGFATAL, "malloc {0} bytes failed, crash imminent", size);
     }
     return pBlock;
   }
@@ -315,7 +310,7 @@ extern "C"
     void* pBlock = calloc(num, size);
     if (!pBlock)
     {
-      CLog::Log(LOGSEVERE, "calloc {0} bytes failed, crash imminent", size);
+      CLog::Log(LOGFATAL, "calloc {0} bytes failed, crash imminent", size);
     }
     return pBlock;
   }
@@ -325,7 +320,7 @@ extern "C"
     void* pBlock =  realloc(memblock, size);
     if (!pBlock)
     {
-      CLog::Log(LOGSEVERE, "realloc {0} bytes failed, crash imminent", size);
+      CLog::Log(LOGFATAL, "realloc {0} bytes failed, crash imminent", size);
     }
     return pBlock;
   }
@@ -387,7 +382,7 @@ extern "C"
     if (szLine[strlen(szLine) - 1] != '\n')
       CLog::Log(LOGDEBUG,"  msg: %s", szLine);
     else
-      CLog::Log(LOGDEBUG,"  msg: %s\n", szLine);
+      CLog::Log(LOGDEBUG, "  msg: %s", szLine);
 
     // return a non negative value
     return 0;
@@ -625,7 +620,11 @@ extern "C"
     if (pFile != NULL)
       return pFile->Stat(buf);
     else if (IS_STD_DESCRIPTOR(fd))
+#if defined(TARGET_WINDOWS)
       return _fstat64(fd, buf);
+#else
+      return fstat64(fd, buf);
+#endif
     CLog::Log(LOGERROR, "%s emulated function failed",  __FUNCTION__);
     return -1;
   }
@@ -1599,22 +1598,20 @@ extern "C"
   //SLOW CODE SHOULD BE REVISED
   int dll_stat(const char *path, struct stat *buffer)
   {
-    if (!strnicmp(path, "shout://", 8)) // don't stat shoutcast
+    if (!StringUtils::CompareNoCase(path, "shout://", 8)) // don't stat shoutcast
       return -1;
-    if (!strnicmp(path, "http://", 7)
-    ||  !strnicmp(path, "https://", 8)) // don't stat http
-      return -1;
-    if (!strnicmp(path, "mms://", 6)) // don't stat mms
+    if (!StringUtils::CompareNoCase(path, "mms://", 6)) // don't stat mms
       return -1;
 
 #ifdef TARGET_POSIX
-    if (!_stricmp(path, "D:") || !_stricmp(path, "D:\\"))
+    if (!StringUtils::CompareNoCase(path, "D:") || !StringUtils::CompareNoCase(path, "D:\\"))
     {
       buffer->st_mode = S_IFDIR;
       return 0;
     }
 #endif
-    if (!stricmp(path, "\\Device\\Cdrom0") || !stricmp(path, "\\Device\\Cdrom0\\"))
+    if (!StringUtils::CompareNoCase(path, "\\Device\\Cdrom0") ||
+        !StringUtils::CompareNoCase(path, "\\Device\\Cdrom0\\"))
     {
       buffer->st_mode = _S_IFDIR;
       return 0;
@@ -1645,22 +1642,20 @@ extern "C"
 
   int dll_stat64(const char *path, struct __stat64 *buffer)
   {
-    if (!strnicmp(path, "shout://", 8)) // don't stat shoutcast
+    if (!StringUtils::CompareNoCase(path, "shout://", 8)) // don't stat shoutcast
       return -1;
-    if (!strnicmp(path, "http://", 7)
-    ||  !strnicmp(path, "https://", 8)) // don't stat http
-      return -1;
-    if (!strnicmp(path, "mms://", 6)) // don't stat mms
+    if (!StringUtils::CompareNoCase(path, "mms://", 6)) // don't stat mms
       return -1;
 
 #ifdef TARGET_POSIX
-    if (!_stricmp(path, "D:") || !_stricmp(path, "D:\\"))
+    if (!StringUtils::CompareNoCase(path, "D:") || !StringUtils::CompareNoCase(path, "D:\\"))
     {
       buffer->st_mode = _S_IFDIR;
       return 0;
     }
 #endif
-    if (!stricmp(path, "\\Device\\Cdrom0") || !stricmp(path, "\\Device\\Cdrom0\\"))
+    if (!StringUtils::CompareNoCase(path, "\\Device\\Cdrom0") ||
+        !StringUtils::CompareNoCase(path, "\\Device\\Cdrom0\\"))
     {
       buffer->st_mode = _S_IFDIR;
       return 0;
@@ -1848,7 +1843,7 @@ extern "C"
             if (dll__environ[i] != NULL)
             {
               // we only support overwriting the old values
-              if (strnicmp(dll__environ[i], var, strlen(var)) == 0)
+              if (StringUtils::CompareNoCase(dll__environ[i], var, strlen(var)) == 0)
               {
                 // free it first
                 free(dll__environ[i]);
@@ -1899,7 +1894,7 @@ extern "C"
       {
         if (dll__environ[i])
         {
-          if (strnicmp(dll__environ[i], szKey, strlen(szKey)) == 0)
+          if (StringUtils::CompareNoCase(dll__environ[i], szKey, strlen(szKey)) == 0)
           {
             // found it
             value = dll__environ[i] + strlen(szKey) + 1;
@@ -2043,66 +2038,6 @@ extern "C"
 #endif
   }
 
-#if _MSC_VER < 1900
-  int dll_filbuf(FILE *fp)
-  {
-    if (fp == NULL)
-      return EOF;
-
-    if(IS_STD_STREAM(fp))
-      return EOF;
-
-    CFile* pFile = g_emuFileWrapper.GetFileXbmcByStream(fp);
-    if (pFile)
-    {
-      unsigned char data;
-      if(pFile->Read(&data, 1) == 1)
-      {
-        pFile->Seek(-1, SEEK_CUR);
-        return (int)data;
-      }
-      else
-        return EOF;
-    }
-#ifdef TARGET_POSIX
-    return EOF;
-#else
-    return _filbuf(fp);
-#endif
-  }
-
-  int dll_flsbuf(int data, FILE *fp)
-  {
-    if (fp == NULL)
-      return EOF;
-
-    if(IS_STDERR_STREAM(fp) || IS_STDOUT_STREAM(fp))
-    {
-      CLog::Log(LOGDEBUG, "dll_flsbuf() - %c", data);
-      return data;
-    }
-
-    if(IS_STD_STREAM(fp))
-      return EOF;
-
-    CFile* pFile = g_emuFileWrapper.GetFileXbmcByStream(fp);
-    if (pFile)
-    {
-      pFile->Flush();
-      unsigned char c = (unsigned char)data;
-      if(pFile->Write(&c, 1) == 1)
-        return data;
-      else
-        return EOF;
-    }
-#ifdef TARGET_POSIX
-    return EOF;
-#else
-    return _flsbuf(data, fp);
-#endif
-  }
-
-#endif
   // this needs to be wrapped, since dll's have their own file
   // descriptor list, but we always use app's list with our wrappers
   int __cdecl dll_open_osfhandle(intptr_t _OSFileHandle, int _Flags)

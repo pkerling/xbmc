@@ -7,13 +7,14 @@
  */
 
 #include "XBMCTinyXML.h"
-#include "filesystem/File.h"
-#include "utils/StringUtils.h"
-#include "utils/CharsetConverter.h"
-#include "utils/CharsetDetection.h"
-#include "utils/Utf8Utils.h"
+
 #include "LangInfo.h"
 #include "RegExp.h"
+#include "filesystem/File.h"
+#include "utils/CharsetConverter.h"
+#include "utils/CharsetDetection.h"
+#include "utils/StringUtils.h"
+#include "utils/Utf8Utils.h"
 #include "utils/log.h"
 
 #define MAX_ENTITY_LENGTH 8 // size of largest entity "&#xNNNN;"
@@ -110,7 +111,11 @@ bool CXBMCTinyXML::SaveFile(const std::string& filename) const
   {
     TiXmlPrinter printer;
     Accept(&printer);
-    return file.Write(printer.CStr(), printer.Size()) == static_cast<ssize_t>(printer.Size());
+    bool suc = file.Write(printer.CStr(), printer.Size()) == static_cast<ssize_t>(printer.Size());
+    if (suc)
+      file.Flush();
+
+    return suc;
   }
   return false;
 }

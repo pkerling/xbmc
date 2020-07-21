@@ -7,11 +7,12 @@
  */
 
 #include "ContextMenus.h"
+
 #include "AddonManager.h"
+#include "GUIDialogAddonInfo.h"
 #include "Repository.h"
 #include "RepositoryUpdater.h"
 #include "ServiceBroker.h"
-#include "GUIDialogAddonInfo.h"
 #include "settings/GUIDialogAddonSettings.h"
 
 
@@ -73,6 +74,7 @@ bool CDisableAddon::IsVisible(const CFileItem& item) const
 
 bool CDisableAddon::Execute(const CFileItemPtr& item) const
 {
-  return CServiceBroker::GetAddonMgr().DisableAddon(item->GetAddonInfo()->ID());
+  return CServiceBroker::GetAddonMgr().DisableAddon(item->GetAddonInfo()->ID(),
+                                                    AddonDisabledReason::USER);
 }
 }

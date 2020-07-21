@@ -16,12 +16,14 @@ namespace KODI
 {
 namespace GAME
 {
-  class CGUIControllerButton : public CGUIButtonControl
-  {
-  public:
-    CGUIControllerButton(const CGUIButtonControl& buttonControl, const std::string& label, unsigned int index);
+class CGUIControllerButton : public CGUIButtonControl
+{
+public:
+  CGUIControllerButton(const CGUIButtonControl& buttonControl,
+                       const std::string& label,
+                       unsigned int index);
 
-    virtual ~CGUIControllerButton() = default;
-  };
-}
-}
+  ~CGUIControllerButton() override = default;
+};
+} // namespace GAME
+} // namespace KODI

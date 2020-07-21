@@ -1,8 +1,8 @@
 # we always want to use GNU features if available, so set _GNU_SOURCE
-set(ARCH_DEFINES -D_LINUX -DTARGET_POSIX -DTARGET_LINUX -D_GNU_SOURCE)
-set(SYSTEM_DEFINES -D__STDC_CONSTANT_MACROS -D_FILE_DEFINED
-                   -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64)
+set(ARCH_DEFINES -DTARGET_POSIX -DTARGET_LINUX -D_GNU_SOURCE)
+set(SYSTEM_DEFINES -D__STDC_CONSTANT_MACROS -D_FILE_OFFSET_BITS=64)
 set(PLATFORM_DIR platform/linux)
+set(PLATFORMDEFS_DIR platform/posix)
 set(CMAKE_SYSTEM_NAME Linux)
 if(WITH_ARCH)
   set(ARCH ${WITH_ARCH})
@@ -81,14 +81,30 @@ if(KODI_DEPENDSBUILD)
   set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 endif()
 
-find_package(CXX11 REQUIRED)
 include(LDGOLD)
 
 include(CheckIncludeFiles)
-check_include_files("linux/memfd.h" HAVE_LINUX_MEMFD)
-if(HAVE_LINUX_MEMFD)
-  list(APPEND ARCH_DEFINES "-DHAVE_LINUX_MEMFD=1")
+check_include_files("linux/udmabuf.h" HAVE_LINUX_UDMABUF)
+if(HAVE_LINUX_UDMABUF)
+  list(APPEND ARCH_DEFINES "-DHAVE_LINUX_UDMABUF=1")
+else()
+  message(STATUS "include/linux/udmabuf.h not found")
 endif()
+
+check_include_files("linux/dma-heap.h" HAVE_LINUX_DMA_HEAP)
+if(HAVE_LINUX_DMA_HEAP)
+  list(APPEND ARCH_DEFINES "-DHAVE_LINUX_DMA_HEAP=1")
+else()
+  message(STATUS "include/linux/dma-heap.h not found")
+endif()
+
+check_include_files("linux/dma-buf.h" HAVE_LINUX_DMA_BUF)
+if(HAVE_LINUX_DMA_BUF)
+  list(APPEND ARCH_DEFINES "-DHAVE_LINUX_DMA_BUF=1")
+else()
+  message(STATUS "include/linux/dma-buf.h not found")
+endif()
+
 include(CheckSymbolExists)
 set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
 check_symbol_exists("mkostemp" "stdlib.h" HAVE_MKOSTEMP)
@@ -97,8 +113,17 @@ if(HAVE_MKOSTEMP)
   list(APPEND ARCH_DEFINES "-DHAVE_MKOSTEMP=1")
 endif()
 
+set(CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE")
+check_symbol_exists("memfd_create" "sys/mman.h" HAVE_LINUX_MEMFD)
+set(CMAKE_REQUIRED_DEFINITIONS "")
+if(HAVE_LINUX_MEMFD)
+  list(APPEND ARCH_DEFINES "-DHAVE_LINUX_MEMFD=1")
+else()
+  message(STATUS "memfd_create() not found")
+endif()
+
 # Additional SYSTEM_DEFINES
-list(APPEND SYSTEM_DEFINES -DHAS_LINUX_NETWORK)
+list(APPEND SYSTEM_DEFINES -DHAS_POSIX_NETWORK -DHAS_LINUX_NETWORK)
 
 # Code Coverage
 if(CMAKE_BUILD_TYPE STREQUAL Coverage)

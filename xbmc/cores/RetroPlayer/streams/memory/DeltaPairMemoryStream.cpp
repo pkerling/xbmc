@@ -7,6 +7,7 @@
  */
 
 #include "DeltaPairMemoryStream.h"
+
 #include "utils/log.h"
 
 using namespace KODI;
@@ -21,7 +22,7 @@ void CDeltaPairMemoryStream::Reset()
 
 void CDeltaPairMemoryStream::SubmitFrameInternal()
 {
-  m_rewindBuffer.push_back(MemoryFrame());
+  m_rewindBuffer.emplace_back();
   MemoryFrame& frame = m_rewindBuffer.back();
 
   // Record frame history
@@ -35,7 +36,7 @@ void CDeltaPairMemoryStream::SubmitFrameInternal()
     uint32_t xor_val = currentFrame[i] ^ nextFrame[i];
     if (xor_val)
     {
-      DeltaPair pair = { i, xor_val };
+      DeltaPair pair = {i, xor_val};
       frame.buffer.push_back(pair);
     }
   }
@@ -88,7 +89,9 @@ void CDeltaPairMemoryStream::CullPastFrames(uint64_t frameCount)
   {
     if (m_rewindBuffer.empty())
     {
-      CLog::Log(LOGDEBUG, "CDeltaPairMemoryStream: Tried to cull %d frames too many. Check your math!", frameCount - removedCount);
+      CLog::Log(LOGDEBUG,
+                "CDeltaPairMemoryStream: Tried to cull %d frames too many. Check your math!",
+                frameCount - removedCount);
       break;
     }
     m_rewindBuffer.pop_front();

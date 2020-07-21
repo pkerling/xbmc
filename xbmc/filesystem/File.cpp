@@ -9,21 +9,22 @@
  */
 
 #include "File.h"
-#include "IFile.h"
-#include "FileFactory.h"
-#include "Application.h"
-#include "DirectoryCache.h"
-#include "Directory.h"
-#include "FileCache.h"
-#include "PasswordManager.h"
-#include "system.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
-#include "utils/BitstreamStats.h"
-#include "Util.h"
-#include "utils/StringUtils.h"
 
+#include "Application.h"
+#include "Directory.h"
+#include "DirectoryCache.h"
+#include "FileCache.h"
+#include "FileFactory.h"
+#include "IFile.h"
+#include "PasswordManager.h"
+#include "Util.h"
 #include "commons/Exception.h"
+#include "utils/BitstreamStats.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+
+#include "system.h"
 
 using namespace XFILE;
 
@@ -74,7 +75,7 @@ bool CFile::Copy(const CURL& url2, const CURL& dest, XFILE::IFileCallback* pCall
 
   // special case for zips - ignore caching
   CURL url(url2);
-  if (URIUtils::IsInZIP(url.Get()) || URIUtils::IsInAPK(url.Get()))
+  if (StringUtils::StartsWith(url.Get(), "zip://") || URIUtils::IsInAPK(url.Get()))
     url.SetOptions("?cache=no");
   if (file.Open(url.Get(), READ_TRUNCATED | READ_CHUNKED))
   {
@@ -110,9 +111,9 @@ bool CFile::Copy(const CURL& url2, const CURL& dest, XFILE::IFileCallback* pCall
           else if (strDirectory[0] == pathsep[0])
             strCurrPath += pathsep;
 
-          for (std::vector<std::string>::iterator iter = tokens.begin(); iter != tokens.end(); ++iter)
+          for (const std::string& iter : tokens)
           {
-            strCurrPath += *iter + pathsep;
+            strCurrPath += iter + pathsep;
             CDirectory::Create(strCurrPath);
           }
         }
@@ -126,7 +127,7 @@ bool CFile::Copy(const CURL& url2, const CURL& dest, XFILE::IFileCallback* pCall
       return false;
     }
 
-    int iBufferSize = GetChunkSize(file.GetChunkSize(), 128 * 1024);
+    int iBufferSize = DetermineChunkSize(file.GetChunkSize(), 128 * 1024);
 
     auto_buffer buffer(iBufferSize);
     ssize_t iRead, iWrite;
@@ -327,7 +328,7 @@ bool CFile::Open(const CURL& file, const unsigned int flags)
         m_pFile = pRedirectEx->m_pNewFileImp;
         delete pRedirectEx;
 
-        if (pNewUrl.get())
+        if (pNewUrl)
         {
           CURL newAuthUrl(*pNewUrl);
           if (CPasswordManager::GetInstance().IsURLSupported(newAuthUrl) && newAuthUrl.GetUserName().empty())
@@ -413,6 +414,13 @@ bool CFile::OpenForWrite(const CURL& file, bool bOverWrite)
   return false;
 }
 
+int CFile::DetermineChunkSize(const int srcChunkSize, const int reqChunkSize)
+{
+  // Determine cache chunk size: if source chunk size is bigger than 1
+  // use source chunk size else use requested chunk size
+  return (srcChunkSize > 1 ? srcChunkSize : reqChunkSize);
+}
+
 bool CFile::Exists(const std::string& strFileName, bool bUseCache /* = true */)
 {
   const CURL pathToUrl(strFileName);
@@ -438,7 +446,7 @@ bool CFile::Exists(const CURL& file, bool bUseCache /* = true */)
     }
 
     std::unique_ptr<IFile> pFile(CFileFactory::CreateLoader(url));
-    if (!pFile.get())
+    if (!pFile)
       return false;
 
     return pFile->Exists(authUrl);
@@ -455,9 +463,9 @@ bool CFile::Exists(const CURL& file, bool bUseCache /* = true */)
       std::unique_ptr<CURL> pNewUrl(pRedirectEx->m_pNewUrl);
       delete pRedirectEx;
 
-      if (pImp.get())
+      if (pImp)
       {
-        if (pNewUrl.get())
+        if (pNewUrl)
         {
           if (bUseCache)
           {
@@ -522,7 +530,7 @@ int CFile::Stat(const CURL& file, struct __stat64* buffer)
   try
   {
     std::unique_ptr<IFile> pFile(CFileFactory::CreateLoader(url));
-    if (!pFile.get())
+    if (!pFile)
       return -1;
     return pFile->Stat(authUrl, buffer);
   }
@@ -538,9 +546,9 @@ int CFile::Stat(const CURL& file, struct __stat64* buffer)
       std::unique_ptr<CURL> pNewUrl(pRedirectEx->m_pNewUrl);
       delete pRedirectEx;
 
-      if (pNewUrl.get())
+      if (pNewUrl)
       {
-        if (pImp.get())
+        if (pImp)
         {
           CURL newAuthUrl = *pNewUrl;
           if (CPasswordManager::GetInstance().IsURLSupported(newAuthUrl) && newAuthUrl.GetUserName().empty())
@@ -662,7 +670,6 @@ void CFile::Close()
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
   }
-  return;
 }
 
 void CFile::Flush()
@@ -677,7 +684,6 @@ void CFile::Flush()
   {
     CLog::Log(LOGERROR, "%s - Unhandled exception", __FUNCTION__);
   }
-  return;
 }
 
 //*********************************************************************************************
@@ -870,7 +876,7 @@ bool CFile::Delete(const CURL& file)
       CPasswordManager::GetInstance().AuthenticateURL(authUrl);
 
     std::unique_ptr<IFile> pFile(CFileFactory::CreateLoader(url));
-    if (!pFile.get())
+    if (!pFile)
       return false;
 
     if(pFile->Delete(authUrl))
@@ -911,7 +917,7 @@ bool CFile::Rename(const CURL& file, const CURL& newFile)
       CPasswordManager::GetInstance().AuthenticateURL(authUrlNew);
 
     std::unique_ptr<IFile> pFile(CFileFactory::CreateLoader(url));
-    if (!pFile.get())
+    if (!pFile)
       return false;
 
     if(pFile->Rename(authUrl, authUrlNew))
@@ -946,7 +952,7 @@ bool CFile::SetHidden(const CURL& file, bool hidden)
       CPasswordManager::GetInstance().AuthenticateURL(authUrl);
 
     std::unique_ptr<IFile> pFile(CFileFactory::CreateLoader(url));
-    if (!pFile.get())
+    if (!pFile)
       return false;
 
     return pFile->SetHidden(authUrl, hidden);
@@ -1038,7 +1044,9 @@ ssize_t CFile::LoadFile(const CURL& file, auto_buffer& outputBuffer)
   if (filesize > (int64_t)max_file_size)
     return 0; /* file is too large for this function */
 
-  size_t chunksize = (filesize > 0) ? (size_t)(filesize + 1) : (size_t) GetChunkSize(GetChunkSize(), min_chunk_size);
+  size_t chunksize = (filesize > 0) ? static_cast<size_t>(filesize + 1)
+                                    : static_cast<size_t>(DetermineChunkSize(GetChunkSize(),
+                                                                             min_chunk_size));
   size_t total_read = 0;
   while (true)
   {
@@ -1097,7 +1105,7 @@ void CFileStreamBuffer::Attach(IFile *file)
 {
   m_file = file;
 
-  m_frontsize = CFile::GetChunkSize(m_file->GetChunkSize(), 64*1024);
+  m_frontsize = CFile::DetermineChunkSize(m_file->GetChunkSize(), 64 * 1024);
 
   m_buffer = new char[m_frontsize+m_backsize];
   setg(0,0,0);

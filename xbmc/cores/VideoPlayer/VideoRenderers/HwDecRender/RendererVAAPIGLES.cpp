@@ -7,15 +7,18 @@
  */
 
 #include "RendererVAAPIGLES.h"
+
 #include "../RenderFactory.h"
-#include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
 #include "cores/VideoPlayer/DVDCodecs/DVDCodecUtils.h"
-#include "settings/Settings.h"
+#include "cores/VideoPlayer/DVDCodecs/Video/VAAPI.h"
 #include "settings/AdvancedSettings.h"
-#include "utils/log.h"
+#include "settings/Settings.h"
+#include "utils/EGLFence.h"
 #include "utils/GLUtils.h"
+#include "utils/log.h"
 
 using namespace VAAPI;
+using namespace KODI::UTILS::EGL;
 
 IVaapiWinSystem *CRendererVAAPI::m_pWinSystem = nullptr;
 
@@ -95,9 +98,10 @@ bool CRendererVAAPI::Configure(const VideoPicture &picture, float fps, unsigned 
     }
     tex->Init(interop);
   }
-  for (auto &fence : m_fences)
+
+  for (auto& fence : m_fences)
   {
-    fence = GL_NONE;
+    fence.reset(new CEGLFence(CRendererVAAPI::m_pWinSystem->GetEGLDisplay()));
   }
 
   return CLinuxRendererGLES::Configure(picture, fps, orientation);
@@ -110,16 +114,6 @@ bool CRendererVAAPI::ConfigChanged(const VideoPicture &picture)
     return true;
 
   return false;
-}
-
-bool CRendererVAAPI::Supports(ERENDERFEATURE feature)
-{
-  return CLinuxRendererGLES::Supports(feature);
-}
-
-bool CRendererVAAPI::Supports(ESCALINGMETHOD method)
-{
-  return CLinuxRendererGLES::Supports(method);
 }
 
 EShaderFormat CRendererVAAPI::GetShaderFormat()
@@ -153,12 +147,12 @@ bool CRendererVAAPI::CreateTexture(int index)
 
   CPictureBuffer &buf = m_buffers[index];
   YuvImage &im = buf.image;
-  YUVPLANE (&planes)[YuvImage::MAX_PLANES] = buf.fields[0];
+  CYuvPlane (&planes)[YuvImage::MAX_PLANES] = buf.fields[0];
 
   DeleteTexture(index);
 
-  memset(&im, 0, sizeof(im));
-  memset(&planes, 0, sizeof(YUVPLANE[YuvImage::MAX_PLANES]));
+  im = {};
+  std::fill(std::begin(planes), std::end(planes), CYuvPlane{});
   im.height = m_sourceHeight;
   im.width  = m_sourceWidth;
   im.cshift_x = 1;
@@ -204,7 +198,7 @@ bool CRendererVAAPI::UploadTexture(int index)
   m_vaapiTextures[index]->Map(pic);
 
   YuvImage &im = buf.image;
-  YUVPLANE (&planes)[3] = buf.fields[0];
+  CYuvPlane (&planes)[3] = buf.fields[0];
 
   auto size = m_vaapiTextures[index]->GetTextureSize();
   planes[0].texwidth  = size.Width();
@@ -242,47 +236,24 @@ bool CRendererVAAPI::UploadTexture(int index)
   return true;
 }
 
-void CRendererVAAPI::AfterRenderHook(int idx)
+void CRendererVAAPI::AfterRenderHook(int index)
 {
-  if (glIsSync(m_fences[idx]))
-  {
-    glDeleteSync(m_fences[idx]);
-    m_fences[idx] = GL_NONE;
-  }
-  m_fences[idx] = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+  m_fences[index]->CreateFence();
 }
 
-bool CRendererVAAPI::NeedBuffer(int idx)
+bool CRendererVAAPI::NeedBuffer(int index)
 {
-  if (glIsSync(m_fences[idx]))
-  {
-    GLint state;
-    GLsizei length;
-    glGetSynciv(m_fences[idx], GL_SYNC_STATUS, 1, &length, &state);
-    if (state == GL_SIGNALED)
-    {
-      glDeleteSync(m_fences[idx]);
-      m_fences[idx] = GL_NONE;
-    }
-    else
-    {
-      return true;
-    }
-  }
-
-  return false;
+  return !m_fences[index]->IsSignaled();
 }
 
-void CRendererVAAPI::ReleaseBuffer(int idx)
+void CRendererVAAPI::ReleaseBuffer(int index)
 {
-  if (glIsSync(m_fences[idx]))
-  {
-    glDeleteSync(m_fences[idx]);
-    m_fences[idx] = GL_NONE;
-  }
+  m_fences[index]->DestroyFence();
+
   if (m_isVAAPIBuffer)
   {
-    m_vaapiTextures[idx]->Unmap();
+    m_vaapiTextures[index]->Unmap();
   }
-  CLinuxRendererGLES::ReleaseBuffer(idx);
+
+  CLinuxRendererGLES::ReleaseBuffer(index);
 }

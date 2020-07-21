@@ -7,20 +7,21 @@
  */
 
 #include "GUIViewStateVideo.h"
+
+#include "FileItem.h"
 #include "PlayListPlayer.h"
 #include "ServiceBroker.h"
-#include "filesystem/VideoDatabaseDirectory.h"
-#include "filesystem/Directory.h"
 #include "VideoDatabase.h"
+#include "filesystem/Directory.h"
+#include "filesystem/VideoDatabaseDirectory.h"
+#include "guilib/WindowIDs.h"
 #include "settings/MediaSettings.h"
 #include "settings/MediaSourceSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "FileItem.h"
-#include "guilib/WindowIDs.h"
-#include "view/ViewStateSettings.h"
 #include "utils/FileExtensionProvider.h"
 #include "utils/SortUtils.h"
+#include "view/ViewStateSettings.h"
 
 using namespace XFILE;
 using namespace VIDEODATABASEDIRECTORY;
@@ -379,7 +380,7 @@ VECSOURCES& CGUIViewStateWindowVideoNav::GetSources()
     CMediaSource share;
     share.strName=item->GetLabel();
     share.strPath = item->GetPath();
-    share.m_strThumbnailImage= item->GetIconImage();
+    share.m_strThumbnailImage = item->GetArt("icon");
     share.m_iDriveType = CMediaSource::SOURCE_TYPE_LOCAL;
     m_sources.push_back(share);
   }
@@ -539,7 +540,7 @@ void CGUIViewStateVideoTVShows::SaveViewState()
 
 CGUIViewStateVideoEpisodes::CGUIViewStateVideoEpisodes(const CFileItemList& items) : CGUIViewStateWindowVideo(items)
 {
-  if (0)//params.GetSeason() > -1)
+  if (false)//params.GetSeason() > -1)
   {
     AddSortMethod(SortByEpisodeNumber, 20359, LABEL_MASKS("%E. %T","%R"));  // Episode. Title, Rating | empty, empty
     AddSortMethod(SortByRating, 563, LABEL_MASKS("%E. %T", "%R"));  // Episode. Title, Rating | empty, empty

@@ -7,8 +7,9 @@
  */
 
 #include "guilib/guiinfo/GUIInfoLabel.h"
-#include "GUIInfoManager.h"
+
 #include "FileItem.h"
+#include "GUIInfoManager.h"
 #include "addons/Skin.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIListItem.h"
@@ -239,7 +240,7 @@ void CGUIInfoLabel::Parse(const std::string &label, int context)
     if (format != NONE)
     {
       if (pos1 > 0)
-        m_info.push_back(CInfoPortion(0, work.substr(0, pos1), ""));
+        m_info.emplace_back(0, work.substr(0, pos1), "");
 
       pos2 = StringUtils::FindEndBracket(work, '[', ']', pos1 + len);
       if (pos2 != std::string::npos)
@@ -257,7 +258,7 @@ void CGUIInfoLabel::Parse(const std::string &label, int context)
             if (info == 0)
               info = infoMgr.RegisterSkinVariableString(g_SkinInfo->CreateSkinVariable(params[0], context));
             if (info == 0) // skinner didn't define this conditional label!
-              CLog::Log(LOGWARNING, "Label Formating: $VAR[%s] is not defined", params[0].c_str());
+              CLog::Log(LOGWARNING, "Label Formatting: $VAR[%s] is not defined", params[0].c_str());
           }
           else
             info = infoMgr.TranslateString(params[0]);
@@ -266,7 +267,7 @@ void CGUIInfoLabel::Parse(const std::string &label, int context)
             prefix = params[1];
           if (params.size() > 2)
             postfix = params[2];
-          m_info.push_back(CInfoPortion(info, prefix, postfix, format == FORMATESCINFO || format == FORMATESCVAR));
+          m_info.emplace_back(info, prefix, postfix, format == FORMATESCINFO || format == FORMATESCVAR);
         }
         // and delete it from our work string
         work.erase(0, pos2 + 1);
@@ -281,7 +282,7 @@ void CGUIInfoLabel::Parse(const std::string &label, int context)
   while (format != NONE);
 
   if (!work.empty())
-    m_info.push_back(CInfoPortion(0, work, ""));
+    m_info.emplace_back(0, work, "");
 }
 
 CGUIInfoLabel::CInfoPortion::CInfoPortion(int info, const std::string &prefix, const std::string &postfix, bool escaped /*= false */):

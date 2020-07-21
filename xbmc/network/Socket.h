@@ -10,17 +10,18 @@
 
 #pragma once
 
-#include "PlatformDefs.h"
-
-#include <string.h>
 #include <map>
+#include <string.h>
 #include <vector>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "PlatformDefs.h"
 #ifdef TARGET_POSIX
 typedef int SOCKET;
 #endif
@@ -208,6 +209,8 @@ namespace SOCKETS
     CAddress m_addr;
 
   private:
+    bool CheckIPv6(int port, int range);
+
     bool m_ipv6Socket;
   };
 

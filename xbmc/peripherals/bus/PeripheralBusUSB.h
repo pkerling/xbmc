@@ -8,7 +8,7 @@
 
 #pragma once
 
-#if   defined(TARGET_WINDOWS_DESKTOP)
+#if defined(TARGET_WINDOWS_DESKTOP)
 #define HAVE_PERIPHERAL_BUS_USB 1
 #include "platform/win32/peripherals/PeripheralBusUSB.h"
 #elif defined(TARGET_WINDOWS_STORE)
@@ -23,7 +23,7 @@
 #elif defined(TARGET_FREEBSD) && defined(HAVE_LIBUSB)
 #define HAVE_PERIPHERAL_BUS_USB 1
 #include "platform/linux/peripherals/PeripheralBusUSBLibUSB.h"
-#elif defined(TARGET_DARWIN)
+#elif defined(TARGET_DARWIN_OSX)
 #define HAVE_PERIPHERAL_BUS_USB 1
 #include "platform/darwin/osx/peripherals/PeripheralBusUSB.h"
 #endif

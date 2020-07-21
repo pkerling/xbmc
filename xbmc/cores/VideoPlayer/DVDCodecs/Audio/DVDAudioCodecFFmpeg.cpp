@@ -14,9 +14,10 @@
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "DVDCodecs/DVDCodecs.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
 
 extern "C" {
-#include "libavutil/opt.h"
+#include <libavutil/opt.h>
 }
 
 CDVDAudioCodecFFmpeg::CDVDAudioCodecFFmpeg(CProcessInfo &processInfo) : CDVDAudioCodec(processInfo)
@@ -40,7 +41,7 @@ bool CDVDAudioCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
 {
   if (hints.cryptoSession)
   {
-    CLog::Log(LOGERROR,"CDVDAudioCodecFFmpeg::Open() CryptoSessions unsuppoted!");
+    CLog::Log(LOGERROR,"CDVDAudioCodecFFmpeg::Open() CryptoSessions unsupported!");
     return false;
   }
 
@@ -120,7 +121,8 @@ bool CDVDAudioCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
 
   m_codecName = "ff-" + std::string(m_pCodecContext->codec->name);
 
-  CLog::Log(LOGNOTICE,"CDVDAudioCodecFFmpeg::Open() Successful opened audio decoder %s", m_pCodecContext->codec->name);
+  CLog::Log(LOGINFO, "CDVDAudioCodecFFmpeg::Open() Successful opened audio decoder %s",
+            m_pCodecContext->codec->name);
 
   return true;
 }

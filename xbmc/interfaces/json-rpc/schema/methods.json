@@ -290,9 +290,6 @@
     "params": [
       { "name": "playerid", "$ref": "Player.Id", "required": true },
       { "name": "value", "required": true, "type": [
-          { "$ref": "Player.Position.Percentage", "required": true, "description": "Percentage value to seek to" },
-          { "$ref": "Player.Position.Time", "required": true, "description": "Time to seek to" },
-          { "type": "string", "enum": [ "smallforward", "smallbackward", "bigforward", "bigbackward" ], "required": true, "description": "Seek by predefined jumps" },
           { "type": "object", "properties": { "percentage": { "$ref": "Player.Position.Percentage", "required": true, "description": "Percentage value to seek to" } }, "additionalProperties": false, "required": true },
           { "type": "object", "properties": { "time": { "$ref": "Player.Position.Time", "required": true, "description": "Time to seek to" } }, "additionalProperties": false, "required": true },
           { "type": "object", "properties": { "step": { "type": "string", "enum": [ "smallforward", "smallbackward", "bigforward", "bigbackward" ], "required": true, "description": "Seek by predefined jumps" } }, "additionalProperties": false, "required": true },
@@ -334,6 +331,37 @@
       "required": true }
     ],
     "returns": "string"
+  },
+  "Player.SetViewMode": {
+    "type": "method",
+    "description": "Set view mode of video player",
+    "transport": "Response",
+    "permission": "ControlPlayback",
+    "params": [
+      { "name": "viewmode", "type": [
+          { "$ref": "Player.CustomViewMode", "description": "Custom view mode", "required": true },
+          { "name": "value", "$ref": "Player.ViewMode", "required": true}
+        ],
+      "required": true }
+    ],
+    "returns": "string"
+  },
+  "Player.GetViewMode": {
+    "type": "method",
+    "description": "Get view mode of video player",
+    "transport": "Response",
+    "permission": "ReadData",
+    "params": [],
+    "returns": {
+      "type": "object",
+      "properties": {
+        "viewmode": { "$ref": "Player.ViewMode", "required": true },
+        "zoom": { "type": "number", "required": true },
+        "pixelratio": { "type": "number", "required": true },
+        "verticalshift": { "type": "number", "required": true },
+        "nonlinearstretch": { "type": "boolean", "required": true }		
+        }
+      }
   },
   "Player.Rotate": {
     "type": "method",
@@ -666,7 +694,7 @@
   },
   "AudioLibrary.GetArtists": {
     "type": "method",
-    "description": "Retrieve all artists. For backward compatibility by default this implicity does not include those that only contribute other roles, however absolutely all artists can be returned using allroles=true",
+    "description": "Retrieve all artists. For backward compatibility by default this implicitly does not include those that only contribute other roles, however absolutely all artists can be returned using allroles=true",
     "transport": "Response",
     "permission": "ReadData",
     "params": [
@@ -809,9 +837,9 @@
           { "$ref": "List.Filter.Songs" }
         ]
       },
-      { "name": "includesingles", "type": "boolean", "default": true, "description": "Only songs from albums are returned when false, but overidden when singlesonly parameter is true" },
+      { "name": "includesingles", "type": "boolean", "default": true, "description": "Only songs from albums are returned when false, but overridden when singlesonly parameter is true" },
       { "name": "allroles", "type": "boolean", "default":false, "description": "Whether or not to include all roles when filtering by artist, rather than default of excluding other contributors. When true it overrides any role filter value." },
-      { "name": "singlesonly", "type": "boolean", "default": false, "description": "Only singles are returned when true, and overides includesingles parameter" }
+      { "name": "singlesonly", "type": "boolean", "default": false, "description": "Only singles are returned when true, and overrides includesingles parameter" }
     ],
     "returns": {
       "type": "object",
@@ -1031,7 +1059,10 @@
       { "name": "sortartist", "$ref": "Optional.String" },
       { "name": "displayartist", "$ref": "Optional.String" },
       { "name": "musicbrainzalbumartistid", "type": [ "null", { "$ref": "Array.String", "required": true } ], "default": null },
-      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null }
+      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
+      { "name": "isboxset", "$ref": "Optional.Boolean" },
+      { "name": "releasedate", "$ref": "Optional.String" },
+      { "name": "originaldate", "$ref": "Optional.String" }
     ],
     "returns": "string"
   },
@@ -1060,7 +1091,11 @@
       { "name": "displayartist", "$ref": "Optional.String" },
       { "name": "sortartist", "$ref": "Optional.String" },
       { "name": "mood", "$ref": "Optional.String" },
-      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null }
+      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
+      { "name": "disctitle", "$ref": "Optional.String" },
+      { "name": "releasedate", "$ref": "Optional.String" },
+      { "name": "originaldate", "$ref": "Optional.String" },
+      { "name": "bpm", "$ref": "Optional.Integer" }
     ],
     "returns": "string"
   },
@@ -1540,7 +1575,8 @@
     "params": [
       { "name": "setid", "$ref": "Library.Id", "required": true },
       { "name": "title", "$ref": "Optional.String" },
-      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null }
+      { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
+      { "name": "plot", "$ref": "Optional.String" }
     ],
     "returns": "string"
   },
@@ -1573,7 +1609,7 @@
       { "name": "ratings", "$ref": "Video.Ratings.Set" },
       { "name": "dateadded", "$ref": "Optional.String" },
       { "name": "runtime", "$ref": "Optional.Integer", "description": "Runtime in seconds" },
-      { "name": "status", "$ref": "Optional.String" },
+      { "name": "status", "$ref": "Optional.String", "description": "Valid values: 'returning series', 'in production', 'planned', 'cancelled', 'ended'" },
       { "name": "uniqueid", "type": [ "null", { "$ref": "Media.UniqueID.Set", "required": true } ], "default": null }
     ],
     "returns": "string"
@@ -1586,7 +1622,8 @@
     "params": [
       { "name": "seasonid", "$ref": "Library.Id", "required": true },
       { "name": "art", "type": [ "null", { "$ref": "Media.Artwork.Set", "required": true } ], "default": null },
-      { "name": "userrating", "$ref": "Optional.Integer" }
+      { "name": "userrating", "$ref": "Optional.Integer" },
+      { "name": "title", "$ref": "Optional.String" }
     ],
     "returns": "string"
   },
@@ -2309,6 +2346,18 @@
     ],
     "returns": "string"
   },
+  "Input.ButtonEvent": {
+    "type": "method",
+    "description": "Send a button press event",
+    "transport": "Response",
+    "permission": "Navigate",
+    "params": [
+      { "name": "button", "type": "string", "required": true, "description": "Button name" },
+      { "name": "keymap", "type": "string", "required": true, "description": "Keymap name (KB, XG, R1, or R2)", "enum": [ "KB", "XG", "R1", "R2" ] },
+      { "name": "holdtime", "type": "integer", "required": false, "minimum" : 0, "default" : 0, "description": "Number of milliseconds to simulate button hold." }
+    ],
+    "returns": "string"
+  },
   "Input.Left": {
     "type": "method",
     "description": "Navigate left in GUI",
@@ -2503,7 +2552,7 @@
     "params": [
       { "name": "title", "type": "string", "required": true },
       { "name": "type", "$ref": "Favourite.Type", "required": true },
-      { "name": "path", "$ref": "Optional.String", "description": "Required for media and script favourites types" },
+      { "name": "path", "$ref": "Optional.String", "description": "Required for media, script and androidapp favourites types" },
       { "name": "window", "$ref": "Optional.String", "description": "Required for window favourite type" },
       { "name": "windowparameter", "$ref": "Optional.String" },
       { "name": "thumbnail", "$ref": "Optional.String" }

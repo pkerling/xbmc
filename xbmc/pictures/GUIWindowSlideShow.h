@@ -8,14 +8,14 @@
 
 #pragma once
 
+#include "SlideShowPicture.h"
+#include "guilib/GUIDialog.h"
+#include "threads/Event.h"
+#include "threads/Thread.h"
+#include "utils/SortUtils.h"
+
 #include <memory>
 #include <set>
-#include "guilib/GUIDialog.h"
-#include "threads/Thread.h"
-#include "threads/CriticalSection.h"
-#include "threads/Event.h"
-#include "SlideShowPicture.h"
-#include "utils/SortUtils.h"
 
 class CFileItemList;
 class CVariant;
@@ -58,6 +58,7 @@ public:
   EVENT_RESULT OnMouseEvent(const CPoint &point, const CMouseEvent &event) override;
   bool OnAction(const CAction &action) override;
   void Render() override;
+  void RenderEx() override;
   void Process(unsigned int currentTime, CDirtyRegionList &regions) override;
   void OnDeinitWindow(int nextWindowID) override;
 

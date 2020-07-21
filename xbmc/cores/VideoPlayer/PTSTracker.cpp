@@ -7,11 +7,13 @@
  */
 
 #include "PTSTracker.h"
-#include "DVDClock.h"
+
 #include "DVDCodecs/DVDCodecUtils.h"
 #include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
+#include "utils/log.h"
+
+#include <algorithm>
 #include <cmath>
 
 #define MAXERR DVD_MSEC_TO_TIME(2.5)

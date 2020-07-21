@@ -453,11 +453,11 @@ namespace kodi
 namespace addon
 {
 
-  class CInstancePeripheral : public IAddonInstance
+  class ATTRIBUTE_HIDDEN CInstancePeripheral : public IAddonInstance
   {
   public:
     CInstancePeripheral()
-      : IAddonInstance(ADDON_INSTANCE_PERIPHERAL)
+      : IAddonInstance(ADDON_INSTANCE_PERIPHERAL, GetKodiTypeVersion(ADDON_INSTANCE_PERIPHERAL))
     {
       if (CAddonBase::m_interface->globalSingleInstance != nullptr)
         throw std::logic_error("kodi::addon::CInstancePeripheral: Creation of more as one in single instance way is not allowed!");
@@ -466,8 +466,10 @@ namespace addon
       CAddonBase::m_interface->globalSingleInstance = this;
     }
 
-    explicit CInstancePeripheral(KODI_HANDLE instance)
-      : IAddonInstance(ADDON_INSTANCE_PERIPHERAL)
+    explicit CInstancePeripheral(KODI_HANDLE instance, const std::string& kodiVersion = "")
+      : IAddonInstance(ADDON_INSTANCE_PERIPHERAL,
+                       !kodiVersion.empty() ? kodiVersion
+                                            : GetKodiTypeVersion(ADDON_INSTANCE_PERIPHERAL))
     {
       if (CAddonBase::m_interface->globalSingleInstance != nullptr)
         throw std::logic_error("kodi::addon::CInstancePeripheral: Creation of multiple together with single instance way is not allowed!");
@@ -531,8 +533,7 @@ namespace addon
     virtual void FreeEvents(unsigned int event_count, PERIPHERAL_EVENT* events) { }
 
     /*!
-     * @brief Send an input event to the specified peripheral
-     * @param peripheralIndex The index of the device receiving the input event
+     * @brief Send an input event to the peripheral
      * @param event The input event
      * @return true if the event was handled, false otherwise
      */
@@ -677,9 +678,9 @@ namespace addon
      * @param[optional] deviceName The name of the device to refresh, or empty/null for all devices
      * @param[optional] controllerId The controller ID to refresh, or empty/null for all controllers
      */
-    void RefreshButtonMaps(const std::string& strDeviceName = "", const std::string& strControllerId = "")
+    void RefreshButtonMaps(const std::string& deviceName = "", const std::string& controllerId = "")
     {
-      return m_instanceData->toKodi.refresh_button_maps(m_instanceData->toKodi.kodiInstance, strDeviceName.c_str(), strControllerId.c_str());
+      return m_instanceData->toKodi.refresh_button_maps(m_instanceData->toKodi.kodiInstance, deviceName.c_str(), controllerId.c_str());
     }
 
     /*!
@@ -690,9 +691,9 @@ namespace addon
      *
      * @return The number of features matching the request parameters
      */
-    unsigned int FeatureCount(const std::string& strControllerId, JOYSTICK_FEATURE_TYPE type = JOYSTICK_FEATURE_TYPE_UNKNOWN)
+    unsigned int FeatureCount(const std::string& controllerId, JOYSTICK_FEATURE_TYPE type = JOYSTICK_FEATURE_TYPE_UNKNOWN)
     {
-      return m_instanceData->toKodi.feature_count(m_instanceData->toKodi.kodiInstance, strControllerId.c_str(), type);
+      return m_instanceData->toKodi.feature_count(m_instanceData->toKodi.kodiInstance, controllerId.c_str(), type);
     }
 
     /*!
@@ -704,9 +705,9 @@ namespace addon
      * @return The type of the specified feature, or JOYSTICK_FEATURE_TYPE_UNKNOWN
      * if unknown
      */
-    JOYSTICK_FEATURE_TYPE FeatureType(const std::string& strControllerId, const std::string &featureName)
+    JOYSTICK_FEATURE_TYPE FeatureType(const std::string& controllerId, const std::string &featureName)
     {
-      return m_instanceData->toKodi.feature_type(m_instanceData->toKodi.kodiInstance, strControllerId.c_str(), featureName.c_str());
+      return m_instanceData->toKodi.feature_type(m_instanceData->toKodi.kodiInstance, controllerId.c_str(), featureName.c_str());
     }
 
   private:

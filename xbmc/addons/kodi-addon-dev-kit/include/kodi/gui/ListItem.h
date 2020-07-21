@@ -20,7 +20,7 @@ namespace gui
 
   class CWindow;
 
-  class CAddonGUIControlBase
+  class ATTRIBUTE_HIDDEN CAddonGUIControlBase
   {
   public:
     GUIHANDLE GetControlHandle() const { return m_controlHandle; }
@@ -69,7 +69,7 @@ namespace gui
   /// @brief **Library definition values**
   ///
 
-  class CListItem : public CAddonGUIControlBase
+  class ATTRIBUTE_HIDDEN CListItem : public CAddonGUIControlBase
   {
   public:
     //==========================================================================
@@ -182,43 +182,6 @@ namespace gui
     void SetLabel2(const std::string& label)
     {
       m_interface->kodi_gui->listItem->set_label2(m_interface->kodiBase, m_controlHandle, label.c_str());
-    }
-    //--------------------------------------------------------------------------
-
-    //==========================================================================
-    ///
-    /// \ingroup cpp_kodi_gui_CListItem
-    /// @brief To get current icon image of entry
-    ///
-    /// @return The current icon image path (if present)
-    ///
-    std::string GetIconImage()
-    {
-      std::string image;
-      char* ret = m_interface->kodi_gui->listItem->get_icon_image(m_interface->kodiBase, m_controlHandle);
-      if (ret != nullptr)
-      {
-        if (std::strlen(ret))
-          image = ret;
-        m_interface->free_string(m_interface->kodiBase, ret);
-      }
-      return image;
-    }
-    //--------------------------------------------------------------------------
-
-    //==========================================================================
-    ///
-    /// \ingroup cpp_kodi_gui_CListItem
-    /// @brief To set icon image of entry
-    ///
-    /// @param image                    The image to use for.
-    ///
-    /// @note Alternative can be \ref SetArt used
-    ///
-    ///
-    void SetIconImage(const std::string& image)
-    {
-      m_interface->kodi_gui->listItem->set_icon_image(m_interface->kodiBase, m_controlHandle, image.c_str());
     }
     //--------------------------------------------------------------------------
 

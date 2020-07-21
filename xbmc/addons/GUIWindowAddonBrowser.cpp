@@ -7,36 +7,34 @@
  */
 
 #include "GUIWindowAddonBrowser.h"
-#include "addons/AddonManager.h"
+
 #include "AddonSystemSettings.h"
-#include "addons/RepositoryUpdater.h"
+#include "ContextMenuManager.h"
+#include "FileItem.h"
 #include "GUIDialogAddonInfo.h"
-#include "addons/settings/GUIDialogAddonSettings.h"
-#include "dialogs/GUIDialogBusy.h"
-#include "dialogs/GUIDialogYesNo.h"
-#include "dialogs/GUIDialogSelect.h"
-#include "dialogs/GUIDialogFileBrowser.h"
 #include "GUIUserMessages.h"
+#include "LangInfo.h"
+#include "ServiceBroker.h"
+#include "URL.h"
+#include "addons/AddonInstaller.h"
+#include "addons/AddonManager.h"
+#include "addons/RepositoryUpdater.h"
+#include "dialogs/GUIDialogBusy.h"
+#include "dialogs/GUIDialogFileBrowser.h"
+#include "dialogs/GUIDialogSelect.h"
+#include "dialogs/GUIDialogYesNo.h"
+#include "filesystem/AddonsDirectory.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
-#include "utils/URIUtils.h"
-#include "URL.h"
-#include "FileItem.h"
-#include "ServiceBroker.h"
-#include "filesystem/AddonsDirectory.h"
-#include "addons/AddonInstaller.h"
+#include "input/Key.h"
 #include "messaging/helpers/DialogHelper.h"
+#include "settings/MediaSourceSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "settings/MediaSourceSettings.h"
+#include "storage/MediaManager.h"
 #include "threads/IRunnable.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
-#include "AddonDatabase.h"
-#include "storage/MediaManager.h"
-#include "LangInfo.h"
-#include "input/Key.h"
-#include "ContextMenuManager.h"
 
 #include <utility>
 
@@ -187,8 +185,8 @@ void CGUIWindowAddonBrowser::InstallFromZip()
   {
     // pop up filebrowser to grab an installed folder
     VECSOURCES shares = *CMediaSourceSettings::GetInstance().GetSources("files");
-    g_mediaManager.GetLocalDrives(shares);
-    g_mediaManager.GetNetworkLocations(shares);
+    CServiceBroker::GetMediaManager().GetLocalDrives(shares);
+    CServiceBroker::GetMediaManager().GetNetworkLocations(shares);
     std::string path;
     if (CGUIDialogFileBrowser::ShowAndGetFile(shares, "*.zip", g_localizeStrings.Get(24041), path))
     {
@@ -293,7 +291,7 @@ bool CGUIWindowAddonBrowser::GetDirectory(const std::string& strDirectory, CFile
     {
       for (int i = items.Size() - 1; i >= 0; i--)
       {
-        if (items[i]->GetAddonInfo() && !items[i]->GetAddonInfo()->Broken().empty())
+        if (items[i]->GetAddonInfo() && items[i]->GetAddonInfo()->IsBroken())
         {
           //check if it's installed
           AddonPtr addon;
@@ -316,9 +314,10 @@ void CGUIWindowAddonBrowser::UpdateStatus(const CFileItemPtr& item)
     return;
 
   unsigned int percent;
-  if (CAddonInstaller::GetInstance().GetProgress(item->GetProperty("Addon.ID").asString(), percent))
+  bool downloadFinshed;
+  if (CAddonInstaller::GetInstance().GetProgress(item->GetProperty("Addon.ID").asString(), percent, downloadFinshed))
   {
-    std::string progress = StringUtils::Format(g_localizeStrings.Get(24042).c_str(), percent);
+    std::string progress = StringUtils::Format(!downloadFinshed ? g_localizeStrings.Get(24042) : g_localizeStrings.Get(24044), percent);
     item->SetProperty("Addon.Status", progress);
     item->SetProperty("Addon.Downloading", true);
   }
@@ -424,7 +423,7 @@ int CGUIWindowAddonBrowser::SelectAddonID(const std::vector<ADDON::TYPE> &types,
         bool matchesType = false;
         for (std::vector<ADDON::TYPE>::const_iterator type = validTypes.begin(); type != validTypes.end(); ++type)
         {
-          if (pAddon->IsType(*type))
+          if (pAddon->HasType(*type))
           {
             matchesType = true;
             break;
@@ -493,7 +492,7 @@ int CGUIWindowAddonBrowser::SelectAddonID(const std::vector<ADDON::TYPE> &types,
     CFileItemPtr item(new CFileItem("", false));
     item->SetLabel(g_localizeStrings.Get(231));
     item->SetLabel2(g_localizeStrings.Get(24040));
-    item->SetIconImage("DefaultAddonNone.png");
+    item->SetArt("icon", "DefaultAddonNone.png");
     item->SetSpecialSort(SortSpecialOnTop);
     items.Add(item);
   }

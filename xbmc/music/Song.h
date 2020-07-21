@@ -13,11 +13,12 @@
 \brief
 */
 
-#include "utils/ISerializable.h"
-#include "XBDateTime.h"
-#include "utils/EmbeddedArt.h"
-#include "music/tags/ReplayGain.h"
 #include "Artist.h"
+#include "XBDateTime.h"
+#include "music/tags/ReplayGain.h"
+#include "utils/EmbeddedArt.h"
+#include "utils/ISerializable.h"
+
 #include <map>
 #include <string>
 #include <vector>
@@ -99,6 +100,11 @@ public:
   */
   const std::string GetAlbumArtistSort() const { return m_strAlbumArtistSort; }
 
+  /*! \brief Get disc subtitle string where one exists
+  \return disc subtitle as a single string
+  */
+  const std::string GetDiscSubtitle() const;
+
   /*! \brief Get composer sort name string
   \return composer sort name as a single string
   */
@@ -171,13 +177,21 @@ public:
   int votes;
   int iTrack;
   int iDuration;
-  int iYear;
+  std::string strOrigReleaseDate;
+  std::string strReleaseDate;
+  std::string strDiscSubtitle;
   int iTimesPlayed;
   CDateTime lastPlayed;
-  CDateTime dateAdded;
+  CDateTime dateAdded; // File creation or modification time, or when tags (re-)scanned
+  CDateTime dateUpdated; // Time db record Last modified
+  CDateTime dateNew;  // Time db record created
   int iStartOffset;
   int iEndOffset;
   bool bCompilation;
+  int iBPM;
+  int iSampleRate;
+  int iBitRate;
+  int iChannels;
   std::string strRecordLabel; // Record label from tag for album processing by CMusicInfoScanner::FileItemsToAlbums
   std::string strAlbumType; // (Musicbrainz release type) album type from tag for album processing by CMusicInfoScanner::FileItemsToAlbums
 

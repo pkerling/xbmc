@@ -8,12 +8,12 @@
 
 #pragma once
 
+#include "threads/CriticalSection.h"
+#include "threads/SingleLock.h"
+
 #include <iterator>
 #include <map>
 #include <memory>
-
-#include "threads/CriticalSection.h"
-#include "threads/SingleLock.h"
 
 namespace KODI
 {
@@ -23,7 +23,8 @@ using RegistrationIdentifierType = int;
 class ISignalHandlerData
 {
 protected:
-  ~ISignalHandlerData() {}
+  ~ISignalHandlerData() = default;
+
 public:
   virtual void Unregister(RegistrationIdentifierType id) = 0;
 };

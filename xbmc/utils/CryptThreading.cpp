@@ -7,14 +7,13 @@
  */
 
 #include "CryptThreading.h"
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+
 #include "threads/Thread.h"
 #include "utils/log.h"
 
-#include <openssl/crypto.h>
+#include <atomic>
 
-#define KODI_OPENSSL_NEEDS_LOCK_CALLBACK (OPENSSL_VERSION_NUMBER < 0x10100000L)
-
-#if KODI_OPENSSL_NEEDS_LOCK_CALLBACK
 namespace
 {
 
@@ -31,33 +30,38 @@ void lock_callback(int mode, int type, const char* file, int line)
     getlock(type)->unlock();
 }
 
-unsigned long thread_id()
+unsigned long GetCryptThreadId()
+{
+  static std::atomic<unsigned long> tidSequence{0};
+  static thread_local unsigned long tidTl{0};
+
+  if (tidTl == 0)
+    tidTl = ++tidSequence;
+  return tidTl;
+}
+
+void thread_id(CRYPTO_THREADID* tid)
 {
   // C-style cast required due to vastly differing native ID return types
-  return (unsigned long)CThread::GetCurrentThreadId();
+  CRYPTO_THREADID_set_numeric(tid, GetCryptThreadId());
 }
 
 }
-#endif
 
 CryptThreadingInitializer::CryptThreadingInitializer()
 {
-#if KODI_OPENSSL_NEEDS_LOCK_CALLBACK
   // OpenSSL < 1.1 needs integration code to support multi-threading
   // This is absolutely required for libcurl if it uses the OpenSSL backend
   m_locks.resize(CRYPTO_num_locks());
-  CRYPTO_set_id_callback(thread_id);
+  CRYPTO_THREADID_set_callback(thread_id);
   CRYPTO_set_locking_callback(lock_callback);
-#endif
 }
 
 CryptThreadingInitializer::~CryptThreadingInitializer()
 {
-#if KODI_OPENSSL_NEEDS_LOCK_CALLBACK
   CSingleLock l(m_locksLock);
   CRYPTO_set_locking_callback(nullptr);
   m_locks.clear();
-#endif
 }
 
 CCriticalSection* CryptThreadingInitializer::GetLock(int index)
@@ -72,6 +76,9 @@ CCriticalSection* CryptThreadingInitializer::GetLock(int index)
   return curlock.get();
 }
 
+unsigned long CryptThreadingInitializer::GetCurrentCryptThreadId()
+{
+  return GetCryptThreadId();
+}
 
-
-
+#endif

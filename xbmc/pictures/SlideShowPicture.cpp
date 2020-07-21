@@ -32,6 +32,8 @@ using namespace DirectX;
 using namespace Microsoft::WRL;
 #endif
 
+#include <cstddef>
+
 #define IMMEDIATE_TRANSITION_TIME          20
 
 #define PICTURE_MOVE_AMOUNT              0.02f
@@ -222,7 +224,6 @@ void CSlideShowPic::SetTexture_Internal(int iSlideNumber, CBaseTexture* pTexture
   m_bIsFinished = false;
   m_bDrawNextImage = false;
   m_bIsLoaded = true;
-  return ;
 }
 
 void CSlideShowPic::SetOriginalSize(int iOriginalWidth, int iOriginalHeight, bool bFullSize)
@@ -552,7 +553,7 @@ void CSlideShowPic::Process(unsigned int currentTime, CDirtyRegionList &dirtyreg
   // now render the image in the top right corner if we're zooming
   if (m_fZoomAmount == 1 || m_bIsComic)
   {
-    const float empty[4] = {0};
+    const float empty[4] = {};
     UpdateVertices(m_bx, m_by, empty, empty, dirtyregions);
     UpdateVertices(m_sx, m_sy, empty, empty, dirtyregions);
     UpdateVertices(m_ox, m_oy, empty, empty, dirtyregions);

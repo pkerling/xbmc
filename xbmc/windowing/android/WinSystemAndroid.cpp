@@ -8,32 +8,34 @@
 
 #include "WinSystemAndroid.h"
 
-#include <string.h>
-#include <float.h>
-
-#include "WinEventsAndroid.h"
 #include "OSScreenSaverAndroid.h"
 #include "ServiceBroker.h"
-#include "windowing/GraphicContext.h"
-#include "windowing/Resolution.h"
+#include "WinEventsAndroid.h"
+#include "addons/interfaces/platform/android/System.h"
+#include "cores/RetroPlayer/process/android/RPProcessInfoAndroid.h"
+#include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererOpenGLES.h"
+#include "cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodecAndroidMediaCodec.h"
+#include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAndroidMediaCodec.h"
+#include "cores/VideoPlayer/Process/android/ProcessInfoAndroid.h"
+#include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererMediaCodec.h"
+#include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererMediaCodecSurface.h"
+#include "guilib/DispResource.h"
+#include "rendering/gles/ScreenshotSurfaceGLES.h"
 #include "settings/DisplaySettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "guilib/DispResource.h"
-#include "utils/log.h"
 #include "threads/SingleLock.h"
-#include "platform/android/activity/XBMCApp.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+#include "windowing/Resolution.h"
 
-#include "cores/RetroPlayer/process/android/RPProcessInfoAndroid.h"
-#include "cores/RetroPlayer/rendering/VideoRenderers/RPRendererOpenGLES.h"
-#include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecAndroidMediaCodec.h"
-#include "cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodecAndroidMediaCodec.h"
-#include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererMediaCodec.h"
-#include "cores/VideoPlayer/VideoRenderers/HwDecRender/RendererMediaCodecSurface.h"
+#include "platform/android/activity/XBMCApp.h"
+#include "platform/android/media/decoderfilter/MediaCodecDecoderFilterManager.h"
+#include "platform/android/media/drm/MediaDrmCryptoSession.h"
 #include "platform/android/powermanagement/AndroidPowerSyscall.h"
-#include "addons/interfaces/platform/android/System.h"
-#include "platform/android/drm/MediaDrmCryptoSession.h"
-#include <androidjni/MediaCodecList.h>
+
+#include <float.h>
+#include <string.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglplatform.h>
@@ -50,7 +52,6 @@ CWinSystemAndroid::CWinSystemAndroid()
 
   m_stereo_mode = RENDER_STEREO_MODE_OFF;
 
-  m_dispResetState = RESET_NOTWAITING;
   m_dispResetTimer = new CTimer(this);
 
   m_android = nullptr;
@@ -61,10 +62,7 @@ CWinSystemAndroid::CWinSystemAndroid()
 
 CWinSystemAndroid::~CWinSystemAndroid()
 {
-  if(m_nativeWindow)
-  {
-    m_nativeWindow = nullptr;
-  }
+  m_nativeWindow = nullptr;
   delete m_dispResetTimer, m_dispResetTimer = nullptr;
 }
 
@@ -73,6 +71,9 @@ bool CWinSystemAndroid::InitWindowSystem()
   m_nativeDisplay = EGL_DEFAULT_DISPLAY;
 
   m_android = new CAndroidUtils();
+
+  m_decoderFilterManager = new(CMediaCodecDecoderFilterManager);
+  CServiceBroker::RegisterDecoderFilterManager(m_decoderFilterManager);
 
   CDVDVideoCodecAndroidMediaCodec::Register();
   CDVDAudioCodecAndroidMediaCodec::Register();
@@ -84,13 +85,23 @@ bool CWinSystemAndroid::InitWindowSystem()
   CRendererMediaCodecSurface::Register();
   ADDON::Interface_Android::Register();
   DRM::CMediaDrmCryptoSession::Register();
+  VIDEOPLAYER::CProcessInfoAndroid::Register();
+
+  CScreenshotSurfaceGLES::Register();
+
   return CWinSystemBase::InitWindowSystem();
 }
 
 bool CWinSystemAndroid::DestroyWindowSystem()
 {
+  CLog::Log(LOGINFO, "CWinSystemAndroid::%s", __FUNCTION__);
+
   delete m_android;
   m_android = nullptr;
+
+  CServiceBroker::RegisterDecoderFilterManager(nullptr);
+  delete m_decoderFilterManager;
+  m_decoderFilterManager = nullptr;
 
   return true;
 }
@@ -116,15 +127,22 @@ bool CWinSystemAndroid::CreateNewWindow(const std::string& name,
     (current_resolution.dwFlags & D3DPRESENTFLAG_MODEMASK) == (res.dwFlags & D3DPRESENTFLAG_MODEMASK) &&
     m_stereo_mode == stereo_mode)
   {
-    CLog::Log(LOGDEBUG, "CWinSystemEGL::CreateNewWindow: No need to create a new window");
+    CLog::Log(LOGDEBUG, "CWinSystemAndroid::CreateNewWindow: No need to create a new window");
     return true;
   }
+
+  m_dispResetTimer->Stop();
+  m_HdmiModeTriggered = false;
 
   m_stereo_mode = stereo_mode;
   m_bFullScreen = fullScreen;
 
   m_nativeWindow = CXBMCApp::GetNativeWindow(2000);
-
+  if (!m_nativeWindow)
+  {
+    CLog::Log(LOGERROR, "CWinSystemAndroid::CreateNewWindow: failed");
+    return false;
+  }
   m_android->SetNativeResolution(res);
 
   return true;
@@ -132,100 +150,133 @@ bool CWinSystemAndroid::CreateNewWindow(const std::string& name,
 
 bool CWinSystemAndroid::DestroyWindow()
 {
+  CLog::Log(LOGINFO, "CWinSystemAndroid::%s", __FUNCTION__);
+  m_nativeWindow = nullptr;
+  m_bWindowCreated = false;
   return true;
 }
 
 void CWinSystemAndroid::UpdateResolutions()
 {
+  UpdateResolutions(true);
+}
+
+void CWinSystemAndroid::UpdateResolutions(bool bUpdateDesktopRes)
+{
   CWinSystemBase::UpdateResolutions();
 
-  RESOLUTION_INFO resDesktop, curDisplay;
   std::vector<RESOLUTION_INFO> resolutions;
-
   if (!m_android->ProbeResolutions(resolutions) || resolutions.empty())
   {
-    CLog::Log(LOGWARNING, "%s: ProbeResolutions failed.",__FUNCTION__);
+    CLog::Log(LOGWARNING, "CWinSystemAndroid::%s failed.", __FUNCTION__);
   }
 
-  /* ProbeResolutions includes already all resolutions.
-   * Only get desktop resolution so we can replace xbmc's desktop res
-   */
-  if (m_android->GetNativeResolution(&curDisplay))
+  const RESOLUTION_INFO resWindow = CDisplaySettings::GetInstance().GetResolutionInfo(RES_WINDOW);
+
+  RESOLUTION_INFO resDesktop;
+  if (bUpdateDesktopRes)
   {
-    resDesktop = curDisplay;
+    // ProbeResolutions includes already all resolutions.
+    // Only get desktop resolution so we can replace Kodi's desktop res.
+    RESOLUTION_INFO curDisplay;
+    if (m_android->GetNativeResolution(&curDisplay))
+      resDesktop = curDisplay;
+  }
+  else
+  {
+    // Do not replace Kodi's desktop res, just update the data.
+    resDesktop = CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP);
   }
 
-  RESOLUTION res_index  = RES_CUSTOM;
+  CDisplaySettings::GetInstance().ClearCustomResolutions();
 
-  for (size_t i = 0; i < resolutions.size(); i++)
+  for (auto& res : resolutions)
   {
-    // if this is a new setting,
-    // create a new empty setting to fill in.
-    while ((int)CDisplaySettings::GetInstance().ResolutionInfoSize() <= res_index)
+    CServiceBroker::GetWinSystem()->GetGfxContext().ResetOverscan(res);
+    CDisplaySettings::GetInstance().AddResolutionInfo(res);
+
+    if (resDesktop.iScreenWidth == res.iScreenWidth &&
+        resDesktop.iScreenHeight == res.iScreenHeight &&
+        (resDesktop.dwFlags & D3DPRESENTFLAG_MODEMASK) == (res.dwFlags & D3DPRESENTFLAG_MODEMASK) &&
+        std::fabs(resDesktop.fRefreshRate - res.fRefreshRate) < FLT_EPSILON)
     {
-      RESOLUTION_INFO res;
-      CDisplaySettings::GetInstance().AddResolutionInfo(res);
+      CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP) = res;
     }
 
-    CServiceBroker::GetWinSystem()->GetGfxContext().ResetOverscan(resolutions[i]);
-    CDisplaySettings::GetInstance().GetResolutionInfo(res_index) = resolutions[i];
-
-    if(resDesktop.iWidth == resolutions[i].iWidth &&
-       resDesktop.iHeight == resolutions[i].iHeight &&
-       resDesktop.iScreenWidth == resolutions[i].iScreenWidth &&
-       resDesktop.iScreenHeight == resolutions[i].iScreenHeight &&
-       (resDesktop.dwFlags & D3DPRESENTFLAG_MODEMASK) == (resolutions[i].dwFlags & D3DPRESENTFLAG_MODEMASK) &&
-       fabs(resDesktop.fRefreshRate - resolutions[i].fRefreshRate) < FLT_EPSILON)
+    if (resWindow.iScreenWidth == res.iScreenWidth &&
+        resWindow.iScreenHeight == res.iScreenHeight &&
+        (resWindow.dwFlags & D3DPRESENTFLAG_MODEMASK) == (res.dwFlags & D3DPRESENTFLAG_MODEMASK) &&
+        std::fabs(resWindow.fRefreshRate - res.fRefreshRate) < FLT_EPSILON)
     {
-      CDisplaySettings::GetInstance().GetResolutionInfo(RES_DESKTOP) = resolutions[i];
+      CDisplaySettings::GetInstance().GetResolutionInfo(RES_WINDOW) = res;
     }
-    res_index = (RESOLUTION)((int)res_index + 1);
   }
 
-  unsigned int num_codecs = CJNIMediaCodecList::getCodecCount();
-  for (int i = 0; i < num_codecs; i++)
-  {
-    CJNIMediaCodecInfo codec_info = CJNIMediaCodecList::getCodecInfoAt(i);
-    if (codec_info.isEncoder())
-      continue;
-
-    std::string codecname = codec_info.getName();
-    CLog::Log(LOGNOTICE, "Mediacodec: %s", codecname.c_str());
-  }
+  CDisplaySettings::GetInstance().ApplyCalibrations();
 }
 
 void CWinSystemAndroid::OnTimeout()
 {
-  m_dispResetState = RESET_WAITEVENT;
-  SetHDMIState(true);
+  m_HdmiModeTriggered = true;
 }
 
-void CWinSystemAndroid::SetHDMIState(bool connected, uint32_t timeoutMs)
+void CWinSystemAndroid::InitiateModeChange()
+{
+  int delay = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(
+                  "videoscreen.delayrefreshchange") *
+              100;
+
+  if (delay < 2000)
+    delay = 2000;
+  m_dispResetTimer->Stop();
+  m_dispResetTimer->Start(delay);
+
+  SetHdmiState(false);
+}
+
+void CWinSystemAndroid::SetHdmiState(bool connected)
 {
   CSingleLock lock(m_resourceSection);
-  if (connected && m_dispResetState == RESET_WAITEVENT)
+  CLog::Log(LOGDEBUG, "CWinSystemAndroid::SetHdmiState: state: %d", static_cast<int>(connected));
+
+  if (connected)
   {
+    if (m_dispResetTimer->IsRunning())
+    {
+      // We stop the timer if OS supports HDMI_AUDIO_PLUG intent
+      // and configured delay is smaller than the time HDMI_PLUG took.
+      // Note that timer is always started with minimum of 2 seconds
+      // regardless if the configured delay is smaller
+      if (m_dispResetTimer->GetElapsedMilliseconds() >=
+          CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(
+              "videoscreen.delayrefreshchange") *
+              100)
+        m_dispResetTimer->Stop();
+      else
+        return;
+    }
+
     for (auto resource : m_resources)
       resource->OnResetDisplay();
+    m_dispResetTimer->Stop();
+    m_HdmiModeTriggered = false;
   }
-  else if (!connected)
+  else
   {
-    int delay = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt("videoscreen.delayrefreshchange") * 100;
-
-    if (timeoutMs > delay)
-      delay = timeoutMs;
-
-    if (delay > 0)
-    {
-       m_dispResetState = RESET_WAITTIMER;
-       m_dispResetTimer->Stop();
-       m_dispResetTimer->Start(delay);
-    }
-    else
-      m_dispResetState = RESET_WAITEVENT;
-
     for (auto resource : m_resources)
       resource->OnLostDisplay();
+  }
+}
+
+void CWinSystemAndroid::UpdateDisplayModes()
+{
+  // re-fetch display modes
+  m_android->UpdateDisplayModes();
+
+  if (m_nativeWindow)
+  {
+    // update display settings
+    UpdateResolutions(false);
   }
 }
 
@@ -261,6 +312,11 @@ void CWinSystemAndroid::MessagePush(XBMC_Event *newEvent)
 bool CWinSystemAndroid::MessagePump()
 {
   return m_winEvents->MessagePump();
+}
+
+bool CWinSystemAndroid::IsHDRDisplay()
+{
+  return m_android->IsHDRDisplay();
 }
 
 std::unique_ptr<WINDOWING::IOSScreenSaver> CWinSystemAndroid::GetOSScreenSaverImpl()

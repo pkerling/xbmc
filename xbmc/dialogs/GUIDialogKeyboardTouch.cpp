@@ -7,8 +7,8 @@
  */
 
 #include "GUIDialogKeyboardTouch.h"
-#if defined(TARGET_DARWIN_IOS)
-#include "platform/darwin/ios/IOSKeyboard.h"
+#if defined(TARGET_DARWIN_EMBEDDED)
+#include "platform/darwin/ios-common/DarwinEmbedKeyboard.h"
 #endif
 
 CGUIDialogKeyboardTouch::CGUIDialogKeyboardTouch()
@@ -21,8 +21,8 @@ CGUIDialogKeyboardTouch::CGUIDialogKeyboardTouch()
 
 bool CGUIDialogKeyboardTouch::ShowAndGetInput(char_callback_t pCallback, const std::string &initialString, std::string &typedString, const std::string &heading, bool bHiddenInput)
 {
-#if defined(TARGET_DARWIN_IOS)
-  m_keyboard.reset(new CIOSKeyboard());
+#if defined(TARGET_DARWIN_EMBEDDED)
+  m_keyboard.reset(new CDarwinEmbedKeyboard());
 #endif
 
   if (!m_keyboard)
@@ -61,7 +61,6 @@ void CGUIDialogKeyboardTouch::Cancel()
 {
   if (m_keyboard)
     m_keyboard->Cancel();
-  return;
 }
 
 int CGUIDialogKeyboardTouch::GetWindowId() const

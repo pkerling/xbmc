@@ -5,19 +5,20 @@
  *  SPDX-License-Identifier: GPL-2.0-or-later
  *  See LICENSES/README.md for more information.
  */
-#include <algorithm>
-#include <functional>
+#include "UDisks2Provider.h"
 
-#include "PosixMountProvider.h"
-#include "guilib/LocalizeStrings.h"
 #include "ServiceBroker.h"
+#include "guilib/LocalizeStrings.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
+#include "utils/log.h"
 
-#include "UDisks2Provider.h"
+#include "platform/posix/PosixMountProvider.h"
+
+#include <algorithm>
+#include <functional>
 
 #define BOOL2SZ(b) ((b) ? "true" : "false")
 
@@ -668,7 +669,7 @@ void CUDisks2Provider::ParseDriveProperty(Drive *drive, const char *key, DBusMes
         {
           const char *compatibility;
           dbus_message_iter_get_basic(&arrIter, &compatibility);
-          drive->m_mediaCompatibility.push_back(std::string(compatibility));
+          drive->m_mediaCompatibility.emplace_back(compatibility);
           dbus_message_iter_next(&arrIter);
         }
       }

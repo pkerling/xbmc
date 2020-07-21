@@ -7,24 +7,25 @@
  */
 
 #include "EventServer.h"
-#include "EventPacket.h"
-#include "EventClient.h"
-#include "Socket.h"
-#include "threads/CriticalSection.h"
+
 #include "Application.h"
+#include "EventClient.h"
+#include "EventPacket.h"
 #include "ServiceBroker.h"
-#include "interfaces/builtins/Builtins.h"
-#include "input/ActionTranslator.h"
-#include "threads/SingleLock.h"
+#include "Socket.h"
+#include "Util.h"
 #include "Zeroconf.h"
 #include "guilib/GUIAudioManager.h"
 #include "input/Key.h"
-#include "utils/log.h"
+#include "input/actions/ActionTranslator.h"
+#include "interfaces/builtins/Builtins.h"
+#include "threads/SingleLock.h"
 #include "utils/SystemInfo.h"
-#include "Util.h"
+#include "utils/log.h"
+
+#include <cassert>
 #include <map>
 #include <queue>
-#include <cassert>
 
 using namespace EVENTSERVER;
 using namespace EVENTPACKET;
@@ -133,7 +134,7 @@ void CEventServer::Process()
   {
     Run();
     if (!m_bStop)
-      Sleep(1000);
+      CThread::Sleep(1000);
   }
 }
 
@@ -142,7 +143,7 @@ void CEventServer::Run()
   CSocketListener listener;
   int packetSize = 0;
 
-  CLog::Log(LOGNOTICE, "ES: Starting UDP Event server on port %d", m_iPort);
+  CLog::Log(LOGINFO, "ES: Starting UDP Event server on port %d", m_iPort);
 
   Cleanup();
 
@@ -218,7 +219,7 @@ void CEventServer::Run()
     // BroadcastBeacon();
   }
 
-  CLog::Log(LOGNOTICE, "ES: UDP Event server stopped");
+  CLog::Log(LOGINFO, "ES: UDP Event server stopped");
   m_bRunning = false;
   Cleanup();
 }
@@ -283,7 +284,7 @@ void CEventServer::RefreshClients()
   {
     if (! (iter->second->Alive()))
     {
-      CLog::Log(LOGNOTICE, "ES: Client %s from %s timed out", iter->second->Name().c_str(),
+      CLog::Log(LOGINFO, "ES: Client %s from %s timed out", iter->second->Name().c_str(),
                 iter->second->Address().Address());
       delete iter->second;
       m_clients.erase(iter);

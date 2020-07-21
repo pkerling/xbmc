@@ -8,20 +8,30 @@
 
 #pragma once
 
-#include <drm_fourcc.h>
-#include <xf86drm.h>
-#include <xf86drmMode.h>
-#include <gbm.h>
+#include "GBMUtils.h"
+#include "windowing/Resolution.h"
+
+#include "platform/posix/utils/FileHandle.h"
+
 #include <map>
 #include <vector>
 
-#include "windowing/Resolution.h"
-#include "GBMUtils.h"
+#include <drm_fourcc.h>
+#include <gbm.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
+
+namespace KODI
+{
+namespace WINDOWING
+{
+namespace GBM
+{
 
 enum EPLANETYPE
 {
-  VIDEO_PLANE,
-  GUI_PLANE
+  KODI_VIDEO_PLANE,
+  KODI_GUI_PLANE,
 };
 
 struct drm_object
@@ -35,8 +45,14 @@ struct drm_object
 struct plane : drm_object
 {
   drmModePlanePtr plane = nullptr;
-  uint32_t format = DRM_FORMAT_XRGB8888;
+  bool useFallbackFormat{false};
   std::map<uint32_t, std::vector<uint64_t>> modifiers_map;
+
+  void SetFormat(uint32_t newFormat) { format = newFormat; }
+  uint32_t GetFormat() { return format; }
+
+private:
+  uint32_t format{DRM_FORMAT_XRGB8888};
 };
 
 struct connector : drm_object
@@ -73,19 +89,21 @@ public:
   virtual void DestroyDrm();
 
   std::string GetModule() const { return m_module; }
-  std::string GetDevicePath() const { return m_device_path; }
   int GetFileDescriptor() const { return m_fd; }
-  struct plane* GetPrimaryPlane() const { return m_primary_plane; }
-  struct plane* GetOverlayPlane() const { return m_overlay_plane; }
-  std::vector<uint64_t> *GetPrimaryPlaneModifiersForFormat(uint32_t format) { return &m_primary_plane->modifiers_map[format]; }
-  std::vector<uint64_t> *GetOverlayPlaneModifiersForFormat(uint32_t format) { return &m_overlay_plane->modifiers_map[format]; }
+  int GetRenderNodeFileDescriptor() const { return m_renderFd; }
+  struct plane* GetVideoPlane() const { return m_video_plane; }
+  struct plane* GetGuiPlane() const { return m_gui_plane; }
+  std::vector<uint64_t> *GetVideoPlaneModifiersForFormat(uint32_t format) { return &m_video_plane->modifiers_map[format]; }
+  std::vector<uint64_t> *GetGuiPlaneModifiersForFormat(uint32_t format) { return &m_gui_plane->modifiers_map[format]; }
   struct crtc* GetCrtc() const { return m_crtc; }
+  struct connector* GetConnector() const { return m_connector; }
 
   virtual RESOLUTION_INFO GetCurrentMode();
   virtual std::vector<RESOLUTION_INFO> GetModes();
   virtual bool SetMode(const RESOLUTION_INFO& res);
 
   bool SupportsProperty(struct drm_object *object, const char *name);
+  bool SupportsPropertyAndValue(struct drm_object* object, const char* name, uint64_t value);
   virtual bool AddProperty(struct drm_object *object, const char *name, uint64_t value) { return false; }
   virtual bool SetProperty(struct drm_object *object, const char *name, uint64_t value) { return false; }
 
@@ -99,12 +117,13 @@ protected:
   static bool GetProperties(int fd, uint32_t id, uint32_t type, struct drm_object *object);
   static void FreeProperties(struct drm_object *object);
 
-  int m_fd;
+  KODI::UTILS::POSIX::CFileHandle m_fd;
   struct connector *m_connector = nullptr;
   struct encoder *m_encoder = nullptr;
   struct crtc *m_crtc = nullptr;
-  struct plane *m_primary_plane = nullptr;
-  struct plane *m_overlay_plane = nullptr;
+  struct crtc* m_orig_crtc = nullptr;
+  struct plane *m_video_plane = nullptr;
+  struct plane *m_gui_plane = nullptr;
   drmModeModeInfo *m_mode = nullptr;
 
   int m_width = 0;
@@ -117,18 +136,23 @@ private:
   bool GetResources();
   bool FindConnector();
   bool FindEncoder();
-  bool FindCrtc();
+  bool FindCrtcs();
   bool FindPlanes();
   bool FindModifiersForPlane(struct plane *object);
   bool FindPreferredMode();
   bool RestoreOriginalMode();
   static void DrmFbDestroyCallback(struct gbm_bo *bo, void *data);
   RESOLUTION_INFO GetResolutionInfo(drmModeModeInfoPtr mode);
+  bool CheckConnector(int connectorId);
 
-  int m_crtc_index;
+  KODI::UTILS::POSIX::CFileHandle m_renderFd;
   std::string m_module;
-  std::string m_device_path;
 
   drmModeResPtr m_drm_resources = nullptr;
-  drmModeCrtcPtr m_orig_crtc = nullptr;
+
+  std::vector<crtc*> m_crtcs;
 };
+
+}
+}
+}

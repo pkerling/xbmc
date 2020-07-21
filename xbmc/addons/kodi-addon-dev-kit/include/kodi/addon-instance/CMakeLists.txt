@@ -1,9 +1,11 @@
 set(HEADERS AudioDecoder.h
             AudioEncoder.h
+            Game.h
             ImageDecoder.h
             Inputstream.h
             Peripheral.h
             PeripheralUtils.h
+            PVR.h
             Screensaver.h
             VFS.h
             VideoCodec.h

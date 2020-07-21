@@ -6,23 +6,38 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <stdint.h>
-#include <limits.h>
-#include <cassert>
-
 #include "AESinkPi.h"
+
 #include "ServiceBroker.h"
 #include "cores/AudioEngine/AESinkFactory.h"
 #include "cores/AudioEngine/Utils/AEUtil.h"
-#include "utils/log.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
+
 #include "platform/linux/RBP.h"
+
+#include <cassert>
+#include <limits.h>
+#include <stdint.h>
 
 #define CLASSNAME "CAESinkPi"
 
 #define NUM_OMX_BUFFERS 2
 #define AUDIO_PLAYBUFFER (0.1) // 100ms
+
+#ifdef OMX_SKIP64BIT
+static inline OMX_TICKS ToOMXTime(int64_t pts)
+{
+  OMX_TICKS ticks;
+  ticks.nLowPart = pts;
+  ticks.nHighPart = pts >> 32;
+  return ticks;
+}
+#else
+#define ToOMXTime(x) (x)
+#endif
 
 static const unsigned int PassthroughSampleRates[] = { 8000, 11025, 16000, 22050, 24000, 32000, 44100, 48000, 88200, 96000, 176400, 192000 };
 
@@ -49,9 +64,9 @@ void CAESinkPi::SetAudioDest()
   if ( m_omx_render.IsInitialized() )
   {
     if (m_output == AESINKPI_ANALOGUE)
-      strncpy((char *)audioDest.sName, "local", strlen("local"));
+      strncpy(reinterpret_cast<char*>(audioDest.sName), "local", strlen("local") + 1);
     else
-      strncpy((char *)audioDest.sName, "hdmi", strlen("hdmi"));
+      strncpy(reinterpret_cast<char*>(audioDest.sName), "hdmi", strlen("hdmi") + 1);
     omx_err = m_omx_render.SetConfig(OMX_IndexConfigBrcmAudioDestination, &audioDest);
     if (omx_err != OMX_ErrorNone)
       CLog::Log(LOGERROR, "%s::%s - m_omx_render.SetConfig omx_err(0x%08x)", CLASSNAME, __func__, omx_err);
@@ -59,9 +74,9 @@ void CAESinkPi::SetAudioDest()
   if ( m_omx_render_slave.IsInitialized() )
   {
     if (m_output != AESINKPI_ANALOGUE)
-      strncpy((char *)audioDest.sName, "local", strlen("local"));
+      strncpy(reinterpret_cast<char*>(audioDest.sName), "local", strlen("local") + 1);
     else
-      strncpy((char *)audioDest.sName, "hdmi", strlen("hdmi"));
+      strncpy(reinterpret_cast<char*>(audioDest.sName), "hdmi", strlen("hdmi") + 1);
     omx_err = m_omx_render_slave.SetConfig(OMX_IndexConfigBrcmAudioDestination, &audioDest);
     if (omx_err != OMX_ErrorNone)
       CLog::Log(LOGERROR, "%s::%s - m_omx_render_slave.SetConfig omx_err(0x%08x)", CLASSNAME, __func__, omx_err);
@@ -448,7 +463,7 @@ unsigned int CAESinkPi::AddPackets(uint8_t **data, unsigned int frames, unsigned
 {
   if (!m_Initialized || !m_omx_output || !frames)
   {
-    Sleep(10);
+    KODI::TIME::Sleep(10);
     return frames;
   }
   OMX_ERRORTYPE omx_err   = OMX_ErrorNone;
@@ -464,7 +479,7 @@ unsigned int CAESinkPi::AddPackets(uint8_t **data, unsigned int frames, unsigned
   GetDelay(status);
   double delay = status.GetDelay();
   if (delay <= 0.0 && m_submitted)
-    CLog::Log(LOGNOTICE, "%s:%s Underrun (delay:%.2f frames:%d)", CLASSNAME, __func__, delay, frames);
+    CLog::Log(LOGINFO, "%s:%s Underrun (delay:%.2f frames:%d)", CLASSNAME, __func__, delay, frames);
 
   omx_buffer = m_omx_output->GetInputBuffer(1000);
   if (omx_buffer == NULL)
@@ -495,7 +510,7 @@ unsigned int CAESinkPi::AddPackets(uint8_t **data, unsigned int frames, unsigned
   GetDelay(status);
   delay = status.GetDelay();
   if (delay > AUDIO_PLAYBUFFER)
-    Sleep((int)(1000.0f * (delay - AUDIO_PLAYBUFFER)));
+    KODI::TIME::Sleep(static_cast<int>(1000.0f * (delay - AUDIO_PLAYBUFFER)));
   return frames;
 }
 
@@ -505,7 +520,7 @@ void CAESinkPi::Drain()
   GetDelay(status);
   int delay = (int)(status.GetDelay() * 1000.0);
   if (delay)
-    Sleep(delay);
+    KODI::TIME::Sleep(delay);
   CLog::Log(LOGDEBUG, "%s:%s delay:%dms now:%dms", CLASSNAME, __func__, delay, (int)(status.GetDelay() * 1000.0));
 }
 

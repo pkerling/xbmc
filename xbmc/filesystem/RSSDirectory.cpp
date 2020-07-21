@@ -8,25 +8,25 @@
 
 #include "RSSDirectory.h"
 
-#include <climits>
-#include <utility>
-
 #include "CurlFile.h"
 #include "FileItem.h"
 #include "ServiceBroker.h"
+#include "URL.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
-#include "URL.h"
 #include "utils/FileExtensionProvider.h"
 #include "utils/HTMLUtil.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
+#include "utils/log.h"
 #include "video/VideoInfoTag.h"
+
+#include <climits>
+#include <utility>
 
 using namespace XFILE;
 using namespace MUSIC_INFO;
@@ -115,7 +115,7 @@ static void ParseItemMRSS(CFileItem* item, SResources& resources, TiXmlElement* 
     item_child->Attribute("bitrate", &res.bitrate);
     item_child->Attribute("duration", &res.duration);
     if(item_child->Attribute("fileSize"))
-      res.size     = _atoi64(item_child->Attribute("fileSize"));
+      res.size = std::atoll(item_child->Attribute("fileSize"));
 
     resources.push_back(res);
     ParseItem(item, resources, item_child, path);
@@ -267,7 +267,7 @@ static void ParseItemRSS(CFileItem* item, SResources& resources, TiXmlElement* i
     res.path = XMLUtils::GetAttribute(item_child, "url");
     res.mime = XMLUtils::GetAttribute(item_child, "type");
     if(len)
-      res.size = _atoi64(len);
+      res.size = std::atoll(len);
 
     resources.push_back(res);
   }
@@ -422,9 +422,9 @@ static void ParseItem(CFileItem* item, SResources& resources, TiXmlElement* root
 
 static bool FindMime(SResources resources, std::string mime)
 {
-  for(SResources::iterator it = resources.begin(); it != resources.end(); it++)
+  for (const auto& it : resources)
   {
-    if(StringUtils::StartsWithNoCase(it->mime, mime))
+    if (StringUtils::StartsWithNoCase(it.mime, mime))
       return true;
   }
   return false;

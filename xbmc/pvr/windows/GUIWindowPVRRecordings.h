@@ -8,35 +8,39 @@
 
 #pragma once
 
-#include "video/VideoThumbLoader.h"
-#include "video/VideoDatabase.h"
-
-#include "pvr/PVRSettings.h"
+#include "dialogs/GUIDialogContextMenu.h"
+#include "pvr/settings/PVRSettings.h"
 #include "pvr/windows/GUIWindowPVRBase.h"
+#include "video/VideoDatabase.h"
+#include "video/VideoThumbLoader.h"
+
+#include <string>
+
+class CFileItem;
 
 namespace PVR
 {
   class CGUIWindowPVRRecordingsBase : public CGUIWindowPVRBase
   {
   public:
-    CGUIWindowPVRRecordingsBase(bool bRadio, int id, const std::string &xmlFile);
+    CGUIWindowPVRRecordingsBase(bool bRadio, int id, const std::string& xmlFile);
     ~CGUIWindowPVRRecordingsBase() override;
 
     void OnWindowLoaded() override;
     bool OnMessage(CGUIMessage& message) override;
-    bool OnAction(const CAction &action) override;
-    void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
+    bool OnAction(const CAction& action) override;
+    void GetContextButtons(int itemNumber, CContextButtons& buttons) override;
     bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
-    bool Update(const std::string &strDirectory, bool updateFilterPath = true) override;
+    bool Update(const std::string& strDirectory, bool updateFilterPath = true) override;
     void UpdateButtons() override;
 
   protected:
-    std::string GetDirectoryPath(void) override;
-    void OnPrepareFileItems(CFileItemList &items) override;
-    bool GetFilteredItems(const std::string &filter, CFileItemList &items) override;
+    std::string GetDirectoryPath() override;
+    void OnPrepareFileItems(CFileItemList& items) override;
+    bool GetFilteredItems(const std::string& filter, CFileItemList& items) override;
 
   private:
-    bool OnContextButtonDeleteAll(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonDeleteAll(CFileItem* item, CONTEXT_BUTTON button);
 
     CVideoThumbLoader m_thumbLoader;
     CVideoDatabase m_database;

@@ -8,14 +8,15 @@
 
 #pragma once
 
-#include <Python.h>
-#include <string>
-#include <stdint.h>
-
-#include "interfaces/legacy/Exception.h"
 #include "interfaces/legacy/AddonClass.h"
+#include "interfaces/legacy/Exception.h"
 #include "interfaces/legacy/Window.h"
+
+#include <stdint.h>
+#include <string>
 #include <typeindex>
+
+#include <Python.h>
 
 namespace PythonBindings
 {
@@ -144,6 +145,8 @@ namespace PythonBindings
 
   void registerAddonClassTypeInformation(const TypeInfo* classInfo);
   const TypeInfo* getTypeInfoForInstance(XBMCAddon::AddonClass* obj);
+
+  int dummy_tp_init(PyObject* self, PyObject* args, PyObject* kwds);
 
   class Director
   {

@@ -14,12 +14,11 @@
 #include "guilib/GUIWindowManager.h"
 #include "guilib/IGUIContainer.h"
 #include "guilib/LocalizeStrings.h"
+#include "guilib/guiinfo/GUIInfoLabels.h"
 #include "playlists/PlayList.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
 #include "windows/GUIMediaWindow.h"
-
-#include "guilib/guiinfo/GUIInfoLabels.h"
 
 namespace KODI
 {
@@ -163,7 +162,11 @@ CGUIListItemPtr GetCurrentListItem(int contextWindow, int containerId /* = 0 */,
 {
   CGUIListItemPtr item;
 
-  if (containerId == 0  && itemOffset == 0 && !(itemFlags & INFOFLAG_LISTITEM_CONTAINER))
+  if (containerId == 0  &&
+      itemOffset == 0 &&
+      !(itemFlags & INFOFLAG_LISTITEM_CONTAINER) &&
+      !(itemFlags & INFOFLAG_LISTITEM_ABSOLUTE) &&
+      !(itemFlags & INFOFLAG_LISTITEM_POSITION))
     item = GetCurrentListItemFromWindow(contextWindow);
 
   if (!item)

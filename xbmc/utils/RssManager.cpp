@@ -8,29 +8,27 @@
 
 #include "RssManager.h"
 
-#include <utility>
-
+#include "ServiceBroker.h"
 #include "addons/AddonInstaller.h"
 #include "addons/AddonManager.h"
-#include "ServiceBroker.h"
 #include "filesystem/File.h"
 #include "interfaces/builtins/Builtins.h"
-#include "messaging/ApplicationMessenger.h"
 #include "messaging/helpers/DialogHelper.h"
 #include "profiles/ProfileManager.h"
-#include "settings/lib/Setting.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
 #include "threads/SingleLock.h"
-#include "utils/log.h"
 #include "utils/RssReader.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
+
+#include <utility>
 
 using namespace XFILE;
 using namespace KODI::MESSAGING;
 
-using KODI::MESSAGING::HELPERS::DialogResponse;
 
 CRssManager::CRssManager()
 {
@@ -125,7 +123,8 @@ bool CRssManager::Load()
     if (pSet->QueryIntAttribute("id", &iId) == TIXML_SUCCESS)
     {
       RssSet set;
-      set.rtl = pSet->Attribute("rtl") != NULL && strcasecmp(pSet->Attribute("rtl"), "true") == 0;
+      set.rtl = pSet->Attribute("rtl") != NULL &&
+                StringUtils::CompareNoCase(pSet->Attribute("rtl"), "true") == 0;
       const TiXmlElement* pFeed = pSet->FirstChildElement("feed");
       while (pFeed != NULL)
       {

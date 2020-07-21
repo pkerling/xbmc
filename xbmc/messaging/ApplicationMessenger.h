@@ -9,8 +9,8 @@
 #pragma once
 
 #include "guilib/WindowIDs.h"
-#include "threads/Thread.h"
 #include "messaging/ThreadMessage.h"
+#include "threads/Thread.h"
 
 #include <map>
 #include <memory>
@@ -76,10 +76,12 @@
 #define TMSG_PICTURE_SLIDESHOW            TMSG_MASK_APPLICATION + 26
 #define TMSG_LOADPROFILE                  TMSG_MASK_APPLICATION + 27
 #define TMSG_VIDEORESIZE                  TMSG_MASK_APPLICATION + 28
+#define TMSG_INHIBITSCREENSAVER           TMSG_MASK_APPLICATION + 29
 
 #define TMSG_SYSTEM_POWERDOWN             TMSG_MASK_APPLICATION + 30
 #define TMSG_RENDERER_PREINIT             TMSG_MASK_APPLICATION + 31
 #define TMSG_RENDERER_UNINIT              TMSG_MASK_APPLICATION + 32
+#define TMSG_EVENT                        TMSG_MASK_APPLICATION + 33
 
 #define TMSG_GUI_INFOLABEL                TMSG_MASK_GUIINFOMANAGER + 0
 #define TMSG_GUI_INFOBOOL                 TMSG_MASK_GUIINFOMANAGER + 1
@@ -400,7 +402,7 @@ public:
    * CApplication to determine if marshaling is required
    * \param thread The UI thread ID
    */
-  void SetGUIThread(ThreadIdentifier thread) { m_guiThreadId = thread; }
+  void SetGUIThread(const std::thread::id thread) { m_guiThreadId = thread; }
 
   /*
    * \brief Signals the shutdown of the application and message processing
@@ -421,7 +423,7 @@ private:
   std::queue<ThreadMessage*> m_vecWindowMessages; /*!< queue for UI messages */
   std::map<int, IMessageTarget*> m_mapTargets; /*!< a map of registered receivers indexed on the message mask*/
   CCriticalSection m_critSection;
-  ThreadIdentifier m_guiThreadId{0};
+  std::thread::id m_guiThreadId;
   bool m_bStop{ false };
 };
 }

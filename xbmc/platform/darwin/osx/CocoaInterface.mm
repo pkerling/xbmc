@@ -5,27 +5,23 @@
  *  SPDX-License-Identifier: GPL-2.0-or-later
  *  See LICENSES/README.md for more information.
  */
-#if !defined(__arm__) && !defined(__aarch64__)
-#import <unistd.h>
-#import <sys/mount.h>
+#import "CocoaInterface.h"
 
-#include "utils/log.h"
 #include "CompileInfo.h"
+#import "DllPaths_generated.h"
 #include "ServiceBroker.h"
+#include "utils/log.h"
 #include "windowing/osx/WinSystemOSX.h"
 
+#import <AudioToolbox/AudioToolbox.h>
+#import <AudioUnit/AudioUnit.h>
 #import <Cocoa/Cocoa.h>
-#import <QuartzCore/QuartzCore.h>
+#import <CoreServices/CoreServices.h>
 #import <OpenGL/OpenGL.h>
 #import <OpenGL/gl.h>
-#import <AudioUnit/AudioUnit.h>
-#import <AudioToolbox/AudioToolbox.h>
-#import <CoreServices/CoreServices.h>
-
-#import "CocoaInterface.h"
-#import "DllPaths_generated.h"
-
-#import "platform/darwin/AutoPool.h"
+#import <QuartzCore/QuartzCore.h>
+#import <sys/mount.h>
+#import <unistd.h>
 
 
 //display link for display management
@@ -36,7 +32,7 @@ CGDirectDisplayID Cocoa_GetDisplayIDFromScreen(NSScreen *screen);
 NSOpenGLContext* Cocoa_GL_GetCurrentContext(void)
 {
   CWinSystemOSX *winSystem = dynamic_cast<CWinSystemOSX*>(CServiceBroker::GetWinSystem());
-  return (NSOpenGLContext *)winSystem->GetNSOpenGLContext();
+  return winSystem->GetNSOpenGLContext();
 }
 
 uint32_t Cocoa_GL_GetCurrentDisplayID(void)
@@ -123,14 +119,12 @@ void Cocoa_CVDisplayLinkUpdate(void)
 
 void Cocoa_DoAppleScript(const char* scriptSource)
 {
-  CCocoaAutoPool pool;
-
-  NSDictionary* errorDict;
-  NSAppleEventDescriptor* returnDescriptor = NULL;
-  NSAppleScript* scriptObject = [[NSAppleScript alloc] initWithSource:
-    [NSString stringWithUTF8String:scriptSource]];
-  returnDescriptor = [scriptObject executeAndReturnError: &errorDict];
-  [scriptObject release];
+  @autoreleasepool
+  {
+    auto scriptObject =
+        [[NSAppleScript alloc] initWithSource:[NSString stringWithUTF8String:scriptSource]];
+    [scriptObject executeAndReturnError:nil];
+  }
 }
 
 void Cocoa_DoAppleScriptFile(const char* filePath)
@@ -168,17 +162,15 @@ void Cocoa_DoAppleScriptFile(const char* filePath)
 
   NSAppleScript* appleScript = [[NSAppleScript alloc] initWithContentsOfURL:[NSURL fileURLWithPath:scriptFile] error:nil];
   [appleScript executeAndReturnError:nil];
-  [appleScript release];
 }
 
 char* Cocoa_MountPoint2DeviceName(char *path)
 {
-  CCocoaAutoPool pool;
   // if physical DVDs, libdvdnav wants "/dev/rdiskN" device name for OSX,
   // path will get realloc'ed and replaced IF this is a physical DVD.
   char* strDVDDevice;
   strDVDDevice = strdup(path);
-  if (strncasecmp(strDVDDevice, "/Volumes/", 9) == 0)
+  if (StringUtils::CompareNoCase(strDVDDevice, "/Volumes/", 9) == 0)
   {
     struct statfs *mntbufp;
     int i, mounts;
@@ -187,7 +179,7 @@ char* Cocoa_MountPoint2DeviceName(char *path)
     mounts = getmntinfo(&mntbufp, MNT_WAIT);  // NOT THREAD SAFE!
     for (i = 0; i < mounts; i++)
     {
-      if( !strcasecmp(mntbufp[i].f_mntonname, strDVDDevice) )
+      if (!StringUtils::CompareNoCase(mntbufp[i].f_mntonname, strDVDDevice))
       {
         // Replace "/dev/" with "/dev/r"
         path = (char*)realloc(path, strlen(mntbufp[i].f_mntfromname) + 2 );
@@ -203,33 +195,37 @@ char* Cocoa_MountPoint2DeviceName(char *path)
 
 bool Cocoa_GetVolumeNameFromMountPoint(const std::string &mountPoint, std::string &volumeName)
 {
-  CCocoaAutoPool pool;
-  NSFileManager *fm = [NSFileManager defaultManager];
-  NSArray *mountedVolumeUrls = [fm mountedVolumeURLsIncludingResourceValuesForKeys:@[ NSURLVolumeNameKey, NSURLPathKey ] options:0];
-  bool resolved = false;
-
-  for (NSURL *volumeURL in mountedVolumeUrls)
+  @autoreleasepool
   {
-    NSString *path;
-    BOOL success = [volumeURL getResourceValue:&path forKey:NSURLPathKey error:nil];
+    NSFileManager* fm = [NSFileManager defaultManager];
+    NSArray* mountedVolumeUrls =
+        [fm mountedVolumeURLsIncludingResourceValuesForKeys:@[ NSURLVolumeNameKey, NSURLPathKey ]
+                                                    options:0];
+    bool resolved = false;
 
-    if (success && path != nil)
+    for (NSURL* volumeURL in mountedVolumeUrls)
     {
-      std::string mountpoint = [path UTF8String];
-      if (mountpoint == mountPoint)
+      NSString* path;
+      BOOL success = [volumeURL getResourceValue:&path forKey:NSURLPathKey error:nil];
+
+      if (success && path != nil)
       {
-        NSString *name;
-        success = [volumeURL getResourceValue:&name forKey:NSURLVolumeNameKey error:nil];
-        if (success && name != nil)
+        std::string mountpoint = [path UTF8String];
+        if (mountpoint == mountPoint)
         {
-          volumeName = [name UTF8String];
-          resolved = true;
-          break;
+          NSString* name;
+          success = [volumeURL getResourceValue:&name forKey:NSURLVolumeNameKey error:nil];
+          if (success && name != nil)
+          {
+            volumeName = [name UTF8String];
+            resolved = true;
+            break;
+          }
         }
       }
     }
+    return resolved;
   }
-  return resolved;
 }
 
 void Cocoa_HideMouse()
@@ -256,5 +252,3 @@ const char *Cocoa_Paste()
 
   return NULL;
 }
-
-#endif

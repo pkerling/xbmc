@@ -20,13 +20,12 @@
 #include "utils/URIUtils.h"
 #include "guilib/Texture.h"
 #include "guilib/imagefactory.h"
-#include "cores/FFmpeg.h"
 #if defined(TARGET_RASPBERRY_PI)
 #include "cores/omxplayer/OMXImage.h"
 #endif
 
 extern "C" {
-#include "libswscale/swscale.h"
+#include <libswscale/swscale.h>
 }
 
 using namespace XFILE;
@@ -215,12 +214,13 @@ bool CPicture::CacheTexture(uint8_t *pixels, uint32_t width, uint32_t height, ui
   uint32_t max_height = advancedSettings->m_imageRes;
   if (advancedSettings->m_fanartRes > advancedSettings->m_imageRes)
   { // 16x9 images larger than the fanart res use that rather than the image res
-    if (fabsf(static_cast<float>(width) / static_cast<float>(height) / (16.0f / 9.0f) - 1.0f) <= 0.01f &&
-        height >= advancedSettings->m_fanartRes)
+    if (fabsf(static_cast<float>(width) / static_cast<float>(height) / (16.0f / 9.0f) - 1.0f)
+        <= 0.01f)
     {
-      max_height = advancedSettings->m_fanartRes;
+      max_height = advancedSettings->m_fanartRes; // use height defined in fanartRes
     }
   }
+
   uint32_t max_width = max_height * 16/9;
 
   dest_height = std::min(dest_height, max_height);

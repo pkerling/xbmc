@@ -7,11 +7,12 @@
  */
 
 #include "GUIDialogMediaFilter.h"
+
 #include "DbUrl.h"
 #include "FileItem.h"
 #include "GUIUserMessages.h"
-#include "XBDateTime.h"
 #include "ServiceBroker.h"
+#include "XBDateTime.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
@@ -20,11 +21,12 @@
 #include "playlists/SmartPlayList.h"
 #include "settings/SettingUtils.h"
 #include "settings/lib/Setting.h"
+#include "settings/lib/SettingDefinitions.h"
 #include "settings/windows/GUIControlSettings.h"
-#include "utils/log.h"
 #include "utils/SortUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
 #include "video/VideoDatabase.h"
 #include "video/VideoDbUrl.h"
 
@@ -103,6 +105,7 @@ static const CGUIDialogMediaFilter::Filter filterList[] = {
 
   { "albums",       FieldAlbum,         556,    SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
 //  { "albums",       FieldArtist,        557,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
+  { "albums",       FieldDiscTitle,     38076,  SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
   { "albums",       FieldAlbumArtist,   566,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "albums",       FieldSource,      39030,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "albums",       FieldRating,        563,    SettingType::Number,  "range",  "number",   CDatabaseQueryRule::OPERATOR_BETWEEN },
@@ -112,9 +115,12 @@ static const CGUIDialogMediaFilter::Filter filterList[] = {
   { "albums",       FieldGenre,         515,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "albums",       FieldMusicLabel,    21899,  SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "albums",       FieldCompilation,   204,    SettingType::Boolean, "toggle", "",         CDatabaseQueryRule::OPERATOR_FALSE },
+  { "albums",       FieldIsBoxset,      38074,  SettingType::Boolean, "toggle", "",         CDatabaseQueryRule::OPERATOR_FALSE },
+  { "albums",       FieldOrigYear,      38078,  SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
 
   { "songs",        FieldTitle,         556,    SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
   { "songs",        FieldAlbum,         558,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
+  { "songs",        FieldDiscTitle,   38076,    SettingType::String,  "edit",   "string",   CDatabaseQueryRule::OPERATOR_CONTAINS },
   { "songs",        FieldArtist,        557,    SettingType::List,    "list",   "string",   CDatabaseQueryRule::OPERATOR_EQUALS },
   { "songs",        FieldTime,          180,    SettingType::Integer, "range",  "time",     CDatabaseQueryRule::OPERATOR_BETWEEN },
   { "songs",        FieldRating,        563,    SettingType::Number,  "range",  "number",   CDatabaseQueryRule::OPERATOR_BETWEEN },
@@ -147,10 +153,10 @@ bool CGUIDialogMediaFilter::OnMessage(CGUIMessage& message)
         m_filter->Reset();
         m_filter->SetType(m_mediaType);
 
-        for (std::map<std::string, Filter>::iterator filter = m_filters.begin(); filter != m_filters.end(); filter++)
+        for (auto& filter : m_filters)
         {
-          filter->second.rule = NULL;
-          filter->second.setting->Reset();
+          filter.second.rule = nullptr;
+          filter.second.setting->Reset();
         }
 
         TriggerFilter();
@@ -258,8 +264,8 @@ void CGUIDialogMediaFilter::OnSettingChanged(std::shared_ptr<const CSetting> set
         filter.rule = AddRule(filter.field, filter.ruleOperator);
 
       filter.rule->m_parameter.clear();
-      for (std::vector<CVariant>::const_iterator itValue = values.begin(); itValue != values.end(); ++itValue)
-        filter.rule->m_parameter.push_back(itValue->asString());
+      for (const auto& itValue : values)
+        filter.rule->m_parameter.push_back(itValue.asString());
     }
     else
       remove = true;
@@ -399,11 +405,11 @@ void CGUIDialogMediaFilter::InitializeSettings()
     Filter filter = f;
 
     // check the smartplaylist if it contains a matching rule
-    for (CDatabaseQueryRules::iterator rule = m_filter->m_ruleCombination.m_rules.begin(); rule != m_filter->m_ruleCombination.m_rules.end(); rule++)
+    for (auto& rule : m_filter->m_ruleCombination.m_rules)
     {
-      if ((*rule)->m_field == filter.field)
+      if (rule->m_field == filter.field)
       {
-        filter.rule = (CSmartPlaylistRule *)rule->get();
+        filter.rule = static_cast<CSmartPlaylistRule*>(rule.get());
         handledRules++;
         break;
       }
@@ -430,9 +436,9 @@ void CGUIDialogMediaFilter::InitializeSettings()
         value = filter.rule->m_operator == CDatabaseQueryRule::OPERATOR_TRUE ? CHECK_YES : CHECK_NO;
 
       TranslatableIntegerSettingOptions entries;
-      entries.push_back(std::pair<int, int>(CHECK_LABEL_ALL, CHECK_ALL));
-      entries.push_back(std::pair<int, int>(CHECK_LABEL_NO,  CHECK_NO));
-      entries.push_back(std::pair<int, int>(CHECK_LABEL_YES, CHECK_YES));
+      entries.push_back(TranslatableIntegerSettingOption(CHECK_LABEL_ALL, CHECK_ALL));
+      entries.push_back(TranslatableIntegerSettingOption(CHECK_LABEL_NO, CHECK_NO));
+      entries.push_back(TranslatableIntegerSettingOption(CHECK_LABEL_YES, CHECK_YES));
 
       filter.setting = AddSpinner(group, settingId, filter.label, SettingLevel::Basic, value, entries, true);
     }
@@ -576,22 +582,22 @@ bool CGUIDialogMediaFilter::SetPath(const std::string &path)
 
 void CGUIDialogMediaFilter::UpdateControls()
 {
-  for (std::map<std::string, Filter>::iterator itFilter = m_filters.begin(); itFilter != m_filters.end(); itFilter++)
+  for (const auto& itFilter : m_filters)
   {
-    if (itFilter->second.controlType != "list")
+    if (itFilter.second.controlType != "list")
       continue;
 
     std::vector<std::string> items;
-    int size = GetItems(itFilter->second, items, true);
+    int size = GetItems(itFilter.second, items, true);
 
-    std::string label = g_localizeStrings.Get(itFilter->second.label);
-    BaseSettingControlPtr control = GetSettingControl(itFilter->second.setting->GetId());
+    std::string label = g_localizeStrings.Get(itFilter.second.label);
+    BaseSettingControlPtr control = GetSettingControl(itFilter.second.setting->GetId());
     if (control == NULL)
       continue;
 
     if (size <= 0 ||
-       (size == 1 && itFilter->second.field != FieldSet && itFilter->second.field != FieldTag))
-       CONTROL_DISABLE(control->GetID());
+        (size == 1 && itFilter.second.field != FieldSet && itFilter.second.field != FieldTag))
+      CONTROL_DISABLE(control->GetID());
     else
     {
       CONTROL_ENABLE(control->GetID());
@@ -733,7 +739,7 @@ void CGUIDialogMediaFilter::DeleteRule(Field field)
   }
 }
 
-void CGUIDialogMediaFilter::GetStringListOptions(SettingConstPtr setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data)
+void CGUIDialogMediaFilter::GetStringListOptions(SettingConstPtr setting, std::vector<StringSettingOption> &list, std::string &current, void *data)
 {
   if (setting == NULL || data == NULL)
     return;
@@ -748,8 +754,8 @@ void CGUIDialogMediaFilter::GetStringListOptions(SettingConstPtr setting, std::v
   if (mediaFilter->GetItems(itFilter->second, items, false) <= 0)
     return;
 
-  for (std::vector<std::string>::const_iterator item = items.begin(); item != items.end(); ++item)
-    list.push_back(make_pair(*item, *item));
+  for (const auto& item : items)
+    list.emplace_back(item, item);
 }
 
 void CGUIDialogMediaFilter::GetRange(const Filter &filter, int &min, int &interval, int &max)

@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include <string>
-
 #include "interfaces/json-rpc/IClient.h"
 #include "interfaces/json-rpc/ITransportLayer.h"
 #include "network/httprequesthandler/IHTTPRequestHandler.h"
+
+#include <string>
 
 class CHTTPJsonRpcHandler : public IHTTPRequestHandler
 {
@@ -24,7 +24,7 @@ public:
   IHTTPRequestHandler* Create(const HTTPRequest &request) const override { return new CHTTPJsonRpcHandler(request); }
   bool CanHandleRequest(const HTTPRequest &request) const override;
 
-  int HandleRequest() override;
+  MHD_RESULT HandleRequest() override;
 
   HttpResponseRanges GetResponseData() const override;
 

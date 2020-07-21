@@ -9,22 +9,15 @@
 #pragma once
 
 #include "OMXCore.h"
-
-#include <IL/OMX_Video.h>
-
-#include "OMXClock.h"
-#if defined(STANDALONE)
-#define XB_FMT_A8R8G8B8 1
-#include "File.h"
-#else
 #include "filesystem/File.h"
 #include "guilib/XBTF.h"
-#endif
+#include "threads/Thread.h"
 
-#include "system_gl.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#include "threads/Thread.h"
+#include <IL/OMX_Video.h>
+
+#include "system_gl.h"
 
 class COMXImageFile;
 
@@ -81,12 +74,12 @@ public:
   COMXImageFile();
   virtual ~COMXImageFile();
   bool ReadFile(const std::string& inputFile, int orientation = 0);
-  int  GetOrientation() { return m_orientation; };
-  unsigned int GetWidth()  { return m_width; };
-  unsigned int GetHeight() { return m_height; };
-  unsigned long GetImageSize() { return m_image_size; };
-  const uint8_t *GetImageBuffer() { return (const uint8_t *)m_image_buffer; };
-  const char *GetFilename() { return m_filename.c_str(); };
+  int  GetOrientation() const { return m_orientation; };
+  unsigned int GetWidth() const { return m_width; };
+  unsigned int GetHeight() const { return m_height; };
+  unsigned long GetImageSize() const { return m_image_size; };
+  const uint8_t *GetImageBuffer() const { return (const uint8_t *)m_image_buffer; };
+  const char *GetFilename() const { return m_filename.c_str(); };
 protected:
   OMX_IMAGE_CODINGTYPE GetCodingType(unsigned int &width, unsigned int &height, int orientation);
   uint8_t           *m_image_buffer;
@@ -106,9 +99,9 @@ public:
   // Required overrides
   void Close();
   bool Decode(const uint8_t *data, unsigned size, unsigned int width, unsigned int height, unsigned stride, void *pixels);
-  unsigned int GetDecodedWidth() { return (unsigned int)m_decoded_format.format.image.nFrameWidth; };
-  unsigned int GetDecodedHeight() { return (unsigned int)m_decoded_format.format.image.nFrameHeight; };
-  unsigned int GetDecodedStride() { return (unsigned int)m_decoded_format.format.image.nStride; };
+  unsigned int GetDecodedWidth() const { return (unsigned int)m_decoded_format.format.image.nFrameWidth; };
+  unsigned int GetDecodedHeight() const { return (unsigned int)m_decoded_format.format.image.nFrameHeight; };
+  unsigned int GetDecodedStride() const { return (unsigned int)m_decoded_format.format.image.nStride; };
 protected:
   bool HandlePortSettingChange(unsigned int resize_width, unsigned int resize_height, unsigned int resize_stride);
   // Components

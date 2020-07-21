@@ -149,7 +149,7 @@ void DllLibCurlGlobal::CheckIdle()
   {
     if (!it->m_busy && (XbmcThreads::SystemClockMillis() - it->m_idletimestamp) > idletime)
     {
-      CLog::Log(LOGINFO, "%s - Closing session to %s://%s (easy=%p, multi=%p)\n", __FUNCTION__,
+      CLog::Log(LOGDEBUG, "%s - Closing session to %s://%s (easy=%p, multi=%p)", __FUNCTION__,
                 it->m_protocol.c_str(), it->m_hostname.c_str(), static_cast<void*>(it->m_easy),
                 static_cast<void*>(it->m_multi));
 
@@ -176,30 +176,29 @@ void DllLibCurlGlobal::easy_acquire(const char* protocol,
 
   CSingleLock lock(m_critSection);
 
-  VEC_CURLSESSIONS::iterator it;
-  for (it = m_sessions.begin(); it != m_sessions.end(); ++it)
+  for (auto& it : m_sessions)
   {
-    if (!it->m_busy)
+    if (!it.m_busy)
     {
       /* allow reuse of requester is trying to connect to same host */
       /* curl will take care of any differences in username/password */
-      if (it->m_protocol.compare(protocol) == 0 && it->m_hostname.compare(hostname) == 0)
+      if (it.m_protocol.compare(protocol) == 0 && it.m_hostname.compare(hostname) == 0)
       {
-        it->m_busy = true;
+        it.m_busy = true;
         if (easy_handle)
         {
-          if (!it->m_easy)
-            it->m_easy = easy_init();
+          if (!it.m_easy)
+            it.m_easy = easy_init();
 
-          *easy_handle = it->m_easy;
+          *easy_handle = it.m_easy;
         }
 
         if (multi_handle)
         {
-          if (!it->m_multi)
-            it->m_multi = multi_init();
+          if (!it.m_multi)
+            it.m_multi = multi_init();
 
-          *multi_handle = it->m_multi;
+          *multi_handle = it.m_multi;
         }
 
         return;
@@ -226,9 +225,7 @@ void DllLibCurlGlobal::easy_acquire(const char* protocol,
 
   m_sessions.push_back(session);
 
-  CLog::Log(LOGINFO, "%s - Created session to %s://%s\n", __FUNCTION__, protocol, hostname);
-
-  return;
+  CLog::Log(LOGDEBUG, "%s - Created session to %s://%s", __FUNCTION__, protocol, hostname);
 }
 
 void DllLibCurlGlobal::easy_release(CURL_HANDLE** easy_handle, CURLM** multi_handle)
@@ -250,16 +247,15 @@ void DllLibCurlGlobal::easy_release(CURL_HANDLE** easy_handle, CURLM** multi_han
     *multi_handle = NULL;
   }
 
-  VEC_CURLSESSIONS::iterator it;
-  for (it = m_sessions.begin(); it != m_sessions.end(); ++it)
+  for (auto& it : m_sessions)
   {
-    if (it->m_easy == easy && (multi == NULL || it->m_multi == multi))
+    if (it.m_easy == easy && (multi == nullptr || it.m_multi == multi))
     {
       /* reset session so next caller doesn't reuse options, only connections */
       /* will reset verbose too so it won't print that it closed connections on cleanup*/
       easy_reset(easy);
-      it->m_busy = false;
-      it->m_idletimestamp = XbmcThreads::SystemClockMillis();
+      it.m_busy = false;
+      it.m_idletimestamp = XbmcThreads::SystemClockMillis();
       return;
     }
   }
@@ -269,12 +265,11 @@ CURL_HANDLE* DllLibCurlGlobal::easy_duphandle(CURL_HANDLE* easy_handle)
 {
   CSingleLock lock(m_critSection);
 
-  VEC_CURLSESSIONS::iterator it;
-  for (it = m_sessions.begin(); it != m_sessions.end(); ++it)
+  for (const auto& it : m_sessions)
   {
-    if (it->m_easy == easy_handle)
+    if (it.m_easy == easy_handle)
     {
-      SSession session = *it;
+      SSession session = it;
       session.m_easy = DllLibCurl::easy_duphandle(easy_handle);
       m_sessions.push_back(session);
       return session.m_easy;
@@ -296,12 +291,11 @@ void DllLibCurlGlobal::easy_duplicate(CURL_HANDLE* easy,
   if (multi_out && multi)
     *multi_out = DllLibCurl::multi_init();
 
-  VEC_CURLSESSIONS::iterator it;
-  for (it = m_sessions.begin(); it != m_sessions.end(); ++it)
+  for (const auto& it : m_sessions)
   {
-    if (it->m_easy == easy)
+    if (it.m_easy == easy)
     {
-      SSession session = *it;
+      SSession session = it;
       if (easy_out && easy)
         session.m_easy = *easy_out;
       else
@@ -316,6 +310,5 @@ void DllLibCurlGlobal::easy_duplicate(CURL_HANDLE* easy,
       return;
     }
   }
-  return;
 }
 } // namespace XCURL

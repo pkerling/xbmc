@@ -7,26 +7,27 @@
  */
 
 #include "DirectoryNode.h"
-#include "utils/URIUtils.h"
-#include "QueryParams.h"
-#include "DirectoryNodeRoot.h"
-#include "DirectoryNodeOverview.h"
-#include "DirectoryNodeGrouped.h"
-#include "DirectoryNodeTitleMovies.h"
-#include "DirectoryNodeTitleTvShows.h"
-#include "DirectoryNodeMoviesOverview.h"
-#include "DirectoryNodeTvShowsOverview.h"
-#include "DirectoryNodeSeasons.h"
+
 #include "DirectoryNodeEpisodes.h"
+#include "DirectoryNodeGrouped.h"
 #include "DirectoryNodeInProgressTvShows.h"
-#include "DirectoryNodeRecentlyAddedMovies.h"
-#include "DirectoryNodeRecentlyAddedEpisodes.h"
+#include "DirectoryNodeMoviesOverview.h"
 #include "DirectoryNodeMusicVideosOverview.h"
+#include "DirectoryNodeOverview.h"
+#include "DirectoryNodeRecentlyAddedEpisodes.h"
+#include "DirectoryNodeRecentlyAddedMovies.h"
 #include "DirectoryNodeRecentlyAddedMusicVideos.h"
+#include "DirectoryNodeRoot.h"
+#include "DirectoryNodeSeasons.h"
+#include "DirectoryNodeTitleMovies.h"
 #include "DirectoryNodeTitleMusicVideos.h"
-#include "URL.h"
+#include "DirectoryNodeTitleTvShows.h"
+#include "DirectoryNodeTvShowsOverview.h"
 #include "FileItem.h"
+#include "QueryParams.h"
+#include "URL.h"
 #include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
 
 using namespace XFILE::VIDEODATABASEDIRECTORY;
 
@@ -79,7 +80,7 @@ void CDirectoryNode::GetDatabaseInfo(const std::string& strPath, CQueryParams& p
 {
   std::unique_ptr<CDirectoryNode> pNode(CDirectoryNode::ParseURL(strPath));
 
-  if (!pNode.get())
+  if (!pNode)
     return;
 
   pNode->CollectQueryParams(params);
@@ -244,7 +245,7 @@ bool CDirectoryNode::GetChilds(CFileItemList& items)
   std::unique_ptr<CDirectoryNode> pNode(CDirectoryNode::CreateNode(GetChildType(), "", this));
 
   bool bSuccess=false;
-  if (pNode.get())
+  if (pNode)
   {
     pNode->m_options = m_options;
     bSuccess = pNode->GetContent(items);

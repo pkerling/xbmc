@@ -6,40 +6,40 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "system.h"
 #include "DVDVideoCodecFFmpeg.h"
-#include "DVDDemuxers/DVDDemux.h"
-#include "DVDStreamInfo.h"
-#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+
 #include "DVDCodecs/DVDCodecs.h"
-#include "DVDCodecs/DVDCodecUtils.h"
 #include "DVDCodecs/DVDFactoryCodec.h"
+#include "DVDStreamInfo.h"
 #include "ServiceBroker.h"
-#include "utils/CPUInfo.h"
+#include "cores/VideoPlayer/Interface/Addon/TimingConstants.h"
+#include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
+#include "cores/VideoSettings.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "cores/VideoSettings.h"
-#include "utils/log.h"
-#include "cores/VideoPlayer/VideoRenderers/RenderManager.h"
-#include "cores/VideoPlayer/VideoRenderers/RenderInfo.h"
+#include "utils/CPUInfo.h"
 #include "utils/StringUtils.h"
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
+
 #include <memory>
 
+#include "system.h"
+
 extern "C" {
-#include "libavutil/opt.h"
-#include "libavutil/mastering_display_metadata.h"
-#include "libavfilter/avfilter.h"
-#include "libavfilter/buffersink.h"
-#include "libavfilter/buffersrc.h"
-#include "libavutil/pixdesc.h"
+#include <libavutil/opt.h>
+#include <libavutil/mastering_display_metadata.h>
+#include <libavfilter/avfilter.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
+#include <libavutil/pixdesc.h>
 }
 
 #ifndef TARGET_POSIX
 #define RINT(x) ((x) >= 0 ? ((int)((x) + 0.5)) : ((int)((x) - 0.5)))
 #else
 #include <math.h>
-#include "platform/linux/XTimeUtils.h"
 #define RINT lrint
 #endif
 
@@ -219,7 +219,8 @@ void CDVDVideoCodecFFmpeg::CDropControl::Process(int64_t pts, bool drop)
       m_diffPTS = m_diffPTS / m_count;
       if (m_diffPTS > 0)
       {
-        CLog::Log(LOGNOTICE, "CDVDVideoCodecFFmpeg::CDropControl: calculated diff time: %" PRId64, m_diffPTS);
+        CLog::Log(LOGINFO, "CDVDVideoCodecFFmpeg::CDropControl: calculated diff time: %" PRId64,
+                  m_diffPTS);
         m_state = CDropControl::VALID;
         m_count = 0;
       }
@@ -232,7 +233,7 @@ void CDVDVideoCodecFFmpeg::CDropControl::Process(int64_t pts, bool drop)
       m_count++;
       if (m_count > 5)
       {
-        CLog::Log(LOGNOTICE, "CDVDVideoCodecFFmpeg::CDropControl: lost diff");
+        CLog::Log(LOGINFO, "CDVDVideoCodecFFmpeg::CDropControl: lost diff");
         Reset(true);
       }
     }
@@ -320,7 +321,7 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
 {
   if (hints.cryptoSession)
   {
-    CLog::Log(LOGERROR,"CDVDVideoCodecFFmpeg::Open() CryptoSessions unsuppoted!");
+    CLog::Log(LOGERROR,"CDVDVideoCodecFFmpeg::Open() CryptoSessions unsupported!");
     return false;
   }
 
@@ -345,7 +346,8 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
     return false;
   }
 
-  CLog::Log(LOGNOTICE,"CDVDVideoCodecFFmpeg::Open() Using codec: %s",pCodec->long_name ? pCodec->long_name : pCodec->name);
+  CLog::Log(LOGINFO, "CDVDVideoCodecFFmpeg::Open() Using codec: %s",
+            pCodec->long_name ? pCodec->long_name : pCodec->name);
 
   m_pCodecContext = avcodec_alloc_context3(pCodec);
   if (!m_pCodecContext)
@@ -367,7 +369,7 @@ bool CDVDVideoCodecFFmpeg::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options
     }
     else
     {
-      int num_threads = g_cpuInfo.getCPUCount() * 3 / 2;
+      int num_threads = CServiceBroker::GetCPUInfo()->GetCPUCount() * 3 / 2;
       num_threads = std::max(1, std::min(num_threads, 16));
       m_pCodecContext->thread_count = num_threads;
       m_pCodecContext->thread_safe_callbacks = 1;
@@ -968,10 +970,11 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(VideoPicture* pVideoPicture)
   }
 
   pVideoPicture->chroma_position = m_pCodecContext->chroma_sample_location;
-  pVideoPicture->color_primaries = m_pCodecContext->color_primaries;
-  pVideoPicture->color_transfer = m_pCodecContext->color_trc;
-  pVideoPicture->color_space = m_pCodecContext->colorspace;
+  pVideoPicture->color_primaries = m_pCodecContext->color_primaries == AVCOL_PRI_UNSPECIFIED ? m_hints.colorPrimaries : m_pCodecContext->color_primaries;
+  pVideoPicture->color_transfer = m_pCodecContext->color_trc == AVCOL_TRC_UNSPECIFIED ? m_hints.colorTransferCharacteristic : m_pCodecContext->color_trc;
+  pVideoPicture->color_space = m_pCodecContext->colorspace == AVCOL_SPC_UNSPECIFIED ? m_hints.colorSpace : m_pCodecContext->colorspace;
   pVideoPicture->colorBits = 8;
+
   // determine how number of bits of encoded video
   if (m_pCodecContext->pix_fmt == AV_PIX_FMT_YUV420P12)
     pVideoPicture->colorBits = 12;
@@ -989,7 +992,7 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(VideoPicture* pVideoPicture)
     m_pCodecContext->pix_fmt == AV_PIX_FMT_YUVJ420P)
     pVideoPicture->color_range = 1;
   else
-    pVideoPicture->color_range = 0;
+    pVideoPicture->color_range = m_hints.colorRange == AVCOL_RANGE_JPEG ? 1 : 0;
 
   pVideoPicture->qp_table = av_frame_get_qp_table(m_pFrame,
                                                   &pVideoPicture->qstride,
@@ -1005,10 +1008,20 @@ bool CDVDVideoCodecFFmpeg::GetPictureCommon(VideoPicture* pVideoPicture)
     pVideoPicture->displayMetadata = *(AVMasteringDisplayMetadata *)sd->data;
     pVideoPicture->hasDisplayMetadata = true;
   }
+  else if (m_hints.masteringMetadata)
+  {
+    pVideoPicture->displayMetadata = *m_hints.masteringMetadata.get();
+    pVideoPicture->hasDisplayMetadata = true;
+  }
   sd = av_frame_get_side_data(m_pFrame, AV_FRAME_DATA_CONTENT_LIGHT_LEVEL);
   if (sd)
   {
     pVideoPicture->lightMetadata = *(AVContentLightMetadata *)sd->data;
+    pVideoPicture->hasLightMetadata = true;
+  }
+  else if (m_hints.contentLightMetadata)
+  {
+    pVideoPicture->lightMetadata = *m_hints.contentLightMetadata.get();
     pVideoPicture->hasLightMetadata = true;
   }
 
@@ -1150,7 +1163,7 @@ int CDVDVideoCodecFFmpeg::FilterOpen(const std::string& filters, bool scale)
     return result;
   }
 
-  if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(LOGVIDEO))
+  if (CServiceBroker::GetLogging().CanLogComponent(LOGVIDEO))
   {
     char* graphDump = avfilter_graph_dump(m_pFilterGraph, nullptr);
     if (graphDump)

@@ -18,20 +18,19 @@
 */
 
 #include "SMBDirectory.h"
+
+#include "FileItem.h"
+#include "PasswordManager.h"
+#include "ServiceBroker.h"
 #include "Util.h"
 #include "guilib/LocalizeStrings.h"
-#include "FileItem.h"
-#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/StringUtils.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
 #include "threads/SingleLock.h"
-#include "PasswordManager.h"
-#ifdef TARGET_POSIX
-#include "platform/linux/XTimeUtils.h"
-#endif
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/XTimeUtils.h"
+#include "utils/log.h"
 
 #include <libsmbclient.h>
 
@@ -158,9 +157,9 @@ bool CSMBDirectory::GetDirectory(const CURL& url, CFileItemList &items)
         }
       }
 
-      FILETIME fileTime, localTime;
-      TimeTToFileTime(lTimeDate, &fileTime);
-      FileTimeToLocalFileTime(&fileTime, &localTime);
+      KODI::TIME::FileTime fileTime, localTime;
+      KODI::TIME::TimeTToFileTime(lTimeDate, &fileTime);
+      KODI::TIME::FileTimeToLocalFileTime(&fileTime, &localTime);
 
       if (bIsDir)
       {

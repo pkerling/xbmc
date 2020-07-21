@@ -24,9 +24,9 @@
 
 // ffmpeg
 extern "C" {
-#include "libavformat/avformat.h"
-#include "libavcodec/avcodec.h"
-#include "libavutil/avutil.h"
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavutil/avutil.h>
 }
 
 class IAESink;
@@ -73,6 +73,7 @@ public:
     RECONFIGURE,
     SUSPEND,
     DEVICECHANGE,
+    DEVICECOUNTCHANGE,
     MUTE,
     VOLUME,
     PAUSESTREAM,
@@ -184,7 +185,7 @@ public:
   void GetSyncInfo(CAESyncInfo& info, CActiveAEStream *stream);
   float GetCacheTime(CActiveAEStream *stream);
   float GetCacheTotal();
-  float GetMaxDelay();
+  float GetMaxDelay() const;
   float GetWaterLevel();
   void SetSuspended(bool state);
   void SetCurrentSinkFormat(const AEAudioFormat& SinkFormat);
@@ -254,6 +255,7 @@ public:
   bool IsSettingVisible(const std::string &settingId) override;
   void KeepConfiguration(unsigned int millis) override;
   void DeviceChange() override;
+  void DeviceCountChange(std::string driver) override;
   bool GetCurrentSinkFormat(AEAudioFormat &SinkFormat) override;
 
   void RegisterAudioCallback(IAudioCallback* pCallback) override;
@@ -329,6 +331,7 @@ protected:
   unsigned int m_extKeepConfig;
   bool m_extDeferData;
   std::queue<time_t> m_extLastDeviceChange;
+  bool m_extSuspended = false;
   bool m_isWinSysReg = false;
 
   enum

@@ -7,27 +7,27 @@
  */
 #include "BlurayDirectory.h"
 
-#include "filesystem/BlurayCallback.h"
-#include "utils/log.h"
-#include "utils/URIUtils.h"
-#include "utils/StringUtils.h"
-#include "URL.h"
+#include "File.h"
 #include "FileItem.h"
 #include "LangInfo.h"
-#include "video/VideoInfoTag.h"
+#include "URL.h"
+#include "filesystem/BlurayCallback.h"
 #include "guilib/LocalizeStrings.h"
+#include "utils/LangCodeExpander.h"
+#include "utils/RegExp.h"
+#include "utils/StringUtils.h"
+#include "utils/URIUtils.h"
+#include "utils/log.h"
+#include "video/VideoInfoTag.h"
 
-#include <cassert>
 #include <array>
+#include <cassert>
 #include <climits>
 #include <stdlib.h>
 #include <string>
-#include "utils/LangCodeExpander.h"
-#include "File.h"
-#include "utils/RegExp.h"
 
-#include <libbluray/bluray.h>
 #include <libbluray/bluray-version.h>
+#include <libbluray/bluray.h>
 #include <libbluray/filesystem.h>
 #include <libbluray/log_control.h>
 
@@ -127,7 +127,7 @@ CFileItemPtr CBlurayDirectory::GetTitle(const BLURAY_TITLE_INFO* title, const st
   chap = StringUtils::Format(g_localizeStrings.Get(25007).c_str(), title->chapter_count, StringUtils::SecondsToTimeString(duration).c_str());
   item->SetLabel2(chap);
   item->m_dwSize = 0;
-  item->SetIconImage("DefaultVideo.png");
+  item->SetArt("icon", "DefaultVideo.png");
   for(unsigned int i = 0; i < title->clip_count; ++i)
     item->m_dwSize += title->clips[i].pkt_count * 192;
 
@@ -188,7 +188,7 @@ void CBlurayDirectory::GetRoot(CFileItemList &items)
     item->SetPath(path.Get());
     item->m_bIsFolder = true;
     item->SetLabel(g_localizeStrings.Get(25002) /* All titles */);
-    item->SetIconImage("DefaultVideoPlaylists.png");
+    item->SetArt("icon", "DefaultVideoPlaylists.png");
     items.Add(item);
 
     const BLURAY_DISC_INFO* disc_info = bd_get_disc_info(m_bd);
@@ -203,7 +203,7 @@ void CBlurayDirectory::GetRoot(CFileItemList &items)
     item->SetPath(path.Get());
     item->m_bIsFolder = false;
     item->SetLabel(g_localizeStrings.Get(25003) /* Menus */);
-    item->SetIconImage("DefaultProgram.png");
+    item->SetArt("icon", "DefaultProgram.png");
     items.Add(item);
 }
 

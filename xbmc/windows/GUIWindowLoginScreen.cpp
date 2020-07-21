@@ -7,6 +7,7 @@
  */
 
 #include "GUIWindowLoginScreen.h"
+
 #include "FileItem.h"
 #include "GUIPassword.h"
 #include "ServiceBroker.h"
@@ -23,11 +24,10 @@
 #include "profiles/Profile.h"
 #include "profiles/ProfileManager.h"
 #include "profiles/dialogs/GUIDialogProfileSettings.h"
-#include "pvr/PVRGUIActions.h"
 #include "pvr/PVRManager.h"
+#include "pvr/guilib/PVRGUIActions.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
 #include "view/ViewState.h"

@@ -6,9 +6,10 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "video/VideoInfoScanner.h"
 #include "FileItem.h"
-#include "gtest/gtest.h"
+#include "video/VideoInfoScanner.h"
+
+#include <gtest/gtest.h>
 
 using namespace VIDEO;
 using ::testing::Test;
@@ -60,4 +61,4 @@ TEST_P(TestVideoInfoScanner, EnumerateEpisodeItem)
     EXPECT_EQ(expected[i], result[i]);
 }
 
-INSTANTIATE_TEST_CASE_P(VideoInfoScanner, TestVideoInfoScanner, ValuesIn(TestData));
+INSTANTIATE_TEST_SUITE_P(VideoInfoScanner, TestVideoInfoScanner, ValuesIn(TestData));

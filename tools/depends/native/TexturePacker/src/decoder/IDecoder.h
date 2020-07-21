@@ -26,32 +26,41 @@
 class RGBAImage
 {
 public:
-  RGBAImage() : pixels(NULL), width(0), height(0), bbp(0), pitch(0) {}
+  RGBAImage() = default;
 
-  char *pixels;//image data
-  int width;// width
-  int height;// height
-  int bbp;// bits per pixel
-  int pitch;// rowsize in bytes
+  char* pixels = nullptr; // image data
+  int width = 0; // width
+  int height = 0; // height
+  int bbp = 0; // bits per pixel
+  int pitch = 0; // rowsize in bytes
 };
 
 class DecodedFrame
 {
-  public:
-   DecodedFrame() : delay(0) { }
-   RGBAImage	rgbaImage;				/* rgbaimage for this frame */
-   int				delay;					/* Frame delay in ms */
+public:
+  DecodedFrame() = default;
+  RGBAImage rgbaImage; /* rgbaimage for this frame */
+  int delay = 0; /* Frame delay in ms */
 };
 
 class DecodedFrames
 {
   public:
-    DecodedFrames(): user(NULL) {}
+    DecodedFrames() = default;
     std::vector<DecodedFrame> frameList;
-    void     *user;         /* used internally*/
+    void* user = nullptr; /* used internally*/
+    void (*destroyFN)(void*) = nullptr;
 
     void clear()
     {
+      for (auto f : frameList)
+      {
+        delete[] f.rgbaImage.pixels;
+      }
+      if (destroyFN)
+      {
+        destroyFN(user);
+      }
       frameList.clear();
       user = NULL;
     }

@@ -143,6 +143,7 @@ Function HandleKodiInDestDir
       StrCpy $CleanDestDir "0"
       Abort
     done:
+	MessageBox MB_OK|MB_ICONINFORMATION "All binary add-ons (e.g. pvr, visualizations, inputstream, etc) that were previously included by default in the installer have been moved to the Kodi repository. You will have to install the ones you previously used from the repository.$\nYour add-on settings are kept intact and will be used again after installing the add-on."
   ${EndIf}
 FunctionEnd
 
@@ -228,6 +229,8 @@ Section "${APP_NAME}" SecAPP
                  "HelpLink" "${WEBSITE}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" \
                  "URLInfoAbout" "${WEBSITE}"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP_NAME}" \
+                 "DisplayVersion" "${VERSION_NUMBER}"
 
 SectionEnd
 
@@ -325,14 +328,14 @@ SectionEnd
 ;vs redist installer Section
 SectionGroup "Microsoft Visual C++ packages" SEC_VCREDIST
 
-Section "VS2015 C++ re-distributable Package (${TARGET_ARCHITECTURE})" SEC_VCREDIST1
-DetailPrint "Running VS2015 re-distributable setup..."
+Section "VS2017 C++ re-distributable Package (${TARGET_ARCHITECTURE})" SEC_VCREDIST1
+DetailPrint "Running VS2017 re-distributable setup..."
   SectionIn 1 2 #section is in install type Full
-  SetOutPath "$TEMP\vc2015"
-  File "${app_root}\..\..\BuildDependencies\downloads\vcredist\2015\vcredist_${TARGET_ARCHITECTURE}.exe"
-  ExecWait '"$TEMP\vc2015\vcredist_${TARGET_ARCHITECTURE}.exe" /install /quiet /norestart' $VSRedistSetupError
-  RMDir /r "$TEMP\vc2015"
-  DetailPrint "Finished VS2015 re-distributable setup"
+  SetOutPath "$TEMP\vc2017"
+  File "${app_root}\..\..\BuildDependencies\downloads\vcredist\2017\vcredist_${TARGET_ARCHITECTURE}.exe"
+  ExecWait '"$TEMP\vc2017\vcredist_${TARGET_ARCHITECTURE}.exe" /install /quiet /norestart' $VSRedistSetupError
+  RMDir /r "$TEMP\vc2017"
+  DetailPrint "Finished VS2017 re-distributable setup"
   SetOutPath "$INSTDIR"
 SectionEnd
 

@@ -7,32 +7,26 @@
  */
 
 #include "ScreenSaver.h"
+
 #include "filesystem/SpecialProtocol.h"
+#include "utils/log.h"
 #include "windowing/GraphicContext.h"
 #include "windowing/WinSystem.h"
-#include "utils/log.h"
-#ifdef TARGET_WINDOWS
-#include "rendering/dx/DeviceResources.h"
-#endif
 
 namespace ADDON
 {
 
-CScreenSaver::CScreenSaver(BinaryAddonBasePtr addonBase)
- : IAddonInstanceHandler(ADDON_INSTANCE_SCREENSAVER, addonBase)
+CScreenSaver::CScreenSaver(const AddonInfoPtr& addonInfo)
+  : IAddonInstanceHandler(ADDON_INSTANCE_SCREENSAVER, addonInfo)
 {
   m_name = Name();
   m_presets = CSpecialProtocol::TranslatePath(Path());
   m_profile = CSpecialProtocol::TranslatePath(Profile());
 
   m_struct = {{0}};
-#ifdef TARGET_WINDOWS
-  m_struct.props.device = DX::DeviceResources::Get()->GetD3DContext();
-#else
-  m_struct.props.device = nullptr;
-#endif
   m_struct.props.x = 0;
   m_struct.props.y = 0;
+  m_struct.props.device = CServiceBroker::GetWinSystem()->GetHWContext();
   m_struct.props.width = CServiceBroker::GetWinSystem()->GetGfxContext().GetWidth();
   m_struct.props.height = CServiceBroker::GetWinSystem()->GetGfxContext().GetHeight();
   m_struct.props.pixelRatio = CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo().fPixelRatio;

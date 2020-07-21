@@ -14,21 +14,21 @@ namespace KODI
 {
 namespace GAME
 {
-  class CGUIViewStateWindowGames : public CGUIViewState
-  {
-  public:
-    explicit CGUIViewStateWindowGames(const CFileItemList& items);
+class CGUIViewStateWindowGames : public CGUIViewState
+{
+public:
+  explicit CGUIViewStateWindowGames(const CFileItemList& items);
 
-    virtual ~CGUIViewStateWindowGames() = default;
+  ~CGUIViewStateWindowGames() override = default;
 
-    // implementation of CGUIViewState
-    virtual std::string GetLockType() override;
-    virtual std::string GetExtensions() override;
-    virtual VECSOURCES& GetSources() override;
+  // implementation of CGUIViewState
+  std::string GetLockType() override;
+  std::string GetExtensions() override;
+  VECSOURCES& GetSources() override;
 
-  protected:
-    // implementation of CGUIViewState
-    virtual void SaveViewState() override;
-  };
-}
-}
+protected:
+  // implementation of CGUIViewState
+  void SaveViewState() override;
+};
+} // namespace GAME
+} // namespace KODI

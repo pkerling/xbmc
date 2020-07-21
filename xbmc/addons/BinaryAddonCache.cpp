@@ -7,6 +7,7 @@
  */
 
 #include "BinaryAddonCache.h"
+
 #include "AddonManager.h"
 #include "ServiceBroker.h"
 #include "threads/SingleLock.h"
@@ -14,7 +15,7 @@
 namespace ADDON
 {
 
-const std::vector<TYPE> ADDONS_TO_CACHE = { ADDON_PVRDLL, ADDON_GAMEDLL };
+const std::vector<TYPE> ADDONS_TO_CACHE = {ADDON_GAMEDLL};
 
 CBinaryAddonCache::~CBinaryAddonCache()
 {

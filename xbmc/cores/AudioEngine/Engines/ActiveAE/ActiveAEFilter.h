@@ -9,8 +9,8 @@
 #pragma once
 
 extern "C" {
-#include "libavfilter/avfilter.h"
-#include "libavutil/frame.h"
+#include <libavfilter/avfilter.h>
+#include <libavutil/frame.h>
 }
 
 struct SwrContext;
@@ -26,10 +26,10 @@ public:
   void Init(AVSampleFormat fmt, int sampleRate, uint64_t channelLayout);
   int ProcessFilter(uint8_t **dst_buffer, int dst_samples, uint8_t **src_buffer, int src_samples, int src_bufsize);
   bool SetTempo(float tempo);
-  bool NeedData();
-  bool IsEof();
-  bool IsActive();
-  int GetBufferedSamples();
+  bool NeedData() const;
+  bool IsEof() const;
+  bool IsActive() const;
+  int GetBufferedSamples() const;
 
 protected:
   bool CreateFilterGraph();
@@ -52,6 +52,7 @@ protected:
   bool m_started;
   bool m_hasData;
   bool m_needData;
+  bool m_ptsInitialized;
   int m_sampleOffset;
   int64_t m_SamplesIn;
   int64_t m_SamplesOut;

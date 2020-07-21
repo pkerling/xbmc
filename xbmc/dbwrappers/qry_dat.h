@@ -12,11 +12,11 @@
 
 #pragma once
 
-#include <map>
-#include <vector>
 #include <iostream>
-#include <string>
+#include <map>
 #include <stdint.h>
+#include <string>
+#include <vector>
 
 namespace dbiplus {
 
@@ -209,9 +209,7 @@ typedef query_data::iterator qry_itor;
 class result_set
 {
 public:
-  result_set()
-  {
-  };
+  result_set() = default;
   ~result_set()
   {
     clear();

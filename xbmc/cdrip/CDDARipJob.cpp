@@ -136,7 +136,7 @@ bool CCDDARipJob::DoWork()
     if (m_eject)
     {
       CLog::Log(LOGINFO, "Ejecting CD");
-      g_mediaManager.EjectTray();
+      CServiceBroker::GetMediaManager().EjectTray();
     }
   }
 
@@ -181,7 +181,8 @@ CEncoder* CCDDARipJob::SetupEncoder(CFile& reader)
   }
   else
   {
-    const BinaryAddonBasePtr addonInfo = CServiceBroker::GetBinaryAddonManager().GetInstalledAddonInfo(audioEncoder, ADDON_AUDIOENCODER);
+    const AddonInfoPtr addonInfo =
+        CServiceBroker::GetAddonMgr().GetAddonInfo(audioEncoder, ADDON_AUDIOENCODER);
     if (addonInfo)
     {
       std::shared_ptr<IEncoder> enc = std::make_shared<CAudioEncoder>(addonInfo);

@@ -7,9 +7,11 @@
  */
 
 #include "VdpauGL.h"
-#include <GL/glx.h>
+
 #include "cores/VideoPlayer/DVDCodecs/Video/VDPAU.h"
 #include "utils/log.h"
+
+#include <GL/glx.h>
 
 using namespace VDPAU;
 
@@ -41,7 +43,7 @@ bool CInteropState::Init(void *device, void *procFunc, int64_t ident)
     CLog::Log(LOGERROR, "CInteropState::Init - GLInitInterop glVDPAUInitNV failed");
     return false;
   }
-  CLog::Log(LOGNOTICE, "CInteropState::Init: vdpau gl interop initialized");
+  CLog::Log(LOGINFO, "CInteropState::Init: vdpau gl interop initialized");
 
   m_interop.textureTarget = GL_TEXTURE_2D;
 

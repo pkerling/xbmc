@@ -8,9 +8,13 @@
 
 #pragma once
 
-#include <memory>
-
+#include "dialogs/GUIDialogContextMenu.h"
 #include "pvr/windows/GUIWindowPVRBase.h"
+
+#include <memory>
+#include <string>
+
+class CFileItem;
 
 namespace PVR
 {
@@ -19,25 +23,25 @@ namespace PVR
   class CGUIWindowPVRSearchBase : public CGUIWindowPVRBase
   {
   public:
-    CGUIWindowPVRSearchBase(bool bRadio, int id, const std::string &xmlFile);
-    ~CGUIWindowPVRSearchBase() override = default;
+    CGUIWindowPVRSearchBase(bool bRadio, int id, const std::string& xmlFile);
+    ~CGUIWindowPVRSearchBase() override;
 
-    bool OnMessage(CGUIMessage& message)  override;
-    void GetContextButtons(int itemNumber, CContextButtons &buttons) override;
+    bool OnMessage(CGUIMessage& message) override;
+    void GetContextButtons(int itemNumber, CContextButtons& buttons) override;
     bool OnContextButton(int itemNumber, CONTEXT_BUTTON button) override;
 
     /*!
      * @brief set the item to search similar events for.
      * @param item the epg event to search similar events for.
      */
-    void SetItemToSearch(const CFileItemPtr &item);
+    void SetItemToSearch(const CFileItemPtr& item);
 
   protected:
-    void OnPrepareFileItems(CFileItemList &items) override;
-    std::string GetDirectoryPath(void) override { return ""; }
+    void OnPrepareFileItems(CFileItemList& items) override;
+    std::string GetDirectoryPath() override { return ""; }
 
   private:
-    bool OnContextButtonClear(CFileItem *item, CONTEXT_BUTTON button);
+    bool OnContextButtonClear(CFileItem* item, CONTEXT_BUTTON button);
 
     void OpenDialogSearch();
 

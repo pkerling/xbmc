@@ -8,36 +8,37 @@
 
 #include "DirectoryProvider.h"
 
-#include <memory>
-#include <utility>
-#include "ServiceBroker.h"
-#include "addons/GUIDialogAddonInfo.h"
 #include "ContextMenuManager.h"
 #include "FileItem.h"
-#include "filesystem/Directory.h"
+#include "ServiceBroker.h"
+#include "addons/GUIDialogAddonInfo.h"
 #include "favourites/FavouritesService.h"
+#include "filesystem/Directory.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "interfaces/AnnouncementManager.h"
-#include "messaging/ApplicationMessenger.h"
-#include "music/dialogs/GUIDialogMusicInfo.h"
 #include "music/MusicThumbLoader.h"
+#include "music/dialogs/GUIDialogMusicInfo.h"
 #include "pictures/PictureThumbLoader.h"
 #include "pvr/PVRManager.h"
+#include "pvr/PVRThumbLoader.h"
 #include "pvr/dialogs/GUIDialogPVRGuideInfo.h"
 #include "pvr/dialogs/GUIDialogPVRRecordingInfo.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 #include "utils/JobManager.h"
-#include "utils/log.h"
 #include "utils/SortUtils.h"
 #include "utils/URIUtils.h"
 #include "utils/Variant.h"
 #include "utils/XMLUtils.h"
+#include "utils/log.h"
 #include "video/VideoThumbLoader.h"
 #include "video/dialogs/GUIDialogVideoInfo.h"
 #include "video/windows/GUIWindowVideoBase.h"
+
+#include <memory>
+#include <utility>
 
 using namespace XFILE;
 using namespace KODI::MESSAGING;
@@ -111,6 +112,11 @@ public:
       initThumbLoader<CPictureThumbLoader>(InfoTagType::PICTURE);
       return m_thumbloaders[InfoTagType::PICTURE];
     }
+    if (item->IsPVRChannelGroup())
+    {
+      initThumbLoader<CPVRThumbLoader>(InfoTagType::PVR);
+      return m_thumbloaders[InfoTagType::PVR];
+    }
     initThumbLoader<CProgramThumbLoader>(InfoTagType::PROGRAM);
     return m_thumbloaders[InfoTagType::PROGRAM];
   }
@@ -131,9 +137,8 @@ public:
   std::vector<InfoTagType> GetItemTypes(std::vector<InfoTagType> &itemTypes) const
   {
     itemTypes.clear();
-    for (std::map<InfoTagType, std::shared_ptr<CThumbLoader> >::const_iterator
-         i = m_thumbloaders.begin(); i != m_thumbloaders.end(); ++i)
-      itemTypes.push_back(i->first);
+    for (const auto& i : m_thumbloaders)
+      itemTypes.push_back(i.first);
     return itemTypes;
   }
 private:
@@ -191,6 +196,7 @@ bool CDirectoryProvider::Update(bool forceRefresh)
   fireJob |= UpdateURL();
   fireJob |= UpdateSort();
   fireJob |= UpdateLimit();
+  fireJob &= !m_currentUrl.empty();
 
   CSingleLock lock(m_section);
   if (m_updateState == INVALIDATED)
@@ -210,8 +216,8 @@ bool CDirectoryProvider::Update(bool forceRefresh)
 
   if (!changed)
   {
-    for (std::vector<CGUIStaticItemPtr>::iterator i = m_items.begin(); i != m_items.end(); ++i)
-      changed |= (*i)->UpdateVisibility(m_parentID);
+    for (auto& i : m_items)
+      changed |= i->UpdateVisibility(m_parentID);
   }
   return changed; //! @todo Also returned changed if properties are changed (if so, need to update scroll to letter).
 }
@@ -256,7 +262,8 @@ void CDirectoryProvider::Announce(ANNOUNCEMENT::AnnouncementFlag flag, const cha
       if (strcmp(message, "OnScanFinished") == 0 ||
           strcmp(message, "OnCleanFinished") == 0 ||
           strcmp(message, "OnUpdate") == 0 ||
-          strcmp(message, "OnRemove") == 0)
+          strcmp(message, "OnRemove") == 0 ||
+          strcmp(message, "OnRefresh") == 0)
         m_updateState = INVALIDATED;
     }
   }
@@ -266,10 +273,10 @@ void CDirectoryProvider::Fetch(std::vector<CGUIListItemPtr> &items)
 {
   CSingleLock lock(m_section);
   items.clear();
-  for (std::vector<CGUIStaticItemPtr>::const_iterator i = m_items.begin(); i != m_items.end(); ++i)
+  for (const auto& i : m_items)
   {
-    if ((*i)->IsVisible())
-      items.push_back(*i);
+    if (i->IsVisible())
+      items.push_back(i);
   }
 }
 
@@ -287,16 +294,27 @@ void CDirectoryProvider::OnAddonEvent(const ADDON::AddonEvent& event)
   }
 }
 
+void CDirectoryProvider::OnAddonRepositoryEvent(const ADDON::CRepositoryUpdater::RepositoryUpdated& event)
+{
+  CSingleLock lock(m_section);
+  if (URIUtils::IsProtocol(m_currentUrl, "addons"))
+  {
+    m_updateState = INVALIDATED;
+  }
+}
+
 void CDirectoryProvider::OnPVRManagerEvent(const PVR::PVREvent& event)
 {
   CSingleLock lock(m_section);
   if (URIUtils::IsProtocol(m_currentUrl, "pvr"))
   {
-    if (event == ManagerStarted ||
-        event == ManagerStopped ||
-        event == ManagerError ||
-        event == ManagerInterrupted ||
-        event == RecordingsInvalidated)
+    if (event == PVR::PVREvent::ManagerStarted ||
+        event == PVR::PVREvent::ManagerStopped ||
+        event == PVR::PVREvent::ManagerError ||
+        event == PVR::PVREvent::ManagerInterrupted ||
+        event == PVR::PVREvent::RecordingsInvalidated ||
+        event == PVR::PVREvent::TimersInvalidated ||
+        event == PVR::PVREvent::ChannelGroupsInvalidated)
       m_updateState = INVALIDATED;
   }
 }
@@ -328,6 +346,7 @@ void CDirectoryProvider::Reset()
     m_isAnnounced = false;
     CServiceBroker::GetAnnouncementManager()->RemoveAnnouncer(this);
     CServiceBroker::GetFavouritesService().Events().Unsubscribe(this);
+    CServiceBroker::GetRepositoryUpdater().Events().Unsubscribe(this);
     CServiceBroker::GetAddonMgr().Events().Unsubscribe(this);
     CServiceBroker::GetPVRManager().Events().Unsubscribe(this);
   }
@@ -347,6 +366,19 @@ void CDirectoryProvider::OnJobComplete(unsigned int jobID, bool success, CJob *j
   m_jobID = 0;
 }
 
+std::string CDirectoryProvider::GetTarget(const CFileItem& item) const
+{
+  std::string target = item.GetProperty("node.target").asString();
+
+  CSingleLock lock(m_section);
+  if (target.empty())
+    target = m_currentTarget;
+  if (target.empty())
+    target = m_target.GetLabel(m_parentID, false);
+
+  return target;
+}
+
 bool CDirectoryProvider::OnClick(const CGUIListItemPtr &item)
 {
   CFileItem fileItem(*std::static_pointer_cast<CFileItem>(item));
@@ -356,18 +388,11 @@ bool CDirectoryProvider::OnClick(const CGUIListItemPtr &item)
       && OnInfo(item))
     return true;
 
-  std::string target = fileItem.GetProperty("node.target").asString();
-  {
-    CSingleLock lock(m_section);
-    if (target.empty())
-      target = m_currentTarget;
-    if (target.empty())
-      target = m_target.GetLabel(m_parentID, false);
-    if (fileItem.HasProperty("node.target_url"))
-      fileItem.SetPath(fileItem.GetProperty("node.target_url").asString());
-  }
+  if (fileItem.HasProperty("node.target_url"))
+    fileItem.SetPath(fileItem.GetProperty("node.target_url").asString());
+
   // grab the execute string
-  std::string execute = CServiceBroker::GetFavouritesService().GetExecutePath(fileItem, target);
+  std::string execute = CServiceBroker::GetFavouritesService().GetExecutePath(fileItem, GetTarget(fileItem));
   if (!execute.empty())
   {
     CGUIMessage message(GUI_MSG_EXECUTE, 0, 0);
@@ -403,7 +428,7 @@ bool CDirectoryProvider::OnInfo(const CGUIListItemPtr& item)
         mediaType == MediaTypeVideo ||
         mediaType == MediaTypeMusicVideo)
     {
-      CGUIDialogVideoInfo::ShowFor(*fileItem.get());
+      CGUIDialogVideoInfo::ShowFor(*fileItem);
       return true;
     }
   }
@@ -418,6 +443,11 @@ bool CDirectoryProvider::OnInfo(const CGUIListItemPtr& item)
 bool CDirectoryProvider::OnContextMenu(const CGUIListItemPtr& item)
 {
   auto fileItem = std::static_pointer_cast<CFileItem>(item);
+
+  const std::string target = GetTarget(*fileItem);
+  if (!target.empty())
+    fileItem->SetProperty("targetwindow", target);
+
   return CONTEXTMENU::ShowFor(fileItem);
 }
 
@@ -441,6 +471,7 @@ bool CDirectoryProvider::UpdateURL()
     m_isAnnounced = true;
     CServiceBroker::GetAnnouncementManager()->AddAnnouncer(this);
     CServiceBroker::GetAddonMgr().Events().Subscribe(this, &CDirectoryProvider::OnAddonEvent);
+    CServiceBroker::GetRepositoryUpdater().Events().Subscribe(this, &CDirectoryProvider::OnAddonRepositoryEvent);
     CServiceBroker::GetPVRManager().Events().Subscribe(this, &CDirectoryProvider::OnPVRManagerEvent);
     CServiceBroker::GetFavouritesService().Events().Subscribe(this, &CDirectoryProvider::OnFavouritesEvent);
   }

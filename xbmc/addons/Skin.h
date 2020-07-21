@@ -8,18 +8,20 @@
 
 #pragma once
 
+#include "addons/Addon.h"
+#include "guilib/GUIIncludes.h" // needed for the GUIInclude member
+#include "windowing/GraphicContext.h" // needed for the RESOLUTION members
+
 #include <map>
 #include <set>
-#include <vector>
 #include <utility>
-
-#include "addons/Addon.h"
-#include "windowing/GraphicContext.h" // needed for the RESOLUTION members
-#include "guilib/GUIIncludes.h"    // needed for the GUIInclude member
+#include <vector>
 
 #define CREDIT_LINE_LENGTH 50
 
 class CSetting;
+struct IntegerSettingOption;
+struct StringSettingOption;
 
 namespace ADDON
 {
@@ -93,15 +95,14 @@ public:
     std::string m_name;
   };
 
-  static std::unique_ptr<CSkinInfo> FromExtension(CAddonInfo addonInfo, const cp_extension_t* ext);
-
+  explicit CSkinInfo(const AddonInfoPtr& addonInfo);
   //FIXME: CAddonCallbacksGUI/WindowXML hack
   explicit CSkinInfo(
-      CAddonInfo addonInfo,
-      const RESOLUTION_INFO& resolution = RESOLUTION_INFO());
+      const AddonInfoPtr& addonInfo,
+      const RESOLUTION_INFO& resolution);
 
   CSkinInfo(
-      CAddonInfo addonInfo,
+      const AddonInfoPtr& addonInfo,
       const RESOLUTION_INFO& resolution,
       const std::vector<RESOLUTION_INFO>& resolutions,
       float effectsSlowDown,
@@ -168,10 +169,10 @@ public:
   void ToggleDebug();
   const INFO::CSkinVariableString* CreateSkinVariable(const std::string& name, int context);
 
-  static void SettingOptionsSkinColorsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsSkinFontsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsSkinThemesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsStartupWindowsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, int> > &list, int &current, void *data);
+  static void SettingOptionsSkinColorsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsSkinFontsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsSkinThemesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsStartupWindowsFiller(std::shared_ptr<const CSetting> setting, std::vector<IntegerSettingOption> &list, int &current, void *data);
 
   /*! \brief Don't handle skin settings like normal addon settings
    */
@@ -194,21 +195,7 @@ public:
   void OnPreInstall() override;
   void OnPostInstall(bool update, bool modal) override;
 protected:
-  /*! \brief Given a resolution, retrieve the corresponding directory name
-   \param res RESOLUTION to translate
-   \return directory name for res
-   */
-  std::string GetDirFromRes(RESOLUTION res) const;
-
-  /*! \brief grab a resolution tag from a skin's configuration data
-   \param ext passed addoninfo structure to check for resolution
-   \param tag name of the tag to look for
-   \param res resolution to return
-   \return true if we find a valid resolution, false otherwise
-   */
-  void GetDefaultResolution(const cp_extension_t *ext, const char *tag, RESOLUTION &res, const RESOLUTION &def) const;
-
-  bool LoadStartupWindows(const cp_extension_t *ext);
+  bool LoadStartupWindows(const AddonInfoPtr& addonInfo);
 
   static CSkinSettingPtr ParseSetting(const TiXmlElement* element);
 

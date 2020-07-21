@@ -14,15 +14,12 @@
 //
 //////////////////////////////////////////////////////////////////////
 
-#if !defined(AFX_FILEPIPE_H__DD2B0A9E_4971_4A29_B525_78CEFCDAF4A1__INCLUDED_)
-#define AFX_FILEPIPE_H__DD2B0A9E_4971_4A29_B525_78CEFCDAF4A1__INCLUDED_
+#include "IFile.h"
+#include "PipesManager.h"
+#include "threads/CriticalSection.h"
 
 #include <string>
 #include <vector>
-
-#include "IFile.h"
-#include "threads/CriticalSection.h"
-#include "PipesManager.h"
 
 namespace XFILE
 {
@@ -78,4 +75,3 @@ protected:
 };
 
 }
-#endif // !defined(AFX_FILEPIPE_H__DD2B0A9E_4971_4A29_B525_78CEFCDAF4A1__INCLUDED_)

@@ -6,10 +6,10 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "URL.h"
 #include "TextureDatabase.h"
+#include "URL.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
 
 using ::testing::ValuesIn;
 
@@ -47,6 +47,5 @@ TEST_P(TestTextureUtils, GetWrappedImageURL)
   EXPECT_EQ(expected, out);
 }
 
-INSTANTIATE_TEST_CASE_P(SampleFiles, TestTextureUtils,
-                        ValuesIn(test_files));
+INSTANTIATE_TEST_SUITE_P(SampleFiles, TestTextureUtils, ValuesIn(test_files));
 }

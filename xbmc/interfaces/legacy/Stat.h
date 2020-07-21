@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include "filesystem/File.h"
 #include "AddonClass.h"
 #include "LanguageHook.h"
+#include "filesystem/File.h"
 
 namespace XBMCAddon
 {
@@ -56,7 +56,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_stat
       /// @brief \python_func{ st_mode() }
-      ///-----------------------------------------------------------------------
       /// To get file protection.
       ///
       /// @return                        st_mode
@@ -70,7 +69,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_stat
       /// @brief \python_func{ st_ino() }
-      ///-----------------------------------------------------------------------
       /// To get inode number.
       ///
       /// @return                        st_ino
@@ -84,7 +82,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_stat
       /// @brief \python_func{ st_dev() }
-      ///-----------------------------------------------------------------------
       /// To get ID of device containing file.
       ///
       /// The st_dev field describes the device on which this file resides.
@@ -100,7 +97,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_stat
       /// @brief \python_func{ st_nlink() }
-      ///-----------------------------------------------------------------------
       /// To get number of hard links.
       ///
       /// @return                        st_nlink
@@ -114,7 +110,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_stat
       /// @brief \python_func{ st_uid() }
-      ///-----------------------------------------------------------------------
       /// To get user ID of owner.
       ///
       /// @return                        st_uid
@@ -128,7 +123,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_stat
       /// @brief \python_func{ st_gid() }
-      ///-----------------------------------------------------------------------
       /// To get group ID of owner.
       ///
       /// @return                        st_gid
@@ -142,7 +136,6 @@ namespace XBMCAddon
       ///
       /// \ingroup python_stat
       /// @brief \python_func{ st_size() }
-      ///-----------------------------------------------------------------------
       /// To get total size, in bytes.
       ///
       /// The st_size field gives the size of the file (if it is a regular file
@@ -160,13 +153,12 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_stat
-      /// @brief \python_func{ atime() }
-      ///-----------------------------------------------------------------------
+      /// @brief \python_func{ st_atime() }
       /// To get time of last access.
       ///
       /// @return                        st_atime
       ///
-      atime();
+      st_atime();
 #else
       inline long long atime() { return st.st_atime; }; //names st_atime/st_mtime/st_ctime are used by sys/stat.h
 #endif
@@ -174,13 +166,12 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_stat
-      /// @brief \python_func{ mtime() }
-      ///-----------------------------------------------------------------------
+      /// @brief \python_func{ st_mtime() }
       /// To get time of last modification.
       ///
       /// @return                        st_mtime
       ///
-      mtime();
+      st_mtime();
 #else
       inline long long mtime() { return st.st_mtime; };
 #endif
@@ -188,13 +179,12 @@ namespace XBMCAddon
 #ifdef DOXYGEN_SHOULD_USE_THIS
       ///
       /// \ingroup python_stat
-      /// @brief \python_func{ ctime() }
-      ///-----------------------------------------------------------------------
+      /// @brief \python_func{ st_ctime() }
       /// To get time of last status change.
       ///
       /// @return                        st_ctime
       ///
-      ctime();
+      st_ctime();
 #else
       inline long long ctime() { return st.st_ctime; };
 #endif

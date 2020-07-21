@@ -8,6 +8,13 @@
 
 #pragma once
 
+#include "settings/lib/ISettingCallback.h"
+#include "settings/lib/ISettingsHandler.h"
+#include "utils/GlobalsHandling.h"
+#include "utils/Locale.h"
+#include "utils/Speed.h"
+#include "utils/Temperature.h"
+
 #include <locale>
 #include <map>
 #include <memory>
@@ -15,13 +22,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-
-#include "settings/lib/ISettingCallback.h"
-#include "settings/lib/ISettingsHandler.h"
-#include "utils/GlobalsHandling.h"
-#include "utils/Locale.h"
-#include "utils/Speed.h"
-#include "utils/Temperature.h"
 
 #ifdef TARGET_WINDOWS
 #ifdef GetDateFormat
@@ -33,6 +33,7 @@
 #endif // TARGET_WINDOWS
 
 class TiXmlNode;
+struct StringSettingOption;
 
 namespace ADDON
 {
@@ -160,21 +161,22 @@ public:
   static std::string GetLanguagePath() { return "resource://"; }
   static std::string GetLanguagePath(const std::string &language);
   static std::string GetLanguageInfoPath(const std::string &language);
+  bool UseLocaleCollation();
 
   static void LoadTokens(const TiXmlNode* pTokens, std::set<std::string>& vecTokens);
 
-  static void SettingOptionsLanguageNamesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsAudioStreamLanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsSubtitleStreamLanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsSubtitleDownloadlanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsISO6391LanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsRegionsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsShortDateFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsLongDateFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsTimeFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptions24HourClockFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsTemperatureUnitsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
-  static void SettingOptionsSpeedUnitsFiller(std::shared_ptr<const CSetting> setting, std::vector< std::pair<std::string, std::string> > &list, std::string &current, void *data);
+  static void SettingOptionsLanguageNamesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsAudioStreamLanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsSubtitleStreamLanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsSubtitleDownloadlanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsISO6391LanguagesFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsRegionsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsShortDateFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsLongDateFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsTimeFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptions24HourClockFormatsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsTemperatureUnitsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
+  static void SettingOptionsSpeedUnitsFiller(std::shared_ptr<const CSetting> setting, std::vector<StringSettingOption> &list, std::string &current, void *data);
 
 protected:
   void SetDefaults();
@@ -183,7 +185,7 @@ protected:
   static bool DetermineUse24HourClockFromTimeFormat(const std::string& timeFormat);
   static bool DetermineUseMeridiemFromTimeFormat(const std::string& timeFormat);
   static std::string PrepareTimeFormat(const std::string& timeFormat, bool use24HourClock);
-  static void AddLanguages(std::vector< std::pair<std::string, std::string> > &list);
+  static void AddLanguages(std::vector<StringSettingOption> &list);
 
   class CRegion final
   {
@@ -241,7 +243,7 @@ protected:
   CRegion m_defaultRegion; // default, will be used if no region available via langinfo.xml
   std::locale m_systemLocale;     // current locale, matching GUI settings
   std::locale m_originalLocale; // original locale, without changes of collate
-
+  int m_collationtype;
   LanguageResourcePtr m_languageAddon;
 
   std::string m_strGuiCharSet;

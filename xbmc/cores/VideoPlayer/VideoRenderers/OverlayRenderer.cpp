@@ -23,7 +23,6 @@
 #include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 #include "utils/ColorUtils.h"
-#include "utils/MathUtils.h"
 #include "OverlayRendererUtil.h"
 #include "OverlayRendererGUI.h"
 #if defined(HAS_GL) || defined(HAS_GLES)
@@ -33,6 +32,8 @@
 #endif
 
 using namespace OVERLAY;
+
+const std::string OVERLAY::SETTING_SUBTITLES_OPACITY = "subtitles.opacity";
 
 static UTILS::Color bgcolors[5] = { UTILS::COLOR::BLACK,
   UTILS::COLOR::YELLOW,
@@ -190,9 +191,10 @@ void CRenderer::Render(int idx)
       
       text->PrepareRender(settings->GetString(CSettings::SETTING_SUBTITLES_FONT),
                           settings->GetInt(CSettings::SETTING_SUBTITLES_COLOR),
+                          settings->GetInt(SETTING_SUBTITLES_OPACITY),
                           settings->GetInt(CSettings::SETTING_SUBTITLES_HEIGHT),
                           settings->GetInt(CSettings::SETTING_SUBTITLES_STYLE),
-                          m_font, m_fontBorder, bgcolor);
+                          m_font, m_fontBorder, bgcolor, m_rv);
       o = text;
     }
     else
@@ -332,19 +334,36 @@ void CRenderer::SetVideoRect(CRect &source, CRect &dest, CRect &view)
   m_rv = view;
 }
 
+void CRenderer::SetStereoMode(const std::string &stereomode)
+{
+  m_stereomode = stereomode;
+}
+
 COverlay* CRenderer::Convert(CDVDOverlaySSA* o, double pts)
 {
   // libass render in a target area which named as frame. the frame size may bigger than video size,
   // and including margins between video to frame edge. libass allow to render subtitles into the margins.
   // this has been used to show subtitles in the top or bottom "black bar" between video to frame border.
-  int sourceWidth = MathUtils::round_int(m_rs.Width());
-  int sourceHeight = MathUtils::round_int(m_rs.Height());
-  int videoWidth = MathUtils::round_int(m_rd.Width());
-  int videoHeight = MathUtils::round_int(m_rd.Height());
-  int targetWidth = MathUtils::round_int(m_rv.Width());
-  int targetHeight = MathUtils::round_int(m_rv.Height());
+  int sourceWidth = m_rs.Width();
+  int sourceHeight = m_rs.Height();
+  int videoWidth = m_rd.Width();
+  int videoHeight = m_rd.Height();
+  int targetWidth = m_rv.Width();
+  int targetHeight = m_rv.Height();
   int useMargin;
-
+  // Render subtitle of half-sbs and half-ou video in full screen, not in half screen
+  if (m_stereomode == "left_right" || m_stereomode == "right_left")
+  {
+    // only half-sbs video, sbs video don't need to change source size
+    if (static_cast<double>(sourceWidth) / sourceHeight < 1.2)
+      sourceWidth = m_rs.Width() * 2;
+  }
+  else if (m_stereomode == "top_bottom" || m_stereomode == "bottom_top")
+  {
+    // only half-ou video, ou video don't need to change source size
+    if (static_cast<double>(sourceWidth) / sourceHeight > 2.5)
+      sourceHeight = m_rs.Height() * 2;
+  }
   int subalign = CServiceBroker::GetSettingsComponent()->GetSettings()->GetInt(CSettings::SETTING_SUBTITLES_ALIGN);
   if(subalign == SUBTITLE_ALIGN_BOTTOM_OUTSIDE
   || subalign == SUBTITLE_ALIGN_TOP_OUTSIDE

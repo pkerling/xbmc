@@ -6,11 +6,12 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include <assert.h>
-
 #include "Temperature.h"
+
 #include "utils/Archive.h"
 #include "utils/StringUtils.h"
+
+#include <assert.h>
 
 CTemperature::CTemperature()
 {
@@ -364,6 +365,11 @@ CTemperature CTemperature::CreateFromNewton(double value)
 CTemperature CTemperature::CreateFromCelsius(double value)
 {
   return CTemperature(value*1.8f+32.0f);
+}
+
+CTemperature CTemperature::CreateFromKelvin(double value)
+{
+  return CTemperature((value - 273.15) * 1.8 + 32.0);
 }
 
 void CTemperature::Archive(CArchive& ar)

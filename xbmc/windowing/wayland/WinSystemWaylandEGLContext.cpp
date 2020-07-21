@@ -17,9 +17,10 @@
 #include <EGL/eglext.h>
 
 using namespace KODI::WINDOWING::WAYLAND;
+using namespace KODI::WINDOWING::LINUX;
 
 CWinSystemWaylandEGLContext::CWinSystemWaylandEGLContext()
-: m_eglContext{EGL_PLATFORM_WAYLAND_EXT, "EGL_EXT_platform_wayland"}
+  : CWinSystemEGL{EGL_PLATFORM_WAYLAND_EXT, "EGL_EXT_platform_wayland"}
 {}
 
 bool CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGLint renderableType, EGLint apiType)
@@ -32,7 +33,17 @@ bool CWinSystemWaylandEGLContext::InitWindowSystemEGL(EGLint renderableType, EGL
     return false;
   }
 
-  if (!m_eglContext.CreatePlatformDisplay(GetConnection()->GetDisplay(), GetConnection()->GetDisplay(), renderableType, apiType))
+  if (!m_eglContext.CreatePlatformDisplay(GetConnection()->GetDisplay(), GetConnection()->GetDisplay()))
+  {
+    return false;
+  }
+
+  if (!m_eglContext.InitializeDisplay(apiType))
+  {
+    return false;
+  }
+
+  if (!m_eglContext.ChooseConfig(renderableType))
   {
     return false;
   }
@@ -119,7 +130,7 @@ void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
       // For now we just hard fail if this fails
       // Theoretically, EGL_CONTEXT_LOST could be handled, but it needs to be checked
       // whether egl implementations actually use it (mesa does not)
-      CEGLUtils::LogError("eglSwapBuffers failed");
+      CEGLUtils::Log(LOGERROR, "eglSwapBuffers failed");
       throw std::runtime_error("eglSwapBuffers failed");
     }
     // eglSwapBuffers() (hopefully) calls commit on the surface and flushes
@@ -135,9 +146,4 @@ void CWinSystemWaylandEGLContext::PresentFrame(bool rendered)
   }
 
   FinishFramePresentation();
-}
-
-EGLDisplay CWinSystemWaylandEGLContext::GetEGLDisplay() const
-{
-  return m_eglContext.GetEGLDisplay();
 }

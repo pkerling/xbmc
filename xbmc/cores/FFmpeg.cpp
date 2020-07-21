@@ -7,13 +7,15 @@
  */
 
 #include "cores/FFmpeg.h"
+
 #include "ServiceBroker.h"
-#include "utils/log.h"
-#include "threads/CriticalSection.h"
-#include "utils/StringUtils.h"
-#include "threads/Thread.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
+#include "threads/CriticalSection.h"
+#include "threads/Thread.h"
+#include "utils/StringUtils.h"
+#include "utils/log.h"
+
 #include <map>
 
 static thread_local CFFmpegLog* CFFmpegLogTls;
@@ -43,7 +45,7 @@ void CFFmpegLog::ClearLogLevel()
 }
 
 static CCriticalSection m_logSection;
-std::map<uintptr_t, std::string> g_logbuffer;
+std::map<const CThread*, std::string> g_logbuffer;
 
 void ff_flush_avutil_log_buffers(void)
 {
@@ -51,7 +53,7 @@ void ff_flush_avutil_log_buffers(void)
   /* Loop through the logbuffer list and remove any blank buffers
      If the thread using the buffer is still active, it will just
      add a new buffer next time it writes to the log */
-  std::map<uintptr_t, std::string>::iterator it;
+  std::map<const CThread*, std::string>::iterator it;
   for (it = g_logbuffer.begin(); it != g_logbuffer.end(); )
     if ((*it).second.empty())
       g_logbuffer.erase(it++);
@@ -62,7 +64,7 @@ void ff_flush_avutil_log_buffers(void)
 void ff_avutil_log(void* ptr, int level, const char* format, va_list va)
 {
   CSingleLock lock(m_logSection);
-  uintptr_t threadId = (uintptr_t)CThread::GetCurrentThreadId();
+  const CThread* threadId = CThread::GetCurrentThread();
   std::string &buffer = g_logbuffer[threadId];
 
   AVClass* avc= ptr ? *(AVClass**)ptr : NULL;
@@ -71,8 +73,7 @@ void ff_avutil_log(void* ptr, int level, const char* format, va_list va)
   if (CFFmpegLog::GetLogLevel() > 0)
     maxLevel = AV_LOG_INFO;
 
-  if (level > maxLevel &&
-     !CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->CanLogComponent(LOGFFMPEG))
+  if (level > maxLevel && !CServiceBroker::GetLogging().CanLogComponent(LOGFFMPEG))
     return;
   else if (CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_logLevel <= LOG_LEVEL_NORMAL)
     return;
@@ -95,7 +96,7 @@ void ff_avutil_log(void* ptr, int level, const char* format, va_list va)
   }
 
   std::string message = StringUtils::FormatV(format, va);
-  std::string prefix = StringUtils::Format("ffmpeg[%lX]: ", threadId);
+  std::string prefix = StringUtils::Format("ffmpeg[%pX]: ", static_cast<const void*>(threadId));
   if (avc)
   {
     if (avc->item_name)

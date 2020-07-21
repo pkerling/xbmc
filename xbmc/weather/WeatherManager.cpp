@@ -8,22 +8,22 @@
 
 #include "WeatherManager.h"
 
+#include "LangInfo.h"
+#include "ServiceBroker.h"
+#include "WeatherJob.h"
 #include "addons/AddonManager.h"
 #include "addons/settings/GUIDialogAddonSettings.h"
 #include "guilib/GUIComponent.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/WindowIDs.h"
-#include "LangInfo.h"
-#include "ServiceBroker.h"
-#include "settings/lib/Setting.h"
-#include "settings/lib/SettingsManager.h"
 #include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
+#include "settings/lib/Setting.h"
+#include "settings/lib/SettingsManager.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "utils/XMLUtils.h"
 #include "utils/Variant.h"
-#include "WeatherJob.h"
+#include "utils/XMLUtils.h"
 
 using namespace ADDON;
 
@@ -39,7 +39,15 @@ CWeatherManager::CWeatherManager(void) : CInfoLoader(30 * 60 * 1000) // 30 minut
 
 CWeatherManager::~CWeatherManager(void)
 {
-  CServiceBroker::GetSettingsComponent()->GetSettings()->GetSettingsManager()->UnregisterCallback(this);
+  CSettingsComponent *settingsComponent = CServiceBroker::GetSettingsComponent();
+  if (!settingsComponent)
+    return;
+
+  const std::shared_ptr<CSettings> settings = settingsComponent->GetSettings();
+  if (!settings)
+    return;
+
+  settings->GetSettingsManager()->UnregisterCallback(this);
 }
 
 std::string CWeatherManager::BusyInfo(int info) const

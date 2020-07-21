@@ -6,14 +6,16 @@
  *  See LICENSES/README.md for more information.
  */
 #include "UDisksProvider.h"
+
 #include "ServiceBroker.h"
+#include "guilib/LocalizeStrings.h"
 #include "settings/AdvancedSettings.h"
 #include "settings/SettingsComponent.h"
-#include "guilib/LocalizeStrings.h"
-#include "utils/log.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
-#include "PosixMountProvider.h"
+#include "utils/log.h"
+
+#include "platform/posix/PosixMountProvider.h"
 
 CUDiskDevice::CUDiskDevice(const char *DeviceKitUDI):
   m_DeviceKitUDI(DeviceKitUDI)
@@ -184,10 +186,8 @@ CUDisksProvider::CUDisksProvider()
 
 CUDisksProvider::~CUDisksProvider()
 {
-  DeviceMap::iterator itr;
-
-  for (itr = m_AvailableDevices.begin(); itr != m_AvailableDevices.end(); ++itr)
-    delete m_AvailableDevices[itr->first];
+  for (auto& itr : m_AvailableDevices)
+    delete itr.second;
 
   m_AvailableDevices.clear();
 }
@@ -206,13 +206,12 @@ void CUDisksProvider::Initialize()
 
 bool CUDisksProvider::Eject(const std::string& mountpath)
 {
-  DeviceMap::iterator itr;
   std::string path(mountpath);
   URIUtils::RemoveSlashAtEnd(path);
 
-  for (itr = m_AvailableDevices.begin(); itr != m_AvailableDevices.end(); ++itr)
+  for (auto& itr : m_AvailableDevices)
   {
-    CUDiskDevice *device = itr->second;
+    CUDiskDevice* device = itr.second;
     if (device->m_MountPath == path)
       return device->UnMount();
   }
@@ -340,7 +339,7 @@ std::vector<std::string> CUDisksProvider::EnumerateDisks()
     if (dbus_message_get_args (reply, NULL, DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH, &disks, &length, DBUS_TYPE_INVALID))
     {
       for (int i = 0; i < length; i++)
-        devices.push_back(disks[i]);
+        devices.emplace_back(disks[i]);
 
       dbus_free_string_array(disks);
     }
@@ -351,11 +350,9 @@ std::vector<std::string> CUDisksProvider::EnumerateDisks()
 
 void CUDisksProvider::GetDisks(VECSOURCES& devices, bool EnumerateRemovable)
 {
-  DeviceMap::iterator itr;
-
-  for (itr = m_AvailableDevices.begin(); itr != m_AvailableDevices.end(); ++itr)
+  for (auto& itr : m_AvailableDevices)
   {
-    CUDiskDevice *device = itr->second;
+    CUDiskDevice* device = itr.second;
     if (device && device->IsApproved() && device->m_isSystemInternal != EnumerateRemovable)
       devices.push_back(device->ToMediaShare());
   }

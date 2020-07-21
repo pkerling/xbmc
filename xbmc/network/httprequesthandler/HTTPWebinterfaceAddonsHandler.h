@@ -8,9 +8,9 @@
 
 #pragma once
 
-#include <string>
-
 #include "network/httprequesthandler/IHTTPRequestHandler.h"
+
+#include <string>
 
 class CHTTPWebinterfaceAddonsHandler : public IHTTPRequestHandler
 {
@@ -21,7 +21,7 @@ public:
   IHTTPRequestHandler* Create(const HTTPRequest &request) const override { return new CHTTPWebinterfaceAddonsHandler(request); }
   bool CanHandleRequest(const HTTPRequest &request) const override;
 
-  int HandleRequest() override;
+  MHD_RESULT HandleRequest() override;
 
   HttpResponseRanges GetResponseData() const override;
 

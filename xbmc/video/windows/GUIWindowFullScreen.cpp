@@ -35,14 +35,14 @@
 #include <stdio.h>
 #include <algorithm>
 #if defined(TARGET_DARWIN)
-#include "platform/linux/LinuxResourceCounter.h"
+#include "platform/posix/PosixResourceCounter.h"
 #endif
 
 using namespace KODI::GUILIB;
 using namespace KODI::MESSAGING;
 
 #if defined(TARGET_DARWIN)
-static CLinuxResourceCounter m_resourceCounter;
+static CPosixResourceCounter m_resourceCounter;
 #endif
 
 CGUIWindowFullScreen::CGUIWindowFullScreen()
@@ -291,7 +291,8 @@ EVENT_RESULT CGUIWindowFullScreen::OnMouseEvent(const CPoint &point, const CMous
 void CGUIWindowFullScreen::FrameMove()
 {
   float playspeed = g_application.GetAppPlayer().GetPlaySpeed();
-  if (playspeed != 1.0 && !g_application.GetAppPlayer().HasGame())
+  if (playspeed != 1.0 && !g_application.GetAppPlayer().HasGame() &&
+      !g_application.GetAppPlayer().IsPausedPlayback())
     CServiceBroker::GetGUI()->GetInfoManager().GetInfoProviders().GetPlayerInfoProvider().SetDisplayAfterSeek();
 
   if (!g_application.GetAppPlayer().HasPlayer())

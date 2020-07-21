@@ -6,15 +6,16 @@
  *  See LICENSES/README.md for more information.
  */
 
-#ifdef TARGET_WINDOWS
 #include "Win32SMBFile.h"
-#include "Win32SMBDirectory.h"
+
 #include "URL.h"
+#include "Win32SMBDirectory.h"
+
 #include "platform/win32/WIN32Util.h"
 
-#include <Windows.h>
-
 #include <cassert>
+
+#include <Windows.h>
 
 using namespace XFILE;
 
@@ -142,6 +143,3 @@ int CWin32SMBFile::Stat(const CURL& url, struct __stat64* statData)
 
   return CWin32File::Stat(url, statData);
 }
-
-
-#endif // TARGET_WINDOWS

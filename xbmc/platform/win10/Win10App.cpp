@@ -6,18 +6,19 @@
  *  See LICENSES/README.md for more information.
  */
 
-#include "pch.h"
 #include "Win10App.h"
 
-#include "Application.h"
 #include "AppParamParser.h"
+#include "Application.h"
+#include "pch.h"
 #include "platform/Environment.h"
 #include "platform/xbmc.h"
-#include "platform/win32/CharsetConverter.h"
 #include "rendering/dx/RenderContext.h"
-#include "utils/log.h"
 #include "utils/SystemInfo.h"
+#include "utils/log.h"
 #include "windowing/win10/WinEventsWin10.h"
+
+#include "platform/win32/CharsetConverter.h"
 
 #include <ppltasks.h>
 #include <winrt/Windows.Storage.AccessCache.h>
@@ -53,8 +54,6 @@ void App::Initialize(const CoreApplicationView& applicationView)
 
   // At this point we have access to the device.
   // We can create the device-dependent resources.
-  CWinEventsWin10::InitOSKeymap();
-
   // Initialise Winsock
   WSADATA wd;
   WSAStartup(MAKEWORD(2, 2), &wd);

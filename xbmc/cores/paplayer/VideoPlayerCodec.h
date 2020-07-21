@@ -9,9 +9,8 @@
 #pragma once
 
 #include "ICodec.h"
-
-#include "cores/VideoPlayer/DVDDemuxers/DVDDemux.h"
 #include "cores/VideoPlayer/DVDCodecs/Audio/DVDAudioCodec.h"
+#include "cores/VideoPlayer/DVDDemuxers/DVDDemux.h"
 #include "cores/VideoPlayer/DVDInputStreams/DVDInputStream.h"
 
 namespace ActiveAE
@@ -40,7 +39,7 @@ public:
   void SetPassthroughStreamType(CAEStreamInfo::DataType streamType);
 
 private:
-  CAEStreamInfo::DataType GetPassthroughStreamType(AVCodecID codecId, int samplerate);
+  CAEStreamInfo::DataType GetPassthroughStreamType(AVCodecID codecId, int samplerate, int profile);
 
   CDVDDemux* m_pDemuxer;
   std::shared_ptr<CDVDInputStream> m_pInputStream;

@@ -8,12 +8,11 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
+#include "utils/IXmlDeserializable.h"
 
 #include <memory>
-
-#include "utils/IXmlDeserializable.h"
+#include <string>
+#include <vector>
 
 typedef enum {
   BooleanLogicOperationOr = 0,
@@ -26,7 +25,7 @@ public:
   CBooleanLogicValue(const std::string &value = "", bool negated = false)
     : m_value(value), m_negated(negated)
   { }
-  virtual ~CBooleanLogicValue() = default;
+  ~CBooleanLogicValue() override = default;
 
   bool Deserialize(const TiXmlNode *node) override;
 
@@ -55,7 +54,7 @@ public:
   explicit CBooleanLogicOperation(BooleanLogicOperation op = BooleanLogicOperationAnd)
     : m_operation(op)
   { }
-  virtual ~CBooleanLogicOperation() = default;
+  ~CBooleanLogicOperation() override = default;
 
   bool Deserialize(const TiXmlNode *node) override;
 
@@ -78,7 +77,7 @@ class CBooleanLogic : public IXmlDeserializable
 {
 protected:
   /* make sure nobody deletes a pointer to this class */
-  ~CBooleanLogic() = default;
+  ~CBooleanLogic() override = default;
 
 public:
   bool Deserialize(const TiXmlNode *node) override;

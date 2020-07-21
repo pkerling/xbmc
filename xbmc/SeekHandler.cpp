@@ -8,25 +8,26 @@
 
 #include "SeekHandler.h"
 
-#include <cmath>
-#include <stdlib.h>
-
 #include "Application.h"
-#include "cores/DataCacheCore.h"
 #include "FileItem.h"
+#include "ServiceBroker.h"
+#include "cores/DataCacheCore.h"
 #include "guilib/GUIComponent.h"
-#include "windowing/GraphicContext.h"
 #include "guilib/GUIWindowManager.h"
 #include "guilib/LocalizeStrings.h"
-#include "ServiceBroker.h"
 #include "settings/AdvancedSettings.h"
+#include "settings/Settings.h"
 #include "settings/SettingsComponent.h"
 #include "settings/lib/Setting.h"
-#include "settings/Settings.h"
-#include "utils/log.h"
+#include "settings/lib/SettingDefinitions.h"
 #include "utils/MathUtils.h"
 #include "utils/StringUtils.h"
 #include "utils/Variant.h"
+#include "utils/log.h"
+#include "windowing/GraphicContext.h"
+
+#include <cmath>
+#include <stdlib.h>
 
 CSeekHandler::~CSeekHandler()
 {
@@ -226,7 +227,7 @@ void CSeekHandler::FrameMove()
   }
 }
 
-void CSeekHandler::SettingOptionsSeekStepsFiller(SettingConstPtr setting, std::vector<std::pair<std::string, int>> &list, int &current, void *data)
+void CSeekHandler::SettingOptionsSeekStepsFiller(SettingConstPtr setting, std::vector<IntegerSettingOption> &list, int &current, void *data)
 {
   std::string label;
   for (int seconds : CServiceBroker::GetSettingsComponent()->GetAdvancedSettings()->m_seekSteps)
@@ -236,8 +237,8 @@ void CSeekHandler::SettingOptionsSeekStepsFiller(SettingConstPtr setting, std::v
     else
       label = StringUtils::Format(g_localizeStrings.Get(14045).c_str(), seconds);
 
-    list.insert(list.begin(), std::make_pair("-" + label, seconds * -1));
-    list.push_back(std::make_pair(label, seconds));
+    list.insert(list.begin(), IntegerSettingOption("-" + label, seconds * -1));
+    list.emplace_back(label, seconds);
   }
 }
 

@@ -7,9 +7,11 @@
  */
 
 #include "utils/POUtils.h"
+
 #include "URL.h"
 #include "filesystem/File.h"
 #include "utils/log.h"
+
 #include <stdlib.h>
 
 CPODocument::CPODocument()
@@ -157,8 +159,6 @@ void CPODocument::ParseEntry(bool bisSourceLang)
                         "Failed entry: %s", m_Entry.Content.c_str());
     m_Entry.msgStrPlural.resize(1); // Put 1 element with an empty string into the vector
   }
-
-  return;
 }
 
 const std::string& CPODocument::GetPlurMsgstr(size_t plural) const

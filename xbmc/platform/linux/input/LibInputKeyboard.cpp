@@ -16,10 +16,11 @@
 #include "utils/log.h"
 
 #include <algorithm>
-#include <fcntl.h>
-#include <linux/input.h>
 #include <map>
 #include <string.h>
+
+#include <fcntl.h>
+#include <linux/input.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <xkbcommon/xkbcommon-keysyms.h>
@@ -137,7 +138,7 @@ static const std::map<xkb_keysym_t, XBMCKey> xkbMap =
 
   // Media keys
   { XKB_KEY_XF86Eject, XBMCK_EJECT },
-  // XBMCK_STOP clashes with XBMCK_MEDIA_STOP
+  { XKB_KEY_Cancel, XBMCK_STOP },
   { XKB_KEY_XF86AudioRecord, XBMCK_RECORD },
   // XBMCK_REWIND clashes with XBMCK_MEDIA_REWIND
   { XKB_KEY_XF86Phone, XBMCK_PHONE },

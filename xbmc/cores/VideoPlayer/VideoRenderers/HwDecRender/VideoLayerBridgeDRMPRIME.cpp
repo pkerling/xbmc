@@ -8,12 +8,14 @@
 
 #include "VideoLayerBridgeDRMPRIME.h"
 
-#include "cores/VideoPlayer/DVDCodecs/Video/DVDVideoCodecDRMPRIME.h"
+#include "cores/VideoPlayer/Buffers/VideoBufferDRMPRIME.h"
 #include "utils/log.h"
 #include "windowing/gbm/DRMUtils.h"
 
-CVideoLayerBridgeDRMPRIME::CVideoLayerBridgeDRMPRIME(std::shared_ptr<CDRMUtils> drm)
-  : m_DRM(drm)
+using namespace KODI::WINDOWING::GBM;
+using namespace DRMPRIME;
+
+CVideoLayerBridgeDRMPRIME::CVideoLayerBridgeDRMPRIME(std::shared_ptr<CDRMUtils> drm) : m_DRM(drm)
 {
 }
 
@@ -26,9 +28,21 @@ CVideoLayerBridgeDRMPRIME::~CVideoLayerBridgeDRMPRIME()
 void CVideoLayerBridgeDRMPRIME::Disable()
 {
   // disable video plane
-  struct plane* plane = m_DRM->GetPrimaryPlane();
+  struct plane* plane = m_DRM->GetVideoPlane();
   m_DRM->AddProperty(plane, "FB_ID", 0);
   m_DRM->AddProperty(plane, "CRTC_ID", 0);
+
+  // disable HDR metadata
+  struct connector* connector = m_DRM->GetConnector();
+  if (m_DRM->SupportsProperty(connector, "HDR_OUTPUT_METADATA"))
+  {
+    m_DRM->AddProperty(connector, "HDR_OUTPUT_METADATA", 0);
+    m_DRM->SetActive(true);
+
+    if (m_hdr_blob_id)
+      drmModeDestroyPropertyBlob(m_DRM->GetFileDescriptor(), m_hdr_blob_id);
+    m_hdr_blob_id = 0;
+  }
 }
 
 void CVideoLayerBridgeDRMPRIME::Acquire(CVideoBufferDRMPRIME* buffer)
@@ -58,6 +72,13 @@ bool CVideoLayerBridgeDRMPRIME::Map(CVideoBufferDRMPRIME* buffer)
   if (buffer->m_fb_id)
     return true;
 
+  if (!buffer->AcquireDescriptor())
+  {
+    CLog::Log(LOGERROR, "CVideoLayerBridgeDRMPRIME::{} - failed to acquire descriptor",
+              __FUNCTION__);
+    return false;
+  }
+
   AVDRMFrameDescriptor* descriptor = buffer->GetDescriptor();
   uint32_t handles[4] = {0}, pitches[4] = {0}, offsets[4] = {0}, flags = 0;
   uint64_t modifier[4] = {0};
@@ -66,10 +87,13 @@ bool CVideoLayerBridgeDRMPRIME::Map(CVideoBufferDRMPRIME* buffer)
   // convert Prime FD to GEM handle
   for (int object = 0; object < descriptor->nb_objects; object++)
   {
-    ret = drmPrimeFDToHandle(m_DRM->GetFileDescriptor(), descriptor->objects[object].fd, &buffer->m_handles[object]);
+    ret = drmPrimeFDToHandle(m_DRM->GetFileDescriptor(), descriptor->objects[object].fd,
+                             &buffer->m_handles[object]);
     if (ret < 0)
     {
-      CLog::Log(LOGERROR, "CVideoLayerBridgeDRMPRIME::%s - failed to convert prime fd %d to gem handle %u, ret = %d",
+      CLog::Log(LOGERROR,
+                "CVideoLayerBridgeDRMPRIME::{} - failed to convert prime fd {} to gem handle {}, "
+                "ret = {}",
                 __FUNCTION__, descriptor->objects[object].fd, buffer->m_handles[object], ret);
       return false;
     }
@@ -94,11 +118,13 @@ bool CVideoLayerBridgeDRMPRIME::Map(CVideoBufferDRMPRIME* buffer)
     flags = DRM_MODE_FB_MODIFIERS;
 
   // add the video frame FB
-  ret = drmModeAddFB2WithModifiers(m_DRM->GetFileDescriptor(), buffer->GetWidth(), buffer->GetHeight(), layer->format,
-                                   handles, pitches, offsets, modifier, &buffer->m_fb_id, flags);
+  ret = drmModeAddFB2WithModifiers(m_DRM->GetFileDescriptor(), buffer->GetWidth(),
+                                   buffer->GetHeight(), layer->format, handles, pitches, offsets,
+                                   modifier, &buffer->m_fb_id, flags);
   if (ret < 0)
   {
-    CLog::Log(LOGERROR, "CVideoLayerBridgeDRMPRIME::%s - failed to add fb %d, ret = %d", __FUNCTION__, buffer->m_fb_id, ret);
+    CLog::Log(LOGERROR, "CVideoLayerBridgeDRMPRIME::{} - failed to add fb {}, ret = {}",
+              __FUNCTION__, buffer->m_fb_id, ret);
     return false;
   }
 
@@ -118,21 +144,84 @@ void CVideoLayerBridgeDRMPRIME::Unmap(CVideoBufferDRMPRIME* buffer)
   {
     if (buffer->m_handles[i])
     {
-      struct drm_gem_close gem_close = { .handle = buffer->m_handles[i] };
+      struct drm_gem_close gem_close = {.handle = buffer->m_handles[i]};
       drmIoctl(m_DRM->GetFileDescriptor(), DRM_IOCTL_GEM_CLOSE, &gem_close);
       buffer->m_handles[i] = 0;
     }
   }
+
+  buffer->ReleaseDescriptor();
 }
 
 void CVideoLayerBridgeDRMPRIME::Configure(CVideoBufferDRMPRIME* buffer)
 {
-  struct plane* plane = m_DRM->GetPrimaryPlane();
-  if (m_DRM->SupportsProperty(plane, "COLOR_ENCODING") &&
-      m_DRM->SupportsProperty(plane, "COLOR_RANGE"))
+  const VideoPicture& picture = buffer->GetPicture();
+
+  struct plane* plane = m_DRM->GetVideoPlane();
+  if (m_DRM->SupportsPropertyAndValue(plane, "COLOR_ENCODING", GetColorEncoding(picture)))
+    m_DRM->AddProperty(plane, "COLOR_ENCODING", GetColorEncoding(picture));
+
+  if (m_DRM->SupportsPropertyAndValue(plane, "COLOR_RANGE", GetColorRange(picture)))
+    m_DRM->AddProperty(plane, "COLOR_RANGE", GetColorRange(picture));
+
+  struct connector* connector = m_DRM->GetConnector();
+  if (m_DRM->SupportsProperty(connector, "HDR_OUTPUT_METADATA"))
   {
-    m_DRM->AddProperty(plane, "COLOR_ENCODING", buffer->GetColorEncoding());
-    m_DRM->AddProperty(plane, "COLOR_RANGE", buffer->GetColorRange());
+    m_hdr_metadata.metadata_type = HDMI_STATIC_METADATA_TYPE1;
+    m_hdr_metadata.hdmi_metadata_type1 = {
+        .eotf = GetEOTF(picture),
+        .metadata_type = HDMI_STATIC_METADATA_TYPE1,
+    };
+
+    if (m_hdr_blob_id)
+      drmModeDestroyPropertyBlob(m_DRM->GetFileDescriptor(), m_hdr_blob_id);
+    m_hdr_blob_id = 0;
+
+    if (m_hdr_metadata.hdmi_metadata_type1.eotf)
+    {
+      const AVMasteringDisplayMetadata* mdmd = GetMasteringDisplayMetadata(picture);
+      if (mdmd && mdmd->has_primaries)
+      {
+        // Convert to unsigned 16-bit values in units of 0.00002,
+        // where 0x0000 represents zero and 0xC350 represents 1.0000
+        for (int i = 0; i < 3; i++)
+        {
+          m_hdr_metadata.hdmi_metadata_type1.display_primaries[i].x =
+              std::round(av_q2d(mdmd->display_primaries[i][0]) * 50000.0);
+          m_hdr_metadata.hdmi_metadata_type1.display_primaries[i].y =
+              std::round(av_q2d(mdmd->display_primaries[i][1]) * 50000.0);
+        }
+        m_hdr_metadata.hdmi_metadata_type1.white_point.x =
+            std::round(av_q2d(mdmd->white_point[0]) * 50000.0);
+        m_hdr_metadata.hdmi_metadata_type1.white_point.y =
+            std::round(av_q2d(mdmd->white_point[1]) * 50000.0);
+      }
+      if (mdmd && mdmd->has_luminance)
+      {
+        // Convert to unsigned 16-bit value in units of 1 cd/m2,
+        // where 0x0001 represents 1 cd/m2 and 0xFFFF represents 65535 cd/m2
+        m_hdr_metadata.hdmi_metadata_type1.max_display_mastering_luminance =
+            std::round(av_q2d(mdmd->max_luminance));
+
+        // Convert to unsigned 16-bit value in units of 0.0001 cd/m2,
+        // where 0x0001 represents 0.0001 cd/m2 and 0xFFFF represents 6.5535 cd/m2
+        m_hdr_metadata.hdmi_metadata_type1.min_display_mastering_luminance =
+            std::round(av_q2d(mdmd->min_luminance) * 10000.0);
+      }
+
+      const AVContentLightMetadata* clmd = GetContentLightMetadata(picture);
+      if (clmd)
+      {
+        m_hdr_metadata.hdmi_metadata_type1.max_cll = clmd->MaxCLL;
+        m_hdr_metadata.hdmi_metadata_type1.max_fall = clmd->MaxFALL;
+      }
+
+      drmModeCreatePropertyBlob(m_DRM->GetFileDescriptor(), &m_hdr_metadata, sizeof(m_hdr_metadata),
+                                &m_hdr_blob_id);
+    }
+
+    m_DRM->AddProperty(connector, "HDR_OUTPUT_METADATA", m_hdr_blob_id);
+    m_DRM->SetActive(true);
   }
 }
 
@@ -144,7 +233,7 @@ void CVideoLayerBridgeDRMPRIME::SetVideoPlane(CVideoBufferDRMPRIME* buffer, cons
     return;
   }
 
-  struct plane* plane = m_DRM->GetPrimaryPlane();
+  struct plane* plane = m_DRM->GetVideoPlane();
   m_DRM->AddProperty(plane, "FB_ID", buffer->m_fb_id);
   m_DRM->AddProperty(plane, "CRTC_ID", m_DRM->GetCrtc()->crtc->crtc_id);
   m_DRM->AddProperty(plane, "SRC_X", 0);
@@ -162,7 +251,11 @@ void CVideoLayerBridgeDRMPRIME::UpdateVideoPlane()
   if (!m_buffer || !m_buffer->m_fb_id)
     return;
 
-  struct plane* plane = m_DRM->GetPrimaryPlane();
+  // release the buffer that is no longer presented on screen
+  Release(m_prev_buffer);
+  m_prev_buffer = nullptr;
+
+  struct plane* plane = m_DRM->GetVideoPlane();
   m_DRM->AddProperty(plane, "FB_ID", m_buffer->m_fb_id);
   m_DRM->AddProperty(plane, "CRTC_ID", m_DRM->GetCrtc()->crtc->crtc_id);
 }

@@ -8,9 +8,10 @@
 
 #pragma once
 
+#include "TextureBundleXBT.h"
+
 #include <string>
 #include <vector>
-#include "TextureBundleXBT.h"
 
 class CTextureBundle
 {
@@ -27,7 +28,7 @@ public:
   bool LoadTexture(const std::string& Filename, CBaseTexture** ppTexture, int &width, int &height);
 
   int LoadAnim(const std::string& Filename, CBaseTexture*** ppTextures, int &width, int &height, int& nLoops, int** ppDelays);
-
+  void Close();
 private:
   CTextureBundleXBT m_tbXBT;
 

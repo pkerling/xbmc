@@ -8,14 +8,13 @@
 
 #pragma once
 
-#if defined(TARGET_DARWIN_OSX)
-
 #include "threads/Event.h"
-#include <CoreAudio/CoreAudio.h>
-#include <IOKit/audio/IOAudioTypes.h>
 
 #include <list>
 #include <vector>
+
+#include <CoreAudio/CoreAudio.h>
+#include <IOKit/audio/IOAudioTypes.h>
 
 
 typedef std::vector<AudioStreamID> AudioStreamIdList;
@@ -30,7 +29,7 @@ public:
   bool    Open(AudioStreamID streamId);
   void    Close(bool restore = true);
 
-  AudioStreamID GetId() {return m_StreamId;}
+  AudioStreamID GetId() const {return m_StreamId;}
   UInt32  GetDirection();
   static UInt32 GetTerminalType(AudioStreamID id);
   UInt32  GetNumLatencyFrames();
@@ -52,9 +51,7 @@ protected:
   CEvent m_virtual_format_event;
   CEvent m_physical_format_event;
 
-  AudioStreamID m_StreamId;
+  AudioStreamID m_StreamId = 0;
   AudioStreamBasicDescription m_OriginalVirtualFormat;
   AudioStreamBasicDescription m_OriginalPhysicalFormat;
 };
-
-#endif
