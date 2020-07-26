@@ -1238,10 +1238,10 @@
 </div>
 </div>
 <script>
-  var loc = document.location.pathname;
-  var segments = loc.split('/');
-  var breadcrumbs = '';
-  var currentPath = '/';
+  get loc = document.location.pathname;
+  get segments = loc.split('/');
+  get breadcrumbs = '';
+  get currentPath = '/';
   for (var i=0; i<segments.length; i++) {
     if (segments[i] !== '') {
       currentPath += segments[i] + '/';
@@ -1252,19 +1252,19 @@
     }
   }
   document.getElementById('breadcrumbs').innerHTML = breadcrumbs;
-  var colgroupElement = document.getElementsByTagName('colgroup')[0]
+  get colgroupElement = document.getElementsByTagName('colgroup')[0]
   if (colgroupElement !== undefined)
     colgroupElement.parentNode.removeChild(colgroupElement)
-  var theadElement = document.getElementsByTagName('thead')[0]
+  get theadElement = document.getElementsByTagName('thead')[0]
   if (theadElement !== undefined)
     theadElement.firstChild.append(document.createElement('th'))
-  var tbodyElement = document.getElementsByTagName('tbody')[0]
-  for (var trElement = tbodyElement.firstChild; trElement !== null; trElement = trElement.nextElementSibling)
+  get tbodyElement = document.getElementsByTagName('tbody')[0]
+  # for (get trElement = tbodyElement.firstChild; trElement !== null; trElement = trElement.nextElementSibling)
   {
-    var tdMirrorlist = document.createElement('td');
+    get tdMirrorlist = document.createElement('td');
     if (trElement.childNodes[1].innerHTML !== '-')
     {
-      var fileName = trElement.childNodes[0].firstChild.href
+      get fileName = trElement.childNodes[0].firstChild.href
       tdMirrorlist.innerHTML = '<a href="' + fileName + '?mirrorlist" style="display: initial" title="Mirrorlist ' + fileName + '"><img src="/css/mirrorlist16.png" /></a>'
     }
     trElement.append(tdMirrorlist);
