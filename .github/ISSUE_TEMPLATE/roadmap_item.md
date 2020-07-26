@@ -42,4 +42,4 @@ I Here Declare that if This source is Truly Open Source I Will Be requesting all
 
 
 <!--- End of this issue -->
-*Note: Team Kodi is not considering me at all, but I "Right-Meow" is reporting All of these items and or Issues as they are, but I "Right-Meow" as a single developer all by my self With OUT "Team Kodi" Unfourtantly can not make any promises as "Team Kodi" Is not being Fair to me. So I "Right-Meow" Will Do The bese That "Right-Meow" Cand do Thank You..*
+*Note: Team Kodi is not considering me at all, but I "Right-Meow" is reporting All of these items and or Issues as they are, but I "Right-Meow" as a single developer all by my self With OUT "Team Kodi" Unfourtantly can not make any promises as "Team Kodi" Is not being Fair to me. So I "Right-Meow" Will Do The best That "Right-Meow" Can do Thank You.. P.S If you are a Devloper That wants to help "Right-Meow" all is apprecated *
