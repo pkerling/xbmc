@@ -1,0 +1,68 @@
+# See https://help.github.com/articles/about-codeowners/
+# for more info about CODEOWNERS file
+
+# Please try and keep the list in alphabetical order
+On: [Master]
+Run: Pull_Requests
+Ubuntu: |
+Cmd: |
+ apt-install git
+ Chmod RWX -777
+ mk dir .git
+ mk dir .github
+ git init
+
+@github.com, git clone: |
+  /xbmc/cores/RetroPlayer/garbear
+  /xbmc/cores/VideoPlayer/DVDInputStreams/InputStreamPVR/ksooo
+  /xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/DRMPRIMEEGL/lrusak
+  /xbmc/cores/VideoPlayer/VideoRenderers/HwDecRender/RendererDRMPRIME/lrusak
+  /xbmc/filesystem/Music*.*/DaveTBlake
+  /xbmc/games/garbear
+  /xbmc/input/garbear
+  /xbmc/interfaces/builtins/PVRksooo
+  /xbmc/interfaces/json-rpc/AudioLibrary.*  @DaveTBlake
+  /xbmc/interfaces/json-rpc/PVR/*.* @ksooo
+  /xbmc/guilib/GUIRangesControl/ksooo
+  /xbmc/guilib/guiinfo/GUIInfoProvider.h/ksooo
+  /xbmc/guilib/guiinfo/GUIInfoProviders./ksooo
+  /xbmc/guilib/guiinfo/IGUIInfoProvider.h/ksooo
+  /xbmc/music/DaveTBlake
+  /xbmc/peripherals/garbear
+  /xbmc/platform/linux/lrusak
+  /xbmc/pvr/ksooo
+  /xbmc/rendering/gles/lrusak
+  /xbmc/settings/SettingsComponent/ksooo
+  /xbmc/utils/EGL/lrusak
+  /xbmc/utils/GBMBufferObject/lrusak
+  /xbmc/windowing/gbm/lrusak
+  /xbmc/windowing/wayland/yol
+  mk A.zip
+  Save.
+
+name: Code Inspector GitHub action
+  uses: codeinspectorio/github-action@v1
+  with:
+    # Token to checkout the repository.
+    repo_token: 
+    # Access key on Code Inspector
+    code_inspector_access_key: 
+    # Secret key on Code Inspector
+    code_inspector_secret_key: 
+    # Minimum grade. Valid options are EXCELLENT, GOOD, NEUTRAL, WARNING, CRITICAL. Leave blank to ignore.
+    min_quality_grade: # default is 
+    # Minimum quality score from 0 (worst) to 100 (best)
+    min_quality_score: # default is 0
+    # Maximum defect rate per line of code (e.g. 0.01 for 1 defect per 100 lines of code). Leave 0 to ignore.
+    max_defects_rate: # default is 0
+    # Maximum number of complex functions rate (e.g. number of complex functions / number of functions). Leave 0 to ignore.
+    max_complex_functions_rate: # default is 0
+    # Maximum number of long functions rate (e.g. number of long functions / number of functions). Leave 0 to ignore.
+    max_long_functions_rate: # default is 0
+    # Project on code inspector. Will use the preferences of this analysis. Leave blank and no preferences are used
+    project_name: # default is 
+    # Timeout before giving up (in case analysis takes too long). Default is 10 minutes
+    max_timeout_sec: # default is 600
+    
+    Save
+    fi
