@@ -4,6 +4,8 @@
 # Please try and keep the list in alphabetical order
 On: [Master]
 Run: Pull_Requests
+If: Pull_Reuests Fail
+Then: Over Write Fail
 Ubuntu: |
 Cmd: |
  apt-install git
