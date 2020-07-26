@@ -4,6 +4,7 @@
 # integrate with slack
 # make it perfect... or not ;-r
 
+import: git.yml
 
 language: cpp
 
