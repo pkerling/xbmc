@@ -1,8 +1,12 @@
 ---
 name: Roadmap item (Allow Non Members To Code !)
 about: Create a roadmap/todo item
+title: ''
+labels: ''
+assignees: ''
 
 ---
+
 <!--- Please fill out this template to the best of your ability. You can always edit this issue once you have created it. -->
 ## Roadmap or todo item
 **Detailed Description**
