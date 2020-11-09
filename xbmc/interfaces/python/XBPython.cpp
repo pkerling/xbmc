@@ -529,6 +529,10 @@ bool XBPython::OnScriptInitialized(ILanguageInvoker* invoker)
     //! @bug libpython isn't const correct
     PySys_SetArgv(1, const_cast<wchar_t**>(python_argv));
 
+    // <magic>
+    PyImport_ImportModule("_datetime");
+    // </magic>
+
     if (!(m_mainThreadState = PyThreadState_Get()))
       CLog::Log(LOGERROR, "Python threadstate is NULL.");
     savestate = PyEval_SaveThread();
